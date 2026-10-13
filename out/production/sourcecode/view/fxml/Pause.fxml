@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane alignment="CENTER" styleClass="overlay-scrim" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="view.screen_controller.PauseController">
+    <children>
+        <VBox alignment="CENTER" maxHeight="320" maxWidth="320" spacing="14" styleClass="wood-panel">
+            <children>
+                <Label styleClass="pause-title" text="PAUSED" />
+
+                <Button fx:id="btnResume" onAction="#onResume" prefWidth="240" styleClass="btn-gold" text="RESUME" />
+                <Button fx:id="btnMainMenu" onAction="#onMainMenu" prefWidth="240" styleClass="btn-wood" text="MAIN MENU" />
+                <Button fx:id="btnQuitGame" onAction="#onQuit" prefWidth="240" styleClass="btn-wood" text="QUIT GAME" />
+            </children>
+        </VBox>
+    </children>
+</StackPane>

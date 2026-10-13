@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Run JavaFX Project",
+            "request": "launch",
+            "mainClass": "Main",
+            "vmArgs": "--module-path \"C:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\" --add-modules javafx.controls,javafx.fxml"
+        }
+    ]
+}

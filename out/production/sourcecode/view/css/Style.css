@@ -1,0 +1,764 @@
+/* ---------- Titles ---------- */
+.title-xl {
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-size: 64px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #F4E5B8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 8, 0.3, 0, 4);
+}
+
+.plaque {
+    -fx-padding: 6 24 6 24;
+}
+
+.subtitle-chip {
+    -fx-font-size: 16px;
+    -fx-text-fill: #2C3A12;
+    -fx-background-color: #F0CC52;
+    -fx-background-radius: 12;
+    -fx-padding: 6 16 6 16;
+}
+
+.pause-title, .picker-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #F4E5B8;
+}
+
+/* ---------- Buttons ---------- */
+.btn-menu {
+    -fx-min-width: 360px;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #3A2910;
+    -fx-background-color: #9C6B3A, #C7A876;
+    -fx-background-insets: 0, 3;
+    -fx-background-radius: 10, 8;
+    -fx-padding: 12 20 12 20;
+    -fx-cursor: hand;
+}
+.btn-menu:hover  { -fx-background-color: #9C6B3A, #DBC197; }
+
+.btn-gold {
+    -fx-font-weight: bold;
+    -fx-text-fill: #2C2008;
+    -fx-background-color: #C2821E, #F0CC52;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 8, 6;
+    -fx-padding: 8 18 8 18;
+    -fx-cursor: hand;
+}
+.btn-gold:hover     { -fx-background-color: #C2821E, #FFE07A; }
+.btn-gold:disabled  { -fx-opacity: 0.5; }
+
+.btn-wood {
+    -fx-font-weight: bold;
+    -fx-text-fill: #F8E6B0;
+    -fx-background-color: #241A0E, #7A4F28;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 8, 6;
+    -fx-padding: 8 18 8 18;
+    -fx-cursor: hand;
+}
+.btn-wood:hover { -fx-background-color: #241A0E, #946033; }
+
+/* ---------- Panels / overlays ---------- */
+.overlay-scrim { -fx-background-color: rgba(0,0,0,0.55); }
+
+.wood-panel {
+    -fx-background-color: #241A0E, #9C6B3A, #7A4F28;
+    -fx-background-insets: 0, 3, 6;
+    -fx-background-radius: 12, 10, 8;
+    -fx-padding: 24;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 18, 0.2, 0, 8);
+}
+
+.parchment-card {
+    -fx-background-color: #9C6B3A, #F4E5B8;
+    -fx-background-insets: 0, 3;
+    -fx-background-radius: 12, 9;
+    -fx-padding: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 16, 0.2, 0, 6);
+}
+
+/* ---------- Seed picker rows ---------- */
+.seed-row {
+    -fx-background-color: rgba(255,255,255,0.35);
+    -fx-background-radius: 8;
+    -fx-padding: 6 10 6 10;
+}
+.seed-name { -fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #3A2910; }
+
+.transparent-scroll,
+.transparent-scroll .viewport { -fx-background-color: transparent; }
+
+/* ---------- Shop cards ---------- */
+.shop-card {
+    -fx-background-color: #9C6B3A, #FBF0D0;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 10, 8;
+    -fx-padding: 14;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 8, 0.2, 0, 3);
+}
+.shop-name  { -fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #3A2910; }
+.shop-stats { -fx-font-size: 12px; -fx-text-fill: #5E3A1C; }
+
+/* ---------- Progress Bar ----------- */
+.progress-bar {
+    -fx-accent: #7ED957;
+}
+
+.progress-bar > .track {
+    -fx-background-color: rgba(0,0,0,0.4);
+    -fx-background-radius: 8;
+}
+
+.progress-bar > .bar {
+    -fx-background-radius: 8;
+}
+
+/* =========================================================
+   ROOT
+   ========================================================= */
+
+.ingame-root {
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #EAF4FF 0%,
+                    #F8EFD8 28%,
+                    #E3C89B 72%,
+                    #C59C68 100%
+            );
+}
+
+
+/* =========================================================
+   WEATHER ATMOSPHERE
+   Backdrop gradient (rootPane) swaps with the weather, and a soft
+   mouse-transparent wash (.weather-overlay) is laid over the grid.
+   ========================================================= */
+
+.ingame-root.weather-sunny {
+    -fx-background-color:
+            linear-gradient(to bottom, #EAF4FF 0%, #F8EFD8 28%, #E3C89B 72%, #C59C68 100%);
+}
+.ingame-root.weather-rainy {
+    -fx-background-color:
+            linear-gradient(to bottom, #A2B6CB 0%, #8595AB 32%, #6B7A8E 72%, #54616F 100%);
+}
+.ingame-root.weather-drought {
+    -fx-background-color:
+            linear-gradient(to bottom, #FBE0A0 0%, #F2B257 32%, #D9852F 72%, #B25E25 100%);
+}
+
+.weather-overlay {
+    -fx-background-radius: 20;
+}
+.weather-overlay.weather-sunny {
+    -fx-background-color: transparent; /* Loại bỏ lớp phủ vàng khó chịu */
+}
+.weather-overlay.weather-rainy {
+    -fx-background-color: transparent; /* Loại bỏ màn hình xanh, dùng mưa rơi */
+}
+.weather-overlay.weather-drought {
+    -fx-background-color: rgba(224, 138, 44, 0.08); /* Giảm độ đậm của hạn hán */
+}
+
+
+/* =========================================================
+   FARM GRID
+   ========================================================= */
+
+.farm-grid {
+    -fx-padding: 16;
+    -fx-background-color: rgba(88, 56, 32, 0.24);
+    -fx-background-radius: 20;
+    -fx-border-color: #6A4423;
+    -fx-border-width: 4;
+    -fx-border-radius: 20;
+
+    -fx-effect:
+            dropshadow(
+                    gaussian,
+                    rgba(0,0,0,0.22),
+                    22,
+                    0.22,
+                    0,
+                    6
+            );
+}
+
+
+/* =========================================================
+   TOP BAR
+   ========================================================= */
+
+.top-bar {
+    -fx-background-color: rgba(255,255,245,0.72);
+    -fx-background-radius: 18;
+    -fx-border-color: rgba(120,100,70,0.18);
+    -fx-border-radius: 18;
+    -fx-padding: 10 14 10 14;
+}
+
+/* =========================================================
+   NOTIFICATION FIELD
+   ========================================================= */
+
+.notification-field {
+    -fx-background-color: #FFFDF4;
+    -fx-background-radius: 14;
+    -fx-border-color: #D9D3B8;
+    -fx-border-radius: 14;
+    -fx-font-size: 14;
+    -fx-font-weight: bold;
+}
+
+
+/* =========================================================
+   RIGHT PANEL
+   ========================================================= */
+
+.right-panel {
+    -fx-background-color: rgba(255,255,250,0.18);
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(90,70,40,0.14);
+    -fx-border-radius: 20;
+    -fx-padding: 18;
+}
+
+
+/* =========================================================
+   DAY DISPLAY
+   ========================================================= */
+
+.side-display {
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #FFFDF5,
+                    #F4EFD8
+            );
+
+    -fx-background-radius: 14;
+    -fx-border-color: #D5C79B;
+    -fx-border-radius: 14;
+    -fx-font-size: 18;
+    -fx-font-weight: bold;
+}
+
+
+/* =========================================================
+   MONEY BOX
+   ========================================================= */
+
+.money-box {
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #FFE78A,
+                    #E2B94F
+            );
+
+    -fx-background-radius: 20;
+    -fx-border-color: #7A531F;
+    -fx-border-width: 3;
+    -fx-border-radius: 20;
+
+    -fx-effect:
+            dropshadow(
+                    gaussian,
+                    rgba(0,0,0,0.22),
+                    12,
+                    0.2,
+                    0,
+                    4
+            );
+}
+
+.money-label {
+    -fx-text-fill: #4A2E12;
+    -fx-font-size: 25;
+    -fx-font-weight: bold;
+    -fx-font-family: "Consolas";
+}
+
+
+/* =========================================================
+   WEATHER BUTTONS
+   ========================================================= */
+
+.weather-btn {
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #F8E7C2,
+                    #E3C07A
+            );
+
+    -fx-background-radius: 14;
+    -fx-border-color: #A5793F;
+    -fx-border-radius: 14;
+    -fx-border-width: 2;
+}
+
+.weather-btn:selected {
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #FFD15A,
+                    #DB912A
+            );
+
+    -fx-border-color: #6C4115;
+}
+
+
+/* =========================================================
+   BOTTOM BAR
+   ========================================================= */
+
+.bottom-bar {
+    -fx-background-color: rgba(70,45,25,0.22);
+    -fx-background-radius: 22 22 0 0;
+    -fx-padding: 14;
+}
+
+
+/* =========================================================
+   STATUS PANEL
+   ========================================================= */
+
+.status-panel {
+    -fx-background-color: rgba(255,255,245,0.50);
+    -fx-background-radius: 16;
+    -fx-border-color: rgba(100,80,50,0.12);
+    -fx-border-radius: 16;
+    -fx-padding: 10 14 10 14;
+}
+
+.status-panel .label {
+    -fx-font-family: "Consolas";
+    -fx-min-width: 120;
+}
+
+
+/* =========================================================
+   TOOL HOTBAR
+   ========================================================= */
+
+.tool-hotbar {
+    -fx-background-color: rgba(90,60,30,0.18);
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(255,255,255,0.12);
+    -fx-border-radius: 20;
+    -fx-padding: 12 16 12 16;
+    -fx-spacing: 12;
+}
+
+
+/* =========================================================
+   TOOL BUTTONS
+   ========================================================= */
+
+.tool-hotbar .toggle-button {
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #F6E4C8,
+                    #D6AE72
+            );
+
+    -fx-background-radius: 16;
+    -fx-border-color: #7A542B;
+    -fx-border-radius: 16;
+    -fx-border-width: 2;
+    -fx-cursor: hand;
+}
+
+.tool-hotbar .toggle-button:selected {
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #FFDB72,
+                    #D8902F
+            );
+
+    -fx-border-color: #5E3810;
+
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+
+/* =========================================================
+   ACTION BUTTONS
+   ========================================================= */
+
+.action-panel .button {
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #D78E48,
+                    #B56A27
+            );
+
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 14;
+    -fx-border-color: #6A3D16;
+    -fx-border-radius: 14;
+    -fx-border-width: 2;
+    -fx-cursor: hand;
+}
+
+.action-panel .button:hover {
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #E09C54,
+                    #C6772E
+            );
+
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+
+/* =========================================================
+   LABELS
+   ========================================================= */
+
+.label {
+    -fx-text-fill: #2F2416;
+}
+
+/* =========================================================
+   ROOT
+   ========================================================= */
+
+.shop-root {
+
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #F5E7CC 0%,
+                    #E6C796 55%,
+                    #C28B52 100%
+            );
+}
+
+
+/* =========================================================
+   TOP
+   ========================================================= */
+
+.shop-top {
+
+    -fx-background-color:
+            rgba(255,250,240,0.42);
+
+    -fx-background-radius: 20;
+
+    -fx-border-color:
+            rgba(120,80,40,0.14);
+
+    -fx-border-radius: 20;
+}
+
+.shop-title {
+
+    -fx-font-size: 40;
+
+    -fx-font-weight: bold;
+
+    -fx-text-fill: #4A2D12;
+
+    -fx-effect:
+            dropshadow(
+                    gaussian,
+                    rgba(255,255,255,0.35),
+                    8,
+                    0.15,
+                    0,
+                    1
+            );
+}
+
+
+/* =========================================================
+   TAB PANE
+   ========================================================= */
+
+.shop-tabs {
+
+    -fx-background-color: transparent;
+}
+
+.shop-tabs .tab-header-area {
+
+    -fx-padding: 0 0 12 0;
+}
+
+.shop-tabs .tab {
+
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #F5DFC0,
+                    #D9B070
+            );
+
+    -fx-background-radius: 14 14 0 0;
+
+    -fx-padding: 10 20 10 20;
+}
+
+.shop-tabs .tab:selected {
+
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #FFD86A,
+                    #E2A437
+            );
+}
+
+.shop-tabs .tab-label {
+
+    -fx-text-fill: #3A240F;
+
+    -fx-font-size: 16;
+
+    -fx-font-weight: bold;
+}
+
+
+/* =========================================================
+   FLOW AREA
+   ========================================================= */
+
+.shop-flow {
+
+    -fx-background-color:
+            rgba(255,250,240,0.30);
+
+    -fx-background-radius: 18;
+
+    -fx-border-color:
+            rgba(90,60,30,0.10);
+
+    -fx-border-radius: 18;
+}
+
+
+/* =========================================================
+   CARD
+   ========================================================= */
+
+.shop-card {
+
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #FFF7E8,
+                    #F2DFC1
+            );
+
+    -fx-background-radius: 18;
+
+    -fx-border-color:
+            #C89A5C;
+
+    -fx-border-radius: 18;
+
+    -fx-border-width: 2;
+
+    -fx-padding: 14;
+
+    -fx-spacing: 8;
+
+    -fx-effect:
+            dropshadow(
+                    gaussian,
+                    rgba(0,0,0,0.18),
+                    10,
+                    0.2,
+                    0,
+                    3
+            );
+}
+
+.shop-card:hover {
+
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+
+/* =========================================================
+   TEXT
+   ========================================================= */
+
+.shop-name {
+
+    -fx-font-size: 18;
+
+    -fx-font-weight: bold;
+
+    -fx-text-fill: #4A2D12;
+}
+
+.shop-stats {
+
+    -fx-font-size: 13;
+
+    -fx-text-fill: #6A5238;
+}
+
+
+/* =========================================================
+   BUY BUTTON
+   ========================================================= */
+
+.btn-gold {
+
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #F2B357,
+                    #C97B2B
+            );
+
+    -fx-text-fill: white;
+
+    -fx-font-weight: bold;
+
+    -fx-background-radius: 12;
+
+    -fx-border-color:
+            #7A4316;
+
+    -fx-border-radius: 12;
+
+    -fx-border-width: 2;
+
+    -fx-cursor: hand;
+}
+
+.btn-gold:hover {
+
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #FFC46C,
+                    #D98A37
+            );
+}
+
+
+/* =========================================================
+   BOTTOM
+   ========================================================= */
+
+.shop-bottom {
+
+    -fx-background-color:
+            rgba(80,50,25,0.14);
+
+    -fx-background-radius: 20 20 0 0;
+
+    -fx-padding: 14;
+}
+
+.shop-money {
+
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #FFE382,
+                    #D9A441
+            );
+
+    -fx-padding: 10 20 10 20;
+
+    -fx-background-radius: 16;
+
+    -fx-border-color:
+            #6A4418;
+
+    -fx-border-radius: 16;
+
+    -fx-border-width: 2;
+
+    -fx-font-size: 24;
+
+    -fx-font-weight: bold;
+
+    -fx-text-fill: #3B240C;
+}
+
+.shop-status {
+
+    -fx-font-size: 18;
+
+    -fx-text-fill: #4A3116;
+
+    -fx-font-weight: bold;
+}
+
+.shop-back-btn {
+
+    -fx-background-color:
+            linear-gradient(
+                    to bottom,
+                    #D98C4A,
+                    #B46A2C
+            );
+
+    -fx-text-fill: white;
+
+    -fx-font-weight: bold;
+
+    -fx-background-radius: 14;
+
+    -fx-border-color:
+            #6A3C14;
+
+    -fx-border-radius: 14;
+
+    -fx-border-width: 2;
+}
+
+.shop-back-btn:hover {
+
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+.scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 14;
+}
+
+.scroll-bar:vertical .thumb {
+    -fx-background-color: #8B5A2B;
+    -fx-background-radius: 10;
+}
+
+.scroll-pane,
+.scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.shop-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.shop-scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}

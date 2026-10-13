@@ -1,0 +1,6 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "c:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\\**\\*.jar"
+    ]
+}

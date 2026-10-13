@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane alignment="CENTER" styleClass="overlay-scrim" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="view.screen_controller.SeedPickerController">
+    <children>
+        <VBox alignment="CENTER" maxHeight="380" maxWidth="420" spacing="12" styleClass="parchment-card">
+            <children>
+                <Label styleClass="picker-title" text="SEED BAG — pick a seed" />
+                <ScrollPane fitToWidth="true" prefViewportHeight="260" styleClass="transparent-scroll">
+                    <content>
+                        <VBox fx:id="list" spacing="8" />
+                    </content>
+                </ScrollPane>
+                <Button fx:id="btnCancel" onAction="#onCancel" styleClass="btn-wood" text="CANCEL" />
+            </children>
+        </VBox>
+    </children>
+</StackPane>

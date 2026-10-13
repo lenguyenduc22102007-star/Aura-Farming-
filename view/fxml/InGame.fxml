@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<BorderPane fx:id="rootPane" styleClass="ingame-root" prefHeight="720.0" prefWidth="1280.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="view.screen_controller.InGameController">
+
+   <!-- ====================================================== -->
+   <!-- TOP BAR -->
+   <!-- ====================================================== -->
+
+   <top>
+
+      <HBox styleClass="top-bar" alignment="CENTER_LEFT" spacing="10" visible="false" managed="false">
+
+         <padding>
+            <Insets bottom="12" left="12" right="12" top="12" />
+         </padding>
+
+         <Label fx:id="toolLabel" prefHeight="28.0" prefWidth="340.0" text="TOOL : STANDARD FERTILIZER">
+
+            <font>
+               <Font name="Segoe UI Bold" size="22" />
+            </font>
+
+         </Label>
+         <HBox prefHeight="28.0" prefWidth="150.0" />
+
+         <TextField fx:id="notificationField" styleClass="notification-field" editable="false" maxWidth="-Infinity" prefWidth="400.0" text="Game notification..." HBox.hgrow="ALWAYS" />
+
+      </HBox>
+
+   </top>
+
+
+   <!-- ====================================================== -->
+   <!-- CENTER GAME GRID -->
+   <!-- ====================================================== -->
+
+   <center>
+
+      <StackPane>
+
+         <padding>
+            <Insets bottom="20" left="20" right="20" top="20" />
+         </padding>
+
+         <GridPane fx:id="farmGrid" styleClass="farm-grid" alignment="CENTER" hgap="4" vgap="4" />
+
+         <!-- Weather mood wash over the play field; clicks pass straight through. -->
+         <Pane fx:id="weatherOverlay" styleClass="weather-overlay" mouseTransparent="true" />
+
+      </StackPane>
+
+   </center>
+
+
+   <!-- ====================================================== -->
+   <!-- RIGHT PANEL -->
+   <!-- ====================================================== -->
+
+   <right>
+
+      <VBox styleClass="right-panel" alignment="TOP_CENTER" prefWidth="180" spacing="20">
+
+         <padding>
+            <Insets bottom="20" left="20" right="20" top="20" />
+         </padding>
+
+
+         <!-- DAY -->
+
+         <TextField fx:id="dayField" styleClass="side-display" alignment="CENTER" editable="false" text="DAY 1" />
+
+
+         <!-- WEATHER SELECT -->
+
+         <VBox alignment="CENTER" spacing="10">
+
+            <ToggleButton fx:id="sunWeatherButton" styleClass="weather-btn" mnemonicParsing="false" prefHeight="60" prefWidth="100" text="SUN">
+
+               <toggleGroup>
+                  <ToggleGroup fx:id="weatherGroup" />
+               </toggleGroup>
+
+            </ToggleButton>
+
+
+            <ToggleButton fx:id="rainWeatherButton" styleClass="weather-btn" mnemonicParsing="false" prefHeight="60" prefWidth="100" text="RAIN" toggleGroup="$weatherGroup" />
+
+
+            <ToggleButton fx:id="dryWeatherButton" styleClass="weather-btn" mnemonicParsing="false" prefHeight="60" prefWidth="100" text="DRY" toggleGroup="$weatherGroup" />
+
+         </VBox>
+
+
+         <!-- MONEY -->
+
+         <StackPane styleClass="money-box">
+
+            <Label
+                    fx:id="moneyField"
+                    alignment="CENTER"
+                    prefHeight="80"
+                    prefWidth="120"
+                    text="\$200"
+                    styleClass="money-label"
+            />
+
+         </StackPane>
+
+      </VBox>
+
+   </right>
+
+
+   <!-- ====================================================== -->
+   <!-- BOTTOM PANEL -->
+   <!-- ====================================================== -->
+
+   <bottom>
+
+      <HBox alignment="CENTER_LEFT" styleClass="bottom-bar" prefHeight="108.0" prefWidth="1280.0" spacing="30">
+
+         <padding>
+            <Insets bottom="15" left="15" right="15" top="15" />
+         </padding>
+
+
+         <!-- ================================================== -->
+         <!-- STATUS DASHBOARD -->
+         <!-- ================================================== -->
+
+         <VBox styleClass="status-panel" prefHeight="100.0" prefWidth="320.0" spacing="8">
+
+            <HBox spacing="15">
+
+               <Label fx:id="cellLabel" text="CELL : 4,4">
+
+                  <font>
+                     <Font name="Consolas Bold" size="16" />
+                  </font>
+
+               </Label>
+
+
+               <Label fx:id="waterLabel" text="WATER : 40">
+
+                  <font>
+                     <Font name="Consolas Bold" size="16" />
+                  </font>
+
+               </Label>
+
+
+               <Label fx:id="nutrientLabel" text="NUTR : 50">
+
+                  <font>
+                     <Font name="Consolas Bold" size="16" />
+                  </font>
+
+               </Label>
+
+            </HBox>
+
+
+            <Label fx:id="cropLabel" text="CROP : NONE">
+
+               <font>
+                  <Font name="Consolas Bold" size="16" />
+               </font>
+
+            </Label>
+
+         </VBox>
+
+
+         <!-- SPACER -->
+
+         <HBox HBox.hgrow="ALWAYS" />
+
+
+         <!-- ================================================== -->
+         <!-- TOOL HOTBAR -->
+         <!-- ================================================== -->
+
+         <HBox styleClass="tool-hotbar" alignment="CENTER" spacing="10">
+
+            <ToggleButton fx:id="seedTool" mnemonicParsing="false" prefHeight="70" prefWidth="70" text="SEED">
+
+               <toggleGroup>
+                  <ToggleGroup fx:id="toolGroup" />
+               </toggleGroup>
+
+            </ToggleButton>
+
+
+            <ToggleButton fx:id="hoeTool" mnemonicParsing="false" prefHeight="70" prefWidth="70" text="HOE" toggleGroup="$toolGroup" />
+
+
+            <ToggleButton fx:id="waterTool" mnemonicParsing="false" prefHeight="70" prefWidth="70" text="WATER" toggleGroup="$toolGroup" />
+
+
+            <ToggleButton fx:id="handTool" mnemonicParsing="false" prefHeight="70" prefWidth="70" text="HAND" toggleGroup="$toolGroup" />
+
+
+            <ToggleButton fx:id="fertilizerTool" mnemonicParsing="false" prefHeight="70" prefWidth="70" text="FERTZ" toggleGroup="$toolGroup" />
+
+         </HBox>
+
+
+         <!-- SPACER -->
+
+         <HBox HBox.hgrow="ALWAYS" />
+
+
+         <!-- ================================================== -->
+         <!-- ACTION BUTTONS -->
+         <!-- ================================================== -->
+
+         <VBox styleClass="action-panel" spacing="10">
+
+            <Button fx:id="storageButton" mnemonicParsing="false" onAction="#openStorageMenu" prefHeight="45" prefWidth="140" text="STORAGE" />
+
+            <Button fx:id="shopButton" mnemonicParsing="false" onAction="#openShop" prefHeight="45" prefWidth="140" text="SHOP" />
+
+            <Button fx:id="nextDayButton" mnemonicParsing="false" onAction="#onNextDay" prefHeight="45" prefWidth="140" text="NEXT DAY" />
+
+         </VBox>
+
+      </HBox>
+
+   </bottom>
+
+</BorderPane>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane style="-fx-background-color: #87CEEB;" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="view.screen_controller.HelpController">
+
+    <children>
+
+        <VBox alignment="CENTER" spacing="16">
+
+            <padding>
+                <Insets topRightBottomLeft="24" />
+            </padding>
+
+            <children>
+
+                <Label style="                            -fx-font-size: 42px;                            -fx-font-weight: bold;                            -fx-text-fill: #5A3418;                             -fx-padding: 12 36 12 36;                             -fx-background-color: #D4A24C;                             -fx-border-color: #6B3E1F;                            -fx-border-width: 4;                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 12, 0.3, 0, 4);                        " text="HELP" />
+
+                <StackPane alignment="CENTER">
+
+                    <children>
+
+                        <ScrollPane fx:id="helpScroll" fitToWidth="true" hbarPolicy="NEVER" maxWidth="900" prefViewportHeight="420" prefViewportWidth="900" style="                                         -fx-background-color: transparent;                                         -fx-background: transparent;                                          -fx-padding: 0;                                          -fx-border-color: #8B5A2B;                                         -fx-border-width: 4;                                     ">
+
+                            <content>
+
+                                <Label fx:id="body" alignment="TOP_LEFT" prefWidth="912.0" style="                                            -fx-font-size: 18px;                                            -fx-font-weight: bold;                                             -fx-text-fill: #2E1A0F;                                             -fx-background-color: rgba(255,245,220,0.96);                                             -fx-padding: 24;                                             -fx-line-spacing: 4;                                        " wrapText="true" />
+
+                            </content>
+
+                        </ScrollPane>
+
+                    </children>
+
+                </StackPane>
+
+                <Button fx:id="btnBack" onAction="#onBack" styleClass="btn-wood" text="BACK" />
+
+            </children>
+
+        </VBox>
+
+    </children>
+
+</StackPane>

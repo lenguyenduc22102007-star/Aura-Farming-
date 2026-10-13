@@ -1,0 +1,16 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "c:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\\javafx.base.jar",
+        "c:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\\javafx.controls.jar",
+        "c:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\\javafx.fxml.jar",
+        "c:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\\javafx.graphics.jar",
+        "c:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\\javafx.media.jar",
+        "c:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\\javafx.swing.jar",
+        "c:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\\javafx.web.jar",
+        "c:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\\javafx-swt.jar",
+        "c:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\\jdk.jsobject.jar",
+        "c:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\\jfx.incubator.input.jar",
+        "c:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\\jfx.incubator.richtext.jar"
+    ]
+}

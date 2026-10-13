@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane alignment="CENTER" styleClass="overlay-scrim" prefHeight="720.0" prefWidth="1280.0"
+           xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="view.screen_controller.GameOverViewController">
+    <children>
+        <VBox alignment="CENTER" maxHeight="360" maxWidth="420" spacing="16" styleClass="wood-panel">
+            <padding>
+                <Insets topRightBottomLeft="32" />
+            </padding>
+            <children>
+                <Label fx:id="titleLabel" styleClass="pause-title" text="GAME OVER" />
+                <Label fx:id="detailLabel" styleClass="subtitle-chip" text="" />
+                <Region minHeight="10" />
+
+                <Button fx:id="btnNewFarm" onAction="#onNewFarm" prefWidth="260" styleClass="btn-gold" text="NEW FARM" />
+                <Button fx:id="btnMainMenu" onAction="#onMainMenu" prefWidth="260" styleClass="btn-wood" text="MAIN MENU" />
+            </children>
+        </VBox>
+    </children>
+</StackPane>

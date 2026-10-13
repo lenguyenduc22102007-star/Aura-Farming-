@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:id="rootPane" prefHeight="720" prefWidth="1280" styleClass="shop-root" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="view.screen_controller.StorageViewController">
+
+    <top>
+        <StackPane BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="20" left="20" right="20" top="20" />
+            </padding>
+            <Label style="-fx-font-size: 36; -fx-font-weight: bold;" styleClass="shop-title" text="STORAGE" />
+        </StackPane>
+    </top>
+
+    <center>
+        <VBox alignment="TOP_CENTER" spacing="20">
+            <padding>
+                <Insets bottom="10" left="30" right="30" top="10" />
+            </padding>
+
+            <TabPane prefHeight="500" prefWidth="950" styleClass="shop-tabs" tabClosingPolicy="UNAVAILABLE">
+                <tabs>
+                    <Tab text="Crops">
+                        <content>
+                            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" styleClass="shop-scroll-pane">
+                                <content>
+                                    <FlowPane fx:id="cropsPane" hgap="20" minHeight="480" prefWidth="900" styleClass="shop-flow" vgap="20">
+                                        <padding>
+                                            <Insets bottom="20" left="20" right="20" top="20" />
+                                        </padding>
+                                    </FlowPane>
+                                </content>
+                            </ScrollPane>
+                        </content>
+                    </Tab>
+
+                    <Tab text="Animal Feed">
+                        <content>
+                            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" styleClass="shop-scroll-pane">
+                                <content>
+                                    <FlowPane fx:id="feedPane" hgap="20" minHeight="480" prefWidth="900" styleClass="shop-flow" vgap="20">
+                                        <padding>
+                                            <Insets bottom="20" left="20" right="20" top="20" />
+                                        </padding>
+                                    </FlowPane>
+                                </content>
+                            </ScrollPane>
+                        </content>
+                    </Tab>
+
+                    <Tab text="Other Items">
+                        <content>
+                            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" styleClass="shop-scroll-pane">
+                                <content>
+                                    <FlowPane fx:id="suppliesPane" hgap="20" minHeight="480" prefWidth="900" styleClass="shop-flow" vgap="20">
+                                        <padding>
+                                            <Insets bottom="20" left="20" right="20" top="20" />
+                                        </padding>
+                                    </FlowPane>
+                                </content>
+                            </ScrollPane>
+                        </content>
+                    </Tab>
+                </tabs>
+            </TabPane>
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER" maxHeight="-Infinity" minHeight="-Infinity" prefHeight="70.0" spacing="15" styleClass="shop-bottom" BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="15" left="30" right="30" top="15" />
+            </padding>
+
+            <Label fx:id="moneyLabel" style="-fx-font-size: 24; -fx-font-weight: bold;" styleClass="shop-money" text="\$200" />
+
+            <Pane HBox.hgrow="ALWAYS" />
+
+            <HBox alignment="CENTER" spacing="10">
+                <Label fx:id="statusLabel" style="-fx-font-size: 18;" styleClass="shop-status" text="Welcome to Storage!" />
+            </HBox>
+
+            <Pane minHeight="-Infinity" prefHeight="50.0" HBox.hgrow="ALWAYS" />
+
+            <Button fx:id="convertAllBtn" onAction="#handleProcessAllCrops" prefHeight="40" styleClass="btn-gold" text="PROCESS ALL -> FEED" />
+            <Button fx:id="sellAllBtn" onAction="#handleSellAllCrops" prefHeight="40" styleClass="btn-gold" text="SELL ALL CROPS" />
+            <Button onAction="#backToGame" prefHeight="40" prefWidth="100" styleClass="shop-back-btn" text="BACK" />
+        </HBox>
+    </bottom>
+
+</BorderPane>
