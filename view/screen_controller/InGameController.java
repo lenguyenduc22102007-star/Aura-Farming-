@@ -122,11 +122,38 @@ public class InGameController {
         rootPane.getStylesheets().add(getClass().getResource("/view/css/Style.css").toExternalForm());
         setupToolIcons();
         setupWeatherIcons();
+        setupTimeOverlay();
         rootPane.sceneProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 Platform.runLater(rootPane::requestFocus);
             }
         });
+    }
+
+    private void setupTimeOverlay() {
+        if (rootPane == null) return;
+        if (timeOverlayRect == null) {
+            timeOverlayRect = new javafx.scene.shape.Rectangle();
+            timeOverlayRect.setMouseTransparent(true);
+            timeOverlayRect.setManaged(false);
+            timeOverlayRect.setX(0);
+            timeOverlayRect.setY(0);
+            timeOverlayRect.widthProperty().bind(rootPane.widthProperty());
+            timeOverlayRect.heightProperty().bind(rootPane.heightProperty());
+            timeOverlayRect.setFill(getTimeOverlayColor(0.0));
+            rootPane.getChildren().add(timeOverlayRect);
+        } else {
+            if (weatherOverlay != null) {
+                weatherOverlay.getChildren().remove(timeOverlayRect);
+            }
+            if (!rootPane.getChildren().contains(timeOverlayRect)) {
+                rootPane.getChildren().add(timeOverlayRect);
+            }
+            timeOverlayRect.setManaged(false);
+            timeOverlayRect.setX(0);
+            timeOverlayRect.setY(0);
+            timeOverlayRect.toFront();
+        }
     }
 
     public void setRouter(SceneRouter router) {
@@ -927,13 +954,7 @@ public class InGameController {
         mapPane = new Pane();
         entityPane = new Pane();
         
-        if (timeOverlayRect == null && weatherOverlay != null) {
-            timeOverlayRect = new javafx.scene.shape.Rectangle();
-            timeOverlayRect.setMouseTransparent(true);
-            timeOverlayRect.widthProperty().bind(rootPane.widthProperty());
-            timeOverlayRect.heightProperty().bind(rootPane.heightProperty());
-            weatherOverlay.getChildren().add(0, timeOverlayRect);
-        }
+        setupTimeOverlay();
         
         // Tối ưu hóa FPS cực mạnh: Tách layer tĩnh (mapPane) ra khỏi layer động (entityPane).
         // Cài đặt Cache cho mapPane giúp JavaFX không phải tính toán lại 6400 node mỗi khi di chuyển camera.
@@ -1661,6 +1682,13 @@ void style() {
         double badgeBaseY = -28;
         double bobSeed = Math.random() * 1000;
 
+        // Các khớp xoay chân tay và chuyển động (Phong cách nhân vật Luffy)
+        private javafx.scene.transform.Rotate legFLSwing, legFRSwing, legBLSwing, legBRSwing; // 4 chân cho Bò và Lợn
+        private javafx.scene.transform.Rotate legLSwing, legRSwing; // 2 chân cho Gà
+        private javafx.scene.transform.Rotate tailSwing;
+        private javafx.scene.transform.Rotate wingSwing;
+        private double walkStep = Math.random() * 10.0;
+
         public Animal(double startX, double startY, int type) {
             this.x = startX; this.y = startY;
             this.targetX = startX; this.targetY = startY;
@@ -1669,24 +1697,16 @@ void style() {
             
             double spriteWidth = 30;
 
-            if (type == 0) { // Gà (Chicken)
-                ImageView sprite = new ImageView(Assets.CHICKEN_SPRITE);
-                sprite.setFitWidth(30);
-                sprite.setFitHeight(30);
-                sprite.setPreserveRatio(true);
-                sprite.setSmooth(false);
-                spriteNode = sprite;
+            if (type == 0) { // Gà (Chicken) - 2 chân di chuyển
+                javafx.scene.Group chickenModel = createChickenModel();
+                spriteNode = chickenModel;
                 spriteWidth = 30;
-                view.getChildren().add(sprite);
-            } else if (type == 1) { // Bò (Cow)
-                ImageView sprite = new ImageView(Assets.COW_SPRITE);
-                sprite.setFitWidth(46);
-                sprite.setFitHeight(34);
-                sprite.setPreserveRatio(true);
-                sprite.setSmooth(false);
-                spriteNode = sprite;
+                view.getChildren().add(chickenModel);
+            } else if (type == 1) { // Bò (Cow) - 4 chân di chuyển
+                javafx.scene.Group cowModel = createCowModel();
+                spriteNode = cowModel;
                 spriteWidth = 46;
-                view.getChildren().add(sprite);
+                view.getChildren().add(cowModel);
             } else if (type == 2) { // Vịt trời (Duck)
                 javafx.scene.Group duckGroup = new javafx.scene.Group();
                 javafx.scene.shape.Polygon body = new javafx.scene.shape.Polygon(0,5, 12,0, 20,5, 12,10);
@@ -1702,15 +1722,11 @@ void style() {
                 spriteNode = duckGroup;
                 view.getChildren().add(duckGroup);
                 speed = 2.0 + Math.random() * 1.5;
-            } else if (type == 3) { // Lợn (Pig)
-                ImageView sprite = new ImageView(Assets.PIG_SPRITE);
-                sprite.setFitWidth(40);
-                sprite.setFitHeight(28);
-                sprite.setPreserveRatio(true);
-                sprite.setSmooth(false);
-                spriteNode = sprite;
+            } else if (type == 3) { // Lợn (Pig) - 4 chân di chuyển
+                javafx.scene.Group pigModel = createPigModel();
+                spriteNode = pigModel;
                 spriteWidth = 40;
-                view.getChildren().add(sprite);
+                view.getChildren().add(pigModel);
             }
             
             if (type != 2) {
@@ -1754,6 +1770,332 @@ void style() {
             view.setManaged(false);
         }
 
+        // --- NÓN RƠM PHONG CÁCH LUFFY CHO THÚ NUÔI ---
+        private javafx.scene.Group createLuffyStrawHat(double x, double y, double scale) {
+            javafx.scene.Group hat = new javafx.scene.Group();
+            
+            // Vành nón rộng màu vàng rơm
+            Rectangle hatBrim = new Rectangle(20 * scale, 3 * scale, Color.GOLDENROD);
+            hatBrim.setX(x - 10 * scale);
+            hatBrim.setY(y);
+            hatBrim.setArcWidth(2 * scale);
+            hatBrim.setArcHeight(2 * scale);
+
+            // Dải ruy băng đỏ hải tặc Luffy
+            Rectangle hatBand = new Rectangle(12 * scale, 3 * scale, Color.CRIMSON);
+            hatBand.setX(x - 6 * scale);
+            hatBand.setY(y - 3 * scale);
+
+            // Chóp nón rơm vàng
+            Rectangle hatCrown = new Rectangle(10 * scale, 4 * scale, Color.GOLDENROD);
+            hatCrown.setX(x - 5 * scale);
+            hatCrown.setY(y - 7 * scale);
+            hatCrown.setArcWidth(3 * scale);
+            hatCrown.setArcHeight(3 * scale);
+
+            hat.getChildren().addAll(hatBrim, hatBand, hatCrown);
+            return hat;
+        }
+
+        // --- MODEL BÒ (COW) 4 CHÂN DI CHUYỂN PHONG CÁCH LUFFY ---
+        private javafx.scene.Group createCowModel() {
+            javafx.scene.Group cow = new javafx.scene.Group();
+
+            // 1. Chân sau - phía xa (Back-Far Leg)
+            javafx.scene.Group blGroup = new javafx.scene.Group();
+            Rectangle blLeg = new Rectangle(4, 9, Color.rgb(215, 215, 215));
+            blLeg.setX(11); blLeg.setY(19);
+            Rectangle blHoof = new Rectangle(4, 3, Color.rgb(45, 45, 45));
+            blHoof.setX(11); blHoof.setY(28);
+            blGroup.getChildren().addAll(blLeg, blHoof);
+            legBLSwing = new javafx.scene.transform.Rotate(0, 13, 19);
+            blGroup.getTransforms().add(legBLSwing);
+
+            // 2. Chân trước - phía xa (Front-Far Leg)
+            javafx.scene.Group flGroup = new javafx.scene.Group();
+            Rectangle flLeg = new Rectangle(4, 9, Color.rgb(215, 215, 215));
+            flLeg.setX(30); flLeg.setY(19);
+            Rectangle flHoof = new Rectangle(4, 3, Color.rgb(45, 45, 45));
+            flHoof.setX(30); flHoof.setY(28);
+            flGroup.getChildren().addAll(flLeg, flHoof);
+            legFLSwing = new javafx.scene.transform.Rotate(0, 32, 19);
+            flGroup.getTransforms().add(legFLSwing);
+
+            // 3. Đuôi bò (Tail)
+            javafx.scene.Group tailGroup = new javafx.scene.Group();
+            Rectangle tailStem = new Rectangle(2, 8, Color.rgb(230, 230, 230));
+            tailStem.setX(7); tailStem.setY(12);
+            Rectangle tailTuft = new Rectangle(3, 4, Color.rgb(40, 40, 40));
+            tailTuft.setX(6.5); tailTuft.setY(20);
+            tailGroup.getChildren().addAll(tailStem, tailTuft);
+            tailSwing = new javafx.scene.transform.Rotate(0, 8, 12);
+            tailGroup.getTransforms().add(tailSwing);
+
+            // 4. Thân bò (Torso & Patches)
+            javafx.scene.Group bodyGroup = new javafx.scene.Group();
+            Rectangle udder = new Rectangle(6, 3, Color.rgb(255, 192, 203));
+            udder.setX(11); udder.setY(23);
+            Rectangle body = new Rectangle(30, 18, Color.WHITE);
+            body.setX(8); body.setY(8);
+            body.setArcWidth(10); body.setArcHeight(10);
+            // Đốm đen bò sữa
+            Rectangle spot1 = new Rectangle(10, 8, Color.rgb(40, 40, 40));
+            spot1.setX(12); spot1.setY(8);
+            spot1.setArcWidth(6); spot1.setArcHeight(6);
+            Rectangle spot2 = new Rectangle(8, 7, Color.rgb(40, 40, 40));
+            spot2.setX(24); spot2.setY(14);
+            spot2.setArcWidth(5); spot2.setArcHeight(5);
+            bodyGroup.getChildren().addAll(udder, body, spot1, spot2);
+
+            // 5. Đầu bò (Head, Snout, Eyes, Horns, Straw Hat)
+            javafx.scene.Group headGroup = new javafx.scene.Group();
+            Rectangle head = new Rectangle(14, 15, Color.WHITE);
+            head.setX(29); head.setY(6);
+            head.setArcWidth(8); head.setArcHeight(8);
+            Rectangle headSpot = new Rectangle(6, 7, Color.rgb(40, 40, 40));
+            headSpot.setX(30); headSpot.setY(7);
+            headSpot.setArcWidth(4); headSpot.setArcHeight(4);
+            // Mõm hồng
+            Rectangle muzzle = new Rectangle(10, 8, Color.rgb(255, 182, 193));
+            muzzle.setX(36); muzzle.setY(13);
+            muzzle.setArcWidth(6); muzzle.setArcHeight(6);
+            Rectangle nostril1 = new Rectangle(2, 2, Color.rgb(180, 100, 120));
+            nostril1.setX(39); nostril1.setY(16);
+            Rectangle nostril2 = new Rectangle(2, 2, Color.rgb(180, 100, 120));
+            nostril2.setX(43); nostril2.setY(16);
+            // Mắt to tròn hoạt hình
+            Rectangle eye = new Rectangle(3, 4, Color.rgb(20, 20, 20));
+            eye.setX(33); eye.setY(10);
+            eye.setArcWidth(2); eye.setArcHeight(2);
+            Rectangle pupil = new Rectangle(1, 1, Color.WHITE);
+            pupil.setX(34); pupil.setY(11);
+            // Sừng nhỏ
+            Rectangle horn1 = new Rectangle(3, 4, Color.rgb(215, 190, 150));
+            horn1.setX(30); horn1.setY(3);
+            Rectangle horn2 = new Rectangle(3, 4, Color.rgb(215, 190, 150));
+            horn2.setX(36); horn2.setY(3);
+            // Tai
+            Rectangle ear = new Rectangle(4, 5, Color.WHITE);
+            ear.setX(26); ear.setY(9);
+            ear.setArcWidth(3); ear.setArcHeight(3);
+            Rectangle earInner = new Rectangle(2, 3, Color.rgb(255, 182, 193));
+            earInner.setX(27); earInner.setY(10);
+            // Nón rơm Luffy
+            javafx.scene.Group hat = createLuffyStrawHat(35, 3, 0.75);
+
+            headGroup.getChildren().addAll(ear, earInner, horn1, horn2, head, headSpot, eye, pupil, muzzle, nostril1, nostril2, hat);
+
+            // 6. Chân sau - phía gần (Back-Near Leg)
+            javafx.scene.Group brGroup = new javafx.scene.Group();
+            Rectangle brLeg = new Rectangle(4, 9, Color.WHITE);
+            brLeg.setX(15); brLeg.setY(20);
+            Rectangle brHoof = new Rectangle(4, 3, Color.rgb(45, 45, 45));
+            brHoof.setX(15); brHoof.setY(29);
+            brGroup.getChildren().addAll(brLeg, brHoof);
+            legBRSwing = new javafx.scene.transform.Rotate(0, 17, 20);
+            brGroup.getTransforms().add(legBRSwing);
+
+            // 7. Chân trước - phía gần (Front-Near Leg)
+            javafx.scene.Group frGroup = new javafx.scene.Group();
+            Rectangle frLeg = new Rectangle(4, 9, Color.WHITE);
+            frLeg.setX(34); frLeg.setY(20);
+            Rectangle frHoof = new Rectangle(4, 3, Color.rgb(45, 45, 45));
+            frHoof.setX(34); frHoof.setY(29);
+            frGroup.getChildren().addAll(frLeg, frHoof);
+            legFRSwing = new javafx.scene.transform.Rotate(0, 36, 20);
+            frGroup.getTransforms().add(legFRSwing);
+
+            cow.getChildren().addAll(blGroup, flGroup, tailGroup, bodyGroup, headGroup, brGroup, frGroup);
+            return cow;
+        }
+
+        // --- MODEL LỢN (PIG) 4 CHÂN DI CHUYỂN PHONG CÁCH LUFFY ---
+        private javafx.scene.Group createPigModel() {
+            javafx.scene.Group pig = new javafx.scene.Group();
+
+            // 1. Chân sau - phía xa
+            javafx.scene.Group blGroup = new javafx.scene.Group();
+            Rectangle blLeg = new Rectangle(4, 7, Color.rgb(230, 145, 160));
+            blLeg.setX(9); blLeg.setY(16);
+            Rectangle blHoof = new Rectangle(4, 2.5, Color.rgb(190, 80, 105));
+            blHoof.setX(9); blHoof.setY(23);
+            blGroup.getChildren().addAll(blLeg, blHoof);
+            legBLSwing = new javafx.scene.transform.Rotate(0, 11, 16);
+            blGroup.getTransforms().add(legBLSwing);
+
+            // 2. Chân trước - phía xa
+            javafx.scene.Group flGroup = new javafx.scene.Group();
+            Rectangle flLeg = new Rectangle(4, 7, Color.rgb(230, 145, 160));
+            flLeg.setX(25); flLeg.setY(16);
+            Rectangle flHoof = new Rectangle(4, 2.5, Color.rgb(190, 80, 105));
+            flHoof.setX(25); flHoof.setY(23);
+            flGroup.getChildren().addAll(flLeg, flHoof);
+            legFLSwing = new javafx.scene.transform.Rotate(0, 27, 16);
+            flGroup.getTransforms().add(legFLSwing);
+
+            // 3. Đuôi xoăn
+            javafx.scene.Group tailGroup = new javafx.scene.Group();
+            Rectangle tail1 = new Rectangle(4, 2, Color.rgb(255, 150, 170));
+            tail1.setX(4); tail1.setY(12);
+            Rectangle tail2 = new Rectangle(2, 4, Color.rgb(255, 150, 170));
+            tail2.setX(3); tail2.setY(10);
+            tailGroup.getChildren().addAll(tail1, tail2);
+            tailSwing = new javafx.scene.transform.Rotate(0, 6, 12);
+            tailGroup.getTransforms().add(tailSwing);
+
+            // 4. Thân lợn mũm mĩm
+            javafx.scene.Group bodyGroup = new javafx.scene.Group();
+            Rectangle body = new Rectangle(26, 15, Color.rgb(255, 182, 193));
+            body.setX(7); body.setY(7);
+            body.setArcWidth(12); body.setArcHeight(12);
+            bodyGroup.getChildren().add(body);
+
+            // 5. Đầu lợn & Mũ rơm Luffy
+            javafx.scene.Group headGroup = new javafx.scene.Group();
+            Rectangle head = new Rectangle(13, 13, Color.rgb(255, 182, 193));
+            head.setX(24); head.setY(6);
+            head.setArcWidth(10); head.setArcHeight(10);
+            // Mũi heo
+            Rectangle snout = new Rectangle(8, 7, Color.rgb(255, 130, 160));
+            snout.setX(32); snout.setY(11);
+            snout.setArcWidth(6); snout.setArcHeight(6);
+            Rectangle nostril1 = new Rectangle(2, 2, Color.rgb(180, 50, 80));
+            nostril1.setX(34); nostril1.setY(13);
+            Rectangle nostril2 = new Rectangle(2, 2, Color.rgb(180, 50, 80));
+            nostril2.setX(37); nostril2.setY(13);
+            // Mắt to đen lấp lánh
+            Rectangle eye = new Rectangle(3, 3.5, Color.rgb(20, 20, 20));
+            eye.setX(28); eye.setY(9);
+            eye.setArcWidth(2); eye.setArcHeight(2);
+            Rectangle pupil = new Rectangle(1, 1, Color.WHITE);
+            pupil.setX(29); pupil.setY(10);
+            // Má hồng
+            Rectangle blush = new Rectangle(4, 3, Color.rgb(255, 105, 180, 0.45));
+            blush.setX(27); blush.setY(13);
+            blush.setArcWidth(2); blush.setArcHeight(2);
+            // Tai nhọn
+            Rectangle ear1 = new Rectangle(4, 5, Color.rgb(255, 140, 165));
+            ear1.setX(23); ear1.setY(3);
+            ear1.setArcWidth(3); ear1.setArcHeight(3);
+            Rectangle ear2 = new Rectangle(4, 5, Color.rgb(255, 140, 165));
+            ear2.setX(29); ear2.setY(3);
+            ear2.setArcWidth(3); ear2.setArcHeight(3);
+            // Nón rơm Luffy
+            javafx.scene.Group hat = createLuffyStrawHat(28, 3, 0.7);
+
+            headGroup.getChildren().addAll(ear1, ear2, head, eye, pupil, blush, snout, nostril1, nostril2, hat);
+
+            // 6. Chân sau - phía gần
+            javafx.scene.Group brGroup = new javafx.scene.Group();
+            Rectangle brLeg = new Rectangle(4, 7, Color.rgb(255, 182, 193));
+            brLeg.setX(13); brLeg.setY(17);
+            Rectangle brHoof = new Rectangle(4, 2.5, Color.rgb(210, 90, 120));
+            brHoof.setX(13); brHoof.setY(24);
+            brGroup.getChildren().addAll(brLeg, brHoof);
+            legBRSwing = new javafx.scene.transform.Rotate(0, 15, 17);
+            brGroup.getTransforms().add(legBRSwing);
+
+            // 7. Chân trước - phía gần
+            javafx.scene.Group frGroup = new javafx.scene.Group();
+            Rectangle frLeg = new Rectangle(4, 7, Color.rgb(255, 182, 193));
+            frLeg.setX(29); frLeg.setY(17);
+            Rectangle frHoof = new Rectangle(4, 2.5, Color.rgb(210, 90, 120));
+            frHoof.setX(29); frHoof.setY(24);
+            frGroup.getChildren().addAll(frLeg, frHoof);
+            legFRSwing = new javafx.scene.transform.Rotate(0, 31, 17);
+            frGroup.getTransforms().add(legFRSwing);
+
+            pig.getChildren().addAll(blGroup, flGroup, tailGroup, bodyGroup, headGroup, brGroup, frGroup);
+            return pig;
+        }
+
+        // --- MODEL GÀ (CHICKEN) 2 CHÂN DI CHUYỂN PHONG CÁCH LUFFY ---
+        private javafx.scene.Group createChickenModel() {
+            javafx.scene.Group chicken = new javafx.scene.Group();
+
+            // 1. Chân trái (Far Leg) - 2 chân di chuyển
+            javafx.scene.Group lLegGroup = new javafx.scene.Group();
+            Rectangle lStem = new Rectangle(2.5, 7, Color.rgb(220, 120, 20));
+            lStem.setX(10); lStem.setY(18);
+            Rectangle lFoot = new Rectangle(5, 2, Color.rgb(220, 120, 20));
+            lFoot.setX(10); lFoot.setY(25);
+            lLegGroup.getChildren().addAll(lStem, lFoot);
+            legLSwing = new javafx.scene.transform.Rotate(0, 11, 18);
+            lLegGroup.getTransforms().add(legLSwing);
+
+            // 2. Lông đuôi gà
+            javafx.scene.Group tailGroup = new javafx.scene.Group();
+            Rectangle feather1 = new Rectangle(4, 7, Color.rgb(235, 235, 235));
+            feather1.setX(3); feather1.setY(7);
+            feather1.setArcWidth(3); feather1.setArcHeight(3);
+            Rectangle feather2 = new Rectangle(4, 9, Color.WHITE);
+            feather2.setX(5); feather2.setY(5);
+            feather2.setArcWidth(3); feather2.setArcHeight(3);
+            tailGroup.getChildren().addAll(feather1, feather2);
+
+            // 3. Thân gà tròn
+            javafx.scene.Group bodyGroup = new javafx.scene.Group();
+            Rectangle body = new Rectangle(16, 13, Color.WHITE);
+            body.setX(6); body.setY(9);
+            body.setArcWidth(12); body.setArcHeight(12);
+            bodyGroup.getChildren().add(body);
+
+            // 4. Cánh gà
+            javafx.scene.Group wingGroup = new javafx.scene.Group();
+            Rectangle wing = new Rectangle(9, 8, Color.rgb(245, 245, 245));
+            wing.setX(8); wing.setY(11);
+            wing.setArcWidth(6); wing.setArcHeight(6);
+            wing.setStroke(Color.rgb(220, 220, 220));
+            wing.setStrokeWidth(0.8);
+            wingGroup.getChildren().add(wing);
+            wingSwing = new javafx.scene.transform.Rotate(0, 8, 11);
+            wingGroup.getTransforms().add(wingSwing);
+
+            // 5. Đầu gà, Mào đỏ, Mỏ vàng, Yếm đỏ & Mũ rơm Luffy
+            javafx.scene.Group headGroup = new javafx.scene.Group();
+            Rectangle head = new Rectangle(11, 11, Color.WHITE);
+            head.setX(15); head.setY(5);
+            head.setArcWidth(8); head.setArcHeight(8);
+            // Mào gà đỏ
+            Rectangle comb1 = new Rectangle(4, 5, Color.CRIMSON);
+            comb1.setX(16); comb1.setY(1);
+            comb1.setArcWidth(3); comb1.setArcHeight(3);
+            Rectangle comb2 = new Rectangle(4, 6, Color.CRIMSON);
+            comb2.setX(19); comb2.setY(0);
+            comb2.setArcWidth(3); comb2.setArcHeight(3);
+            // Mỏ vàng cam
+            Rectangle beak = new Rectangle(5, 4, Color.rgb(255, 140, 0));
+            beak.setX(23); beak.setY(8);
+            beak.setArcWidth(2); beak.setArcHeight(2);
+            // Yếm gà đỏ dưới mỏ
+            Rectangle wattle = new Rectangle(3, 4, Color.CRIMSON);
+            wattle.setX(22); wattle.setY(12);
+            wattle.setArcWidth(2); wattle.setArcHeight(2);
+            // Mắt gà
+            Rectangle eye = new Rectangle(2.5, 3, Color.rgb(20, 20, 20));
+            eye.setX(19); eye.setY(7);
+            eye.setArcWidth(2); eye.setArcHeight(2);
+            Rectangle pupil = new Rectangle(1, 1, Color.WHITE);
+            pupil.setX(20); pupil.setY(7.5);
+            // Nón rơm Luffy
+            javafx.scene.Group hat = createLuffyStrawHat(18, 2, 0.6);
+
+            headGroup.getChildren().addAll(comb1, comb2, head, eye, pupil, beak, wattle, hat);
+
+            // 6. Chân phải (Near Leg) - 2 chân di chuyển
+            javafx.scene.Group rLegGroup = new javafx.scene.Group();
+            Rectangle rStem = new Rectangle(2.5, 7, Color.rgb(255, 150, 0));
+            rStem.setX(15); rStem.setY(19);
+            Rectangle rFoot = new Rectangle(6, 2, Color.rgb(255, 150, 0));
+            rFoot.setX(15); rFoot.setY(26);
+            rLegGroup.getChildren().addAll(rStem, rFoot);
+            legRSwing = new javafx.scene.transform.Rotate(0, 16, 19);
+            rLegGroup.getTransforms().add(legRSwing);
+
+            chicken.getChildren().addAll(lLegGroup, tailGroup, bodyGroup, wingGroup, headGroup, rLegGroup);
+            return chicken;
+        }
+
         public double getGrowthScale() {
             // Ngày 0 (con non): 0.65
             // Mỗi ngày ăn no tăng +0.15 scale
@@ -1783,18 +2125,17 @@ void style() {
             // Giữ chân thú bám đất bằng cách dịch chuyển bù theo chiều cao scale
             spriteNode.setTranslateY(- (spriteHeight / 2.0) * (s - 1.0));
             
-            if (type == 1) { // Cow (default faces right)
-                spriteNode.setScaleX(facingLeft ? -s : s);
-            } else if (type == 0 || type == 3) { // Chicken & Pig (default faces left)
-                spriteNode.setScaleX(facingLeft ? s : -s);
-            }
+            // Tất cả model procedural đều mặc định quay mặt sang phải, nên lật sang trái bằng -s
+            spriteNode.setScaleX(facingLeft ? -s : s);
             spriteNode.setScaleY(s);
             updateBadgePosition();
         }
 
         public void updateFacing(boolean movingLeft) {
-            this.facingLeft = movingLeft;
-            applySpriteScale();
+            if (this.facingLeft != movingLeft) {
+                this.facingLeft = movingLeft;
+                applySpriteScale();
+            }
         }
 
         public void updateBadgePosition() {
@@ -1833,50 +2174,108 @@ void style() {
                 return;
             }
 
+            long now = System.currentTimeMillis();
+
             // Hiệu ứng bảng hiệu 💰 BÁN lơ lửng bồng bềnh
             if (saleBadge != null && saleBadge.isVisible()) {
-                double floatOffset = Math.sin((System.currentTimeMillis() + bobSeed) * 0.005) * 3.0;
+                double floatOffset = Math.sin((now + bobSeed) * 0.005) * 3.0;
                 saleBadge.setLayoutY(badgeBaseY + floatOffset);
             }
 
-            if (System.currentTimeMillis() < pauseUntil) return;
-            
-            double dx = targetX - x;
-            double dy = targetY - y;
-            double dist = Math.sqrt(dx * dx + dy * dy);
-            
-            if (dist < 5) {
-                targetX = x + (Math.random() - 0.5) * 200;
-                targetY = y + (Math.random() - 0.5) * 200;
-                double mapW = farmMap.getWidth() * Constant.CELL_SIZE;
-                double mapH = farmMap.getHeight() * Constant.CELL_SIZE;
-                targetX = Math.max(0, Math.min(targetX, mapW - 40));
-                targetY = Math.max(0, Math.min(targetY, mapH - 40));
-                
-                int cCol = (int) (targetX / Constant.CELL_SIZE);
-                int cRow = (int) (targetY / Constant.CELL_SIZE);
-                if (farmMap.getCell(cRow, cCol) != null && farmMap.getCell(cRow, cCol).getTerrain() == TerrainType.WATER) {
-                    targetX = x; targetY = y; // Dừng lại nếu target là nước
+            boolean isMoving = false;
+
+            if (now >= pauseUntil) {
+                double dx = targetX - x;
+                double dy = targetY - y;
+                double dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 5) {
+                    targetX = x + (Math.random() - 0.5) * 200;
+                    targetY = y + (Math.random() - 0.5) * 200;
+                    double mapW = farmMap.getWidth() * Constant.CELL_SIZE;
+                    double mapH = farmMap.getHeight() * Constant.CELL_SIZE;
+                    targetX = Math.max(0, Math.min(targetX, mapW - 40));
+                    targetY = Math.max(0, Math.min(targetY, mapH - 40));
+
+                    int cCol = (int) (targetX / Constant.CELL_SIZE);
+                    int cRow = (int) (targetY / Constant.CELL_SIZE);
+                    if (farmMap.getCell(cRow, cCol) != null && farmMap.getCell(cRow, cCol).getTerrain() == TerrainType.WATER) {
+                        targetX = x; targetY = y; // Dừng lại nếu target là nước
+                    } else {
+                        if (Math.random() < 0.6) {
+                            pauseUntil = now + 1500 + (long)(Math.random() * 3000);
+                        }
+                        updateFacing(targetX < x);
+                    }
                 } else {
-                    if (Math.random() < 0.6) pauseUntil = System.currentTimeMillis() + 1500 + (long)(Math.random() * 3000);
-                    updateFacing(targetX < x);
-                }
-            } else {
-                double nextX = x + (dx / dist) * speed;
-                double nextY = y + (dy / dist) * speed;
-                int cCol = (int) (nextX / Constant.CELL_SIZE);
-                int cRow = (int) (nextY / Constant.CELL_SIZE);
-                if (farmMap.getCell(cRow, cCol) != null && farmMap.getCell(cRow, cCol).getTerrain() == TerrainType.WATER) {
-                    targetX = x; targetY = y; // Huỷ di chuyển nếu đụng nước
-                } else {
-                    x = nextX;
-                    y = nextY;
-                    double bobbing = Math.sin(System.currentTimeMillis() * 0.01) * (type == 0 ? 3 : 1.5);
-                    view.setTranslateX(x);
-                    view.setTranslateY(y + bobbing);
-                    view.setUserData(y + (type == 0 ? 30.0 : (type == 1 ? 34.0 : 28.0)));
+                    double nextX = x + (dx / dist) * speed;
+                    double nextY = y + (dy / dist) * speed;
+                    int cCol = (int) (nextX / Constant.CELL_SIZE);
+                    int cRow = (int) (nextY / Constant.CELL_SIZE);
+                    if (farmMap.getCell(cRow, cCol) != null && farmMap.getCell(cRow, cCol).getTerrain() == TerrainType.WATER) {
+                        targetX = x; targetY = y; // Huỷ di chuyển nếu đụng nước
+                    } else {
+                        x = nextX;
+                        y = nextY;
+                        isMoving = true;
+                        updateFacing(dx < 0);
+                    }
                 }
             }
+
+            // Chuyển động bước đi (Wobble & Limb swings giống Luffy)
+            double bobbing = 0;
+            if (isMoving) {
+                walkStep += 0.22 * (speed / 0.7);
+                bobbing = Math.sin(walkStep * 2.0) * (type == 0 ? 2.5 : 1.5);
+                double swingAngle = Math.sin(walkStep) * 26.0;
+
+                if (type == 1 || type == 3) { // Bò và Lợn (4 chân di chuyển dáng đi tự nhiên)
+                    if (legFLSwing != null) {
+                        legFLSwing.setAngle(swingAngle);
+                        legBRSwing.setAngle(swingAngle);
+                        legFRSwing.setAngle(-swingAngle);
+                        legBLSwing.setAngle(-swingAngle);
+                    }
+                    if (tailSwing != null) {
+                        tailSwing.setAngle(Math.sin(walkStep * 2.0) * 15.0);
+                    }
+                } else if (type == 0) { // Gà (2 chân di chuyển so le)
+                    if (legLSwing != null) {
+                        legLSwing.setAngle(swingAngle);
+                        legRSwing.setAngle(-swingAngle);
+                    }
+                    if (wingSwing != null) {
+                        wingSwing.setAngle(Math.sin(walkStep * 2.0) * 8.0);
+                    }
+                }
+            } else {
+                // Đứng nghỉ: Chân thẳng đứng, nhấp nhô thở nhẹ
+                bobbing = Math.sin(now * 0.003 + bobSeed) * 0.8;
+                if (type == 1 || type == 3) {
+                    if (legFLSwing != null) {
+                        legFLSwing.setAngle(0);
+                        legBRSwing.setAngle(0);
+                        legFRSwing.setAngle(0);
+                        legBLSwing.setAngle(0);
+                    }
+                    if (tailSwing != null) {
+                        tailSwing.setAngle(0);
+                    }
+                } else if (type == 0) {
+                    if (legLSwing != null) {
+                        legLSwing.setAngle(0);
+                        legRSwing.setAngle(0);
+                    }
+                    if (wingSwing != null) {
+                        wingSwing.setAngle(0);
+                    }
+                }
+            }
+
+            view.setTranslateX(x);
+            view.setTranslateY(y + bobbing);
+            view.setUserData(y + (type == 0 ? 30.0 : (type == 1 ? 34.0 : 28.0)));
         }
     }
 }
