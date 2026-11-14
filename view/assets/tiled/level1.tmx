@@ -1629,10 +1629,26 @@
     <property name="category" value="building"/>
    </properties>
   </object>
-  <object id="5" name="tent_large" gid="49" x="1037" y="157" width="106" height="148"/>
-  <object id="6" name="tent_small" gid="51" x="1132" y="193" width="130" height="90"/>
-  <object id="7" name="tent_medium" gid="50" x="1173" y="291" width="108" height="88"/>
-  <object id="8" name="campfire" gid="21" x="1063" y="240" width="61" height="59"/>
+  <object id="5" name="tent_large" gid="49" x="1042" y="157" width="106" height="148">
+   <properties>
+    <property name="category" value="building"/>
+   </properties>
+  </object>
+  <object id="6" name="tent_small" gid="51" x="1146" y="193" width="130" height="90">
+   <properties>
+    <property name="category" value="building"/>
+   </properties>
+  </object>
+  <object id="7" name="tent_medium" gid="50" x="1173" y="291" width="108" height="88">
+   <properties>
+    <property name="category" value="building"/>
+   </properties>
+  </object>
+  <object id="8" name="campfire" gid="21" x="1063" y="240" width="61" height="59">
+   <properties>
+    <property name="category" value="building"/>
+   </properties>
+  </object>
   <object id="9" name="well" gid="53" x="682" y="1486" width="55" height="61"/>
   <object id="10" name="bridge" gid="14" x="698.667" y="1453.33" width="200" height="190"/>
   <object id="11" name="fence_h" gid="30" x="92.6311" y="673.427" width="57" height="32" rotation="90.2633"/>

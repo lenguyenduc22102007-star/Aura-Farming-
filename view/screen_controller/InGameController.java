@@ -299,6 +299,34 @@ public class InGameController {
         return farmMap.getCell(row, col);
     }
 
+    private boolean isCellBlockedByStructure(Cell cell) {
+        if (cell == null || sceneryObjects == null) return false;
+        double cellX = cell.getX() * Constant.CELL_SIZE + 8;
+        double cellY = cell.getY() * Constant.CELL_SIZE + 8;
+        javafx.geometry.Rectangle2D cellBox = new javafx.geometry.Rectangle2D(cellX, cellY, Constant.CELL_SIZE - 16, Constant.CELL_SIZE - 16);
+        for (ImageView objView : sceneryObjects) {
+            String id = objView.getId();
+            if (id == null) continue;
+            String idLower = id.toLowerCase();
+            if (idLower.contains("tent") || idLower.contains("campfire") || idLower.contains("house") ||
+                idLower.contains("barn") || idLower.contains("well") || idLower.contains("pet_shop")) {
+                double ox = objView.getLayoutX() + objView.getTranslateX();
+                double oy = objView.getLayoutY() + objView.getTranslateY();
+                double ow = objView.getFitWidth();
+                double oh = objView.getFitHeight();
+                double hh = (idLower.contains("tent") || idLower.contains("campfire")) ? oh * 0.72 : oh * 0.45;
+                double hw = ow * 0.82;
+                javafx.geometry.Rectangle2D structBox = new javafx.geometry.Rectangle2D(
+                    ox + (ow - hw) / 2, oy + oh - hh, hw, hh
+                );
+                if (cellBox.intersects(structBox)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private void interactWithFacingCell() {
         if (router.hasOverlay()) return;
         
@@ -348,10 +376,10 @@ public class InGameController {
                 String id = objView.getId();
                 if (id != null) {
                     String idLower = id.toLowerCase();
-                    // Không phá nhà, lều, cầu, hàng rào, cờ, giếng, chuồng
-                    if (idLower.contains("house") || idLower.contains("tent") || idLower.contains("bridge") || 
-                        idLower.contains("fence") || idLower.contains("flag") || idLower.contains("well") || 
-                        idLower.contains("barn")) {
+                    // Không phá nhà, lều, lửa trại, cầu, hàng rào, cờ, giếng, chuồng
+                    if (idLower.contains("house") || idLower.contains("tent") || idLower.contains("campfire") ||
+                        idLower.contains("bridge") || idLower.contains("fence") || idLower.contains("flag") ||
+                        idLower.contains("well") || idLower.contains("barn")) {
                         continue;
                     }
                 }
@@ -382,6 +410,11 @@ public class InGameController {
 
         Cell targetCell = getFacingCell();
         if (targetCell != null) {
+            if (isCellBlockedByStructure(targetCell)) {
+                notify("Vướng công trình, không thể thao tác tại đây!");
+                rootPane.requestFocus();
+                return;
+            }
             // Thử thả thú nuôi từ kho đồ nếu đang bấm vào bãi cỏ trống
             if (playerController.getCurrentTool().getName().equals("Hand") && targetCell.getTerrain() == TerrainType.GRASS && targetCell.getCrop() == null) {
                 model.game_item.Item babyCow = player.getInventory().findByName("Baby Cow");
@@ -907,12 +940,24 @@ public class InGameController {
 
             // Tự động điều chỉnh hitbox siêu khít (Tight hitbox) để xóa "block tàng hình"
             double hw, hh, cx, cy;
-            if (objId != null && (objId.toLowerCase().contains("house") || objId.toLowerCase().contains("barn") || objId.toLowerCase().contains("tent"))) {
+            if (objId != null && (objId.toLowerCase().contains("house") || objId.toLowerCase().contains("barn"))) {
                 // Những công trình lớn: hitbox thu gọn xuống phần móng (đáy 25%)
                 hw = ow * 0.8;
                 hh = oh * 0.25;
                 cx = ox + (ow - hw) / 2;
                 cy = oy + oh - hh - 5;
+            } else if (objId != null && objId.toLowerCase().contains("tent")) {
+                // Lều trại: hitbox bao phủ phần thân lều để chặn nhân vật đi xuyên qua
+                hw = ow * 0.85;
+                hh = oh * 0.72;
+                cx = ox + (ow - hw) / 2;
+                cy = oy + oh - hh - 2;
+            } else if (objId != null && objId.toLowerCase().contains("campfire")) {
+                // Lửa trại: hitbox bao phủ vòng đá lửa trại
+                hw = ow * 0.8;
+                hh = oh * 0.65;
+                cx = ox + (ow - hw) / 2;
+                cy = oy + oh - hh - 2;
             } else {
                 // Các vật thể nhỏ (cây, đá, bụi rậm, gốc cây): hitbox siêu nhỏ ở chính giữa gốc
                 hw = Math.min(30, ow * 0.4);
@@ -1042,7 +1087,7 @@ public class InGameController {
         
         // Cập nhật vị trí ô đang hướng tới (Highlight) để dễ thao tác
         Cell fCell = getFacingCell();
-        if (fCell != null && facingHighlight != null) {
+        if (fCell != null && facingHighlight != null && !isCellBlockedByStructure(fCell)) {
             facingHighlight.setVisible(true);
             facingHighlight.setTranslateX(fCell.getX() * Constant.CELL_SIZE);
             facingHighlight.setTranslateY(fCell.getY() * Constant.CELL_SIZE);
