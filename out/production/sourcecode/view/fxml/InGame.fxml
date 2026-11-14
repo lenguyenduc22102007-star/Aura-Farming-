@@ -208,6 +208,9 @@
 
             <ToggleButton fx:id="fertilizerTool" mnemonicParsing="false" prefHeight="70" prefWidth="70" text="FERTZ" toggleGroup="$toolGroup" />
 
+
+            <ToggleButton fx:id="bagTool" mnemonicParsing="false" prefHeight="70" prefWidth="70" text="BAG" toggleGroup="$toolGroup" />
+
          </HBox>
 
 

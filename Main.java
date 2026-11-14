@@ -8,12 +8,13 @@ import controller.lifecyclemanager.GameManager;
 import controller.lifecyclemanager.GameOverCondition;
 import controller.lifecyclemanager.GameOverController;
 import controller.lifecyclemanager.GameStatus;
+import controller.lifecyclemanager.SaveManager;
 import controller.shopmanager.ItemManager;
 import controller.shopmanager.ShopController;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
+import javafx.scene.Scene;   
 import javafx.scene.control.Alert;
 import javafx.stage.Stage;
 import model.game_item.Item;
@@ -36,6 +37,7 @@ import view.screen_util.ScreensLoader;
 
 import java.net.URL;
 import java.util.List;
+import java.util.Properties;
 
 public class Main extends Application implements GameLauncher {
 
@@ -54,6 +56,7 @@ public class Main extends Application implements GameLauncher {
     private EnvironmentController environmentController;
     private FarmController farmController;
     private GameOverController gameOverController;
+    private InGameController ingameView;
 
     @Override
     public void start(Stage stage) {
@@ -75,7 +78,7 @@ public class Main extends Application implements GameLauncher {
         FXMLLoader menuLoader = ScreensLoader.load(router, Screens.MAIN_MENU, Screens.MAIN_MENU_FXML);
         menuController = menuLoader.getController();
         menuController.init(router, this);
-        menuController.setContinueEnabled(false);
+        menuController.setContinueEnabled(SaveManager.exists());
 
         FXMLLoader helpLoader = ScreensLoader.load(router, Screens.HELP, Screens.HELP_FXML);
         HelpController help = helpLoader.getController();
@@ -96,12 +99,19 @@ public class Main extends Application implements GameLauncher {
         stage.setResizable(false);
         stage.show();
 
+        stage.setOnCloseRequest(e -> saveGame());
+
         router.show(Screens.MAIN_MENU);
     }
 
     // ---------------- GameLauncher ----------------
     @Override
     public void startNewFarm() {
+        buildSession(null);
+    }
+
+    /** Build a session; when save != null the saved state is restored on top of the fresh farm. */
+    private void buildSession(Properties save) {
         gameManager = GameManager.getInstance();
         gameManager.reset();
 
@@ -135,6 +145,15 @@ public class Main extends Application implements GameLauncher {
                 gameManager, farmMap, player, conditions, this::showGameOver,
                 Constant.GAME_OVER_GRACE_DAYS);
 
+        if (save != null) {
+            SaveManager.applyModel(save, gameManager, player, farmMap, shopController);
+        } else {
+            player.getInventory().addItem(new model.game_item.AnimalFeedItem(), 2);
+            player.getInventory().addItem(new model.game_item.ChickenFeedItem(), 2);
+            player.getInventory().addItem(new model.game_item.CowFeedItem(), 2);
+            player.getInventory().addItem(new model.game_item.PigFeedItem(), 2);
+        }
+
         FXMLLoader shopLoader = ScreensLoader.load(router, Screens.SHOP, Screens.SHOP_FXML);
         ShopViewController shopView = shopLoader.getController();
         shopView.setRouter(router);
@@ -149,6 +168,11 @@ public class Main extends Application implements GameLauncher {
         InGameController ingame = ingameLoader.getController();
         ingame.setRouter(router);
         ingame.setGame(farmMap, player, gameManager, playerController, demoController, tmxMap);
+        ingame.setAutosave(this::saveGame);
+        this.ingameView = ingame;
+        if (save != null) {
+            ingame.importViewState(save);
+        }
 
         FXMLLoader gameOverLoader = ScreensLoader.load(router, Screens.GAME_OVER, Screens.GAME_OVER_FXML);
         gameOverView = gameOverLoader.getController();
@@ -159,11 +183,33 @@ public class Main extends Application implements GameLauncher {
 
     @Override
     public void continueFarm() {
-        if (!hasSession()) {
-            startNewFarm();
-        } else {
+        if (hasSession()) {
             router.show(Screens.INGAME);
+            return;
         }
+        Properties save = SaveManager.read();
+        if (save == null) {
+            startNewFarm();
+            return;
+        }
+        try {
+            buildSession(save);
+        } catch (RuntimeException ex) {
+            ex.printStackTrace();
+            SaveManager.delete();
+            menuController.setContinueEnabled(false);
+            startNewFarm();
+        }
+    }
+
+    /** Write the current run to disk (no-op without a running session). */
+    @Override
+    public void saveGame() {
+        if (!hasSession() || ingameView == null) return;
+        Properties p = new Properties();
+        SaveManager.captureModel(p, gameManager, player, farmMap);
+        ingameView.exportViewState(p);
+        SaveManager.write(p);
     }
 
     @Override
@@ -175,14 +221,16 @@ public class Main extends Application implements GameLauncher {
 
     @Override
     public void returnToMainMenu() {
+        saveGame();
         if (menuController != null) {
-            menuController.setContinueEnabled(hasSession());
+            menuController.setContinueEnabled(hasSession() || SaveManager.exists());
         }
         router.show(Screens.MAIN_MENU);
     }
 
     @Override
     public void quit() {
+        saveGame();
         Platform.exit();
         System.exit(0);
     }
@@ -193,6 +241,7 @@ public class Main extends Application implements GameLauncher {
      * (bankruptcy).
      */
     private void showGameOver(GameStatus status) {
+        SaveManager.delete(); // a lost run can't be continued
         if (gameOverView != null) {
             gameOverView.showResult(gameManager.getCurrentDay(), player.getMoney());
         }

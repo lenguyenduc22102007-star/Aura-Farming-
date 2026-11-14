@@ -22,6 +22,9 @@ public final class ItemAssetRegistry {
         KEYS.put(BabyPigItem.class, "baby_pig");
         KEYS.put(BabyCowItem.class, "baby_cow");
         KEYS.put(AnimalFeedItem.class, "animal_feed");
+        KEYS.put(ChickenFeedItem.class, "corn");
+        KEYS.put(CowFeedItem.class, "water_rice");
+        KEYS.put(PigFeedItem.class, "potato");
     }
 
     public static String getKey(Item item) {

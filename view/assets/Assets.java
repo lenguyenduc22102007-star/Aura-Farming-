@@ -17,6 +17,7 @@ public class Assets {
     public static Image SEED_ICON;
     public static Image HAND_ICON;
     public static Image FERTILIZER_ICON;
+    public static Image BAG_ICON;
 
     // WEATHER ICONS
     public static Image SUN_ICON;
@@ -78,6 +79,7 @@ public class Assets {
         SEED_ICON = safeLoadImage("/view/assets/tools/seed.png");
         HAND_ICON = safeLoadImage("/view/assets/tools/hand.png");
         FERTILIZER_ICON = safeLoadImage("/view/assets/tools/fertilizer.png");
+        BAG_ICON = safeLoadImage("/view/assets/tools/bag.png");
 
         // WEATHER
         SUN_ICON = safeLoadImage("/view/assets/weather/sun.png");
@@ -159,15 +161,18 @@ public class Assets {
     }
     
     public static Image getShopIcon(Item item) {
+        String key = ItemAssetRegistry.getKey(item);
+        Image icon = getShopIcon(key);
+        if (icon != null) {
+            return icon;
+        }
         if (item instanceof model.game_item.AnimalFeedItem) {
             return SEED_ICON != null ? SEED_ICON : FERTILIZER_ICON;
         }
-        String key = ItemAssetRegistry.getKey(item);
-        Image icon = getShopIcon(key);
-        if (icon == null && item instanceof model.game_item.Seed) {
+        if (item instanceof model.game_item.Seed) {
             return SEED_ICON;
         }
-        return icon;
+        return null;
     }
 
     // LOAD IMAGE (Hàm cũ)

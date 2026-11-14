@@ -46,6 +46,22 @@ public abstract class Crop {
         return cropData;
     }
 
+    public int getCurrentStress() {
+        return currentStress;
+    }
+
+    public int getDaysAtHarvest() {
+        return daysAtHarvest;
+    }
+
+    /** Restore a previously saved growth snapshot (used when loading a saved game). */
+    public void restore(int stress, int growthProgress, GrowthState state, int daysAtHarvest) {
+        this.currentStress = stress;
+        this.currentGrowthProgress = growthProgress;
+        this.currentState = Objects.requireNonNull(state, "state must not be null");
+        this.daysAtHarvest = daysAtHarvest;
+    }
+
     public boolean isHarvestable() {
         return currentState == GrowthState.HARVEST;
     }

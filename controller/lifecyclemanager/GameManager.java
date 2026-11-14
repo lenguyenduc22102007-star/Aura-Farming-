@@ -33,6 +33,9 @@ public class GameManager {
     public int getCurrentDay() {
         return currentDay;
     }
+    public void setCurrentDay(int day) {
+        this.currentDay = Math.max(1, day);
+    }
     public Weather getCurrentWeather() {
         return currentWeather;
     }

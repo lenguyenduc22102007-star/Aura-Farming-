@@ -35,6 +35,9 @@ public class ShopController extends BaseController {
         
         // Đồ ăn cho thú
         catalog.add(new AnimalShopItem("Animal Feed", AnimalFeedItem::new));
+        catalog.add(new AnimalShopItem("Chicken Feed", ChickenFeedItem::new));
+        catalog.add(new AnimalShopItem("Cow Feed", CowFeedItem::new));
+        catalog.add(new AnimalShopItem("Pig Feed", PigFeedItem::new));
     }
     public List<ItemManager> getCatalog() {
         return Collections.unmodifiableList(catalog);

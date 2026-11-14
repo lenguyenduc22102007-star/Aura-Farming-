@@ -11,6 +11,9 @@ public interface GameLauncher {
     // return true once at least one farm has been started.
     boolean hasSession();
 
+    // Persist the current run to disk so it can be continued later.
+    default void saveGame() {}
+
     // Navigate back to the main menu (the session is kept).
     void returnToMainMenu();
 

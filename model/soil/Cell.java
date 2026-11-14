@@ -119,6 +119,14 @@ public class Cell {
         this.state = newState;
     }
 
+    /** Set raw resource levels (used when loading a saved game). */
+    public void setLevels(int nutrient, int moisture, int sunlight) {
+        this.nutrientLevel = safeCheckingValue(nutrient, 0, Constant.MAX_NUTRIENT);
+        this.moistureLevel = safeCheckingValue(moisture, 0, Constant.MAX_MOISTURE);
+        this.sunlightLevel = safeCheckingValue(sunlight, 0, Constant.MAX_SUNLIGHT);
+    }
+
+
     // ------ Resource updates (called by weather + tools) -----------
 
     public void updateNutrientAmount(int delta) {

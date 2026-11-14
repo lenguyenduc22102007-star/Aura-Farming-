@@ -1739,7 +1739,7 @@
     <property name="action" value="FarmZone"/>
    </properties>
   </object>
-  <object id="501" name="AnimalZone" type="zone" x="892.667" y="859.333" width="704" height="416">
+  <object id="501" name="AnimalZone" type="zone" x="985" y="948" width="555" height="305">
    <properties>
     <property name="action" value="AnimalZone"/>
    </properties>

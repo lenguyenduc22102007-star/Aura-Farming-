@@ -182,10 +182,10 @@ public final class StorageViewController {
     private VBox makeFeedCard(Item item, int quantity) {
         ImageView icon = Assets.imageView(Assets.getShopIcon(item), 22);
 
-        Label name = new Label("ANIMAL FEED");
+        Label name = new Label(item.getName().toUpperCase());
         name.getStyleClass().add("shop-name");
 
-        Label stats = new Label("OWNED: " + quantity + "  |  Used to feed farm animals daily");
+        Label stats = new Label("OWNED: " + quantity + "  |  " + item.getStats());
         stats.getStyleClass().add("shop-stats");
 
         Label price = new Label("$" + (item.getPrice() * quantity) + "  ($" + item.getPrice() + "/ea)");
