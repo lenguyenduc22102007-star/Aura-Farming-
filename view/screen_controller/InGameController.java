@@ -841,7 +841,7 @@ public class InGameController {
         // Giả lập từ 06:00 đến 22:00 (16 tiếng một ngày)
         int totalMins = (int) (progress * 16 * 60);
         int hour = 6 + totalMins / 60;
-        int min = (totalMins % 60) / 10 * 10;
+        int min = (totalMins % 60) / 5 * 5;
         int currentMinuteHash = hour * 60 + min;
         if (currentMinuteHash != lastDisplayedMinute) {
             lastDisplayedMinute = currentMinuteHash;

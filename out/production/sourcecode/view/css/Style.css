@@ -762,3 +762,20 @@
 .shop-scroll-pane > .viewport {
     -fx-background-color: transparent;
 }
+
+/* ---------- NPC dialog ---------- */
+.npc-panel { -fx-padding: 22 26 22 26; }
+.npc-name {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2C2008;
+    -fx-background-color: #C2821E, #F0CC52;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 12, 10;
+    -fx-padding: 4 22 4 22;
+}
+.npc-text {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #3A2910;
+}
