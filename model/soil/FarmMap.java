@@ -32,9 +32,9 @@ public class FarmMap {
                 
                 if (terrainGrid != null && r < terrainGrid.length && c < terrainGrid[0].length) {
                     int tileId = terrainGrid[r][c];
-                    // Map tile IDs from Tiled
-                    if (tileId == 2 || tileId == 4 || tileId == 5) {
-                        grid[r][c].setTerrain(TerrainType.PATH); // dirt paths
+                    // Map tile IDs from Tiled (24-tile atlas: 1,2,4,23,24=GRASS; 3=DIRT; 5..10,13..22=PATH; 11..12=WATER)
+                    if ((tileId >= 5 && tileId <= 10) || (tileId >= 13 && tileId <= 22)) {
+                        grid[r][c].setTerrain(TerrainType.PATH); // cobblestone paths & transitions
                     } else if (tileId == 3) {
                         grid[r][c].setTerrain(TerrainType.DIRT); // "soil" from Tiled = Tillable Soil
                     } else if (tileId == 11 || tileId == 12) {

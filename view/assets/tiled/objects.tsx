@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.10" tiledversion="1.12.2" name="objects" tilewidth="40" tileheight="40" tilecount="43" columns="0">
+<tileset version="1.10" tiledversion="1.12.2" name="objects" tilewidth="40" tileheight="40" tilecount="87" columns="0">
  <tile id="0"><properties><property name="object_type" value="barn"/></properties><image source="objects/barn.png" width="231" height="219"/></tile>
  <tile id="1"><properties><property name="object_type" value="bridge"/></properties><image source="objects/bridge.png" width="200" height="190"/></tile>
  <tile id="2"><properties><property name="object_type" value="bush1"/></properties><image source="objects/bush1.png" width="65" height="49"/></tile>
@@ -43,4 +43,48 @@
  <tile id="40"><properties><property name="object_type" value="well"/></properties><image source="objects/well.png" width="55" height="61"/></tile>
  <tile id="41"><properties><property name="object_type" value="pet_shop"/></properties><image source="objects/pet_shop.png" width="150" height="150"/></tile>
  <tile id="42"><properties><property name="object_type" value="npc_zoro"/></properties><image source="objects/npc_zoro.png" width="60" height="80"/></tile>
+ <tile id="43"><properties><property name="object_type" value="windmill"/></properties><image source="objects/windmill_tower.png" width="112" height="222"/></tile>
+ <tile id="44"><properties><property name="object_type" value="garden_bed_v"/></properties><image source="objects/garden_bed_v.png" width="50" height="90"/></tile>
+ <tile id="45"><properties><property name="object_type" value="garden_bed_h"/></properties><image source="objects/garden_bed_h.png" width="94" height="50"/></tile>
+ <tile id="46"><properties><property name="object_type" value="garden_bed_sq"/></properties><image source="objects/garden_bed_sq.png" width="52" height="54"/></tile>
+ <tile id="47"><properties><property name="object_type" value="dirt_mound"/></properties><image source="objects/dirt_mound.png" width="72" height="56"/></tile>
+ <tile id="48"><properties><property name="object_type" value="water_trough"/></properties><image source="objects/water_trough.png" width="58" height="30"/></tile>
+ <tile id="49"><properties><property name="object_type" value="streetlamp"/></properties><image source="objects/streetlamp.png" width="26" height="80"/></tile>
+ <tile id="50"><properties><property name="object_type" value="wire_fence_h"/></properties><image source="objects/wire_fence_h.png" width="82" height="16"/></tile>
+ <tile id="51"><properties><property name="object_type" value="wire_fence_v"/></properties><image source="objects/wire_fence_v.png" width="14" height="70"/></tile>
+ <tile id="52"><properties><property name="object_type" value="wood_plank"/></properties><image source="objects/wood_plank.png" width="60" height="38"/></tile>
+ <tile id="53"><properties><property name="object_type" value="farm_rake"/></properties><image source="objects/farm_rake.png" width="26" height="38"/></tile>
+ <tile id="54"><properties><property name="object_type" value="farm_hoe"/></properties><image source="objects/farm_hoe.png" width="22" height="42"/></tile>
+ <tile id="55"><properties><property name="object_type" value="pumpkin_big"/></properties><image source="objects/pumpkin_big.png" width="38" height="36"/></tile>
+ <tile id="56"><properties><property name="object_type" value="pumpkin_vine"/></properties><image source="objects/pumpkin_vine.png" width="30" height="40"/></tile>
+ <tile id="57"><properties><property name="object_type" value="wheat_patch"/></properties><image source="objects/wheat_patch.png" width="88" height="76"/></tile>
+ <tile id="58"><properties><property name="object_type" value="signpost_left"/></properties><image source="objects/signpost_left.png" width="46" height="84"/></tile>
+ <tile id="59"><properties><property name="object_type" value="signpost_right"/></properties><image source="objects/signpost_right.png" width="52" height="84"/></tile>
+ <tile id="60"><properties><property name="object_type" value="lantern_post"/></properties><image source="objects/lantern_post.png" width="44" height="82"/></tile>
+ <tile id="61"><properties><property name="object_type" value="construction_site"/></properties><image source="objects/construction_site.png" width="112" height="110"/></tile>
+ <tile id="62"><properties><property name="object_type" value="construction_site_x"/></properties><image source="objects/construction_site_x.png" width="112" height="110"/></tile>
+ <tile id="63"><properties><property name="object_type" value="log_diag"/></properties><image source="objects/log_diag.png" width="74" height="72"/></tile>
+ <tile id="64"><properties><property name="object_type" value="tree_dark"/></properties><image source="objects/tree_dark.png" width="126" height="146"/></tile>
+ <tile id="65"><properties><property name="object_type" value="tree_autumn"/></properties><image source="objects/tree_autumn.png" width="118" height="138"/></tile>
+ <tile id="66"><properties><property name="object_type" value="tree_blossom"/></properties><image source="objects/tree_blossom.png" width="118" height="138"/></tile>
+ <tile id="67"><properties><property name="object_type" value="tree_pine"/></properties><image source="objects/tree_pine.png" width="96" height="152"/></tile>
+ <tile id="68"><properties><property name="object_type" value="campfire_off"/></properties><image source="objects/campfire_off.png" width="54" height="34"/></tile>
+ <tile id="69"><properties><property name="object_type" value="broken_sign"/></properties><image source="objects/broken_sign.png" width="56" height="68"/></tile>
+ <tile id="70"><properties><property name="object_type" value="broken_lantern"/></properties><image source="objects/broken_lantern.png" width="76" height="56"/></tile>
+ <tile id="71"><properties><property name="object_type" value="wood_sticks"/></properties><image source="objects/wood_sticks.png" width="42" height="68"/></tile>
+ <tile id="72"><properties><property name="object_type" value="rock_cracked"/></properties><image source="objects/rock_cracked.png" width="74" height="64"/></tile>
+ <tile id="73"><properties><property name="object_type" value="rock_flat"/></properties><image source="objects/rock_flat.png" width="60" height="48"/></tile>
+ <tile id="74"><properties><property name="object_type" value="pebble1"/></properties><image source="objects/pebble1.png" width="26" height="20"/></tile>
+ <tile id="75"><properties><property name="object_type" value="pebble2"/></properties><image source="objects/pebble2.png" width="28" height="22"/></tile>
+ <tile id="76"><properties><property name="object_type" value="dirt_spot_sm"/></properties><image source="objects/dirt_spot_sm.png" width="38" height="34"/></tile>
+ <tile id="77"><properties><property name="object_type" value="dirt_spot_md"/></properties><image source="objects/dirt_spot_md.png" width="54" height="58"/></tile>
+ <tile id="78"><properties><property name="object_type" value="dirt_spot_lg"/></properties><image source="objects/dirt_spot_lg.png" width="92" height="74"/></tile>
+ <tile id="79"><properties><property name="object_type" value="flower_patch"/></properties><image source="objects/flower_patch.png" width="64" height="48"/></tile>
+ <tile id="80"><properties><property name="object_type" value="farm_shovel"/></properties><image source="objects/farm_shovel.png" width="22" height="42"/></tile>
+ <tile id="81"><properties><property name="object_type" value="clay_pot"/></properties><image source="objects/clay_pot.png" width="54" height="28"/></tile>
+ <tile id="82"><properties><property name="object_type" value="tree_small"/></properties><image source="objects/tree_small.png" width="104" height="120"/></tile>
+ <tile id="83"><properties><property name="object_type" value="tree_bush"/></properties><image source="objects/tree_bush.png" width="136" height="158"/></tile>
+ <tile id="84"><properties><property name="object_type" value="grass_patch_lg"/></properties><image source="objects/grass_patch_lg.png" width="152" height="92"/></tile>
+ <tile id="85"><properties><property name="object_type" value="grass_patch_md"/></properties><image source="objects/grass_patch_md.png" width="108" height="68"/></tile>
+ <tile id="86"><properties><property name="object_type" value="grass_patch_sm"/></properties><image source="objects/grass_patch_sm.png" width="72" height="48"/></tile>
 </tileset>

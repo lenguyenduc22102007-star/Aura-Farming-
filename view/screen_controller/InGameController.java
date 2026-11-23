@@ -112,6 +112,7 @@ public class InGameController {
     private long actionTime = 0;
     private java.util.List<ImageView> animatedFlags = new java.util.ArrayList<>();
     private java.util.List<ImageView> sceneryObjects = new java.util.ArrayList<>();
+    private java.util.Set<String> clearedSceneryKeys = new java.util.HashSet<>();
 
     // Trạng thái nhân vật
     private double playerX = 100;
@@ -164,6 +165,10 @@ public class InGameController {
     }
 
     private view.screen_util.TiledMap tmxMap;
+    private java.util.List<ImageView> windmillBladeViews = new java.util.ArrayList<>();
+    private javafx.scene.image.Image[] windmillBladeFrames = null;
+    private long lastWindmillTick = 0;
+    private int windmillFrameIdx = 0;
 
     public void setGame(FarmMap farmMap, Player player, GameManager gameManager,
                         PlayerController playerController, DemoController demoController) {
@@ -309,7 +314,8 @@ public class InGameController {
             if (id == null) continue;
             String idLower = id.toLowerCase();
             if (idLower.contains("tent") || idLower.contains("campfire") || idLower.contains("house") ||
-                idLower.contains("barn") || idLower.contains("well") || idLower.contains("pet_shop")) {
+                idLower.contains("barn") || idLower.contains("well") || idLower.contains("pet_shop") ||
+                idLower.contains("windmill") || idLower.contains("garden_bed")) {
                 double ox = objView.getLayoutX() + objView.getTranslateX();
                 double oy = objView.getLayoutY() + objView.getTranslateY();
                 double ow = objView.getFitWidth();
@@ -369,17 +375,52 @@ public class InGameController {
             }
         }
         
-        // Đập phá vật cản (Đá, Cây, Bụi cỏ, Khúc gỗ...) bằng Cuốc
+        // Đập phá vật cản (Lúa dại ở FarmZone, Đá, Cây, Bụi cỏ, Khúc gỗ...) bằng Cuốc
         if (playerController.getCurrentTool().getName().equals("Hoe")) {
+            // Ưu tiên dọn đúng ô lúa dại (wheat_patch) ở ô đang hướng tới để lộ mặt đất trồng cây
+            Cell facingForWheat = getFacingCell();
+            if (facingForWheat != null) {
+                double fcx = facingForWheat.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
+                double fcy = facingForWheat.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
+                ImageView wheatToClear = null;
+                for (ImageView objView : sceneryObjects) {
+                    String id = objView.getId();
+                    if (id != null && id.toLowerCase().contains("wheat")) {
+                        double wx = objView.getLayoutX() + objView.getFitWidth() / 2.0;
+                        double wy = objView.getLayoutY() + objView.getFitHeight() / 2.0;
+                        if (Math.abs(wx - fcx) < 22 && Math.abs(wy - fcy) < 22) {
+                            wheatToClear = objView;
+                            break;
+                        }
+                    }
+                }
+                if (wheatToClear != null) {
+                    clearedSceneryKeys.add(sceneryKey(wheatToClear));
+                    sceneryObjects.remove(wheatToClear);
+                    if (entityPane != null) {
+                        entityPane.getChildren().remove(wheatToClear);
+                    } else {
+                        mapPane.getChildren().remove(wheatToClear);
+                    }
+                    notify("Đã đào sạch bụi lúa! Giờ có thể cuốc đất trồng cây.");
+                    rootPane.requestFocus();
+                    return;
+                }
+            }
+
             ImageView toDestroy = null;
             for (ImageView objView : sceneryObjects) {
                 String id = objView.getId();
                 if (id != null) {
                     String idLower = id.toLowerCase();
-                    // Không phá nhà, lều, lửa trại, cầu, hàng rào, cờ, giếng, chuồng
+                    // Không phá nhà, lều, lửa trại, cối xay gió, cầu, hàng rào, cờ, giếng, chuồng, đèn đường, biển chỉ dẫn, hoa/đất trang trí
                     if (idLower.contains("house") || idLower.contains("tent") || idLower.contains("campfire") ||
-                        idLower.contains("bridge") || idLower.contains("fence") || idLower.contains("flag") ||
-                        idLower.contains("well") || idLower.contains("barn")) {
+                        idLower.contains("windmill") || idLower.contains("streetlamp") || idLower.contains("lantern") ||
+                        idLower.contains("signpost") || idLower.contains("garden_bed") || idLower.contains("construction") ||
+                        idLower.contains("wheat") || idLower.contains("bridge") || idLower.contains("fence") ||
+                        idLower.contains("flag") || idLower.contains("well") || idLower.contains("barn") ||
+                        idLower.contains("dirt_spot") || idLower.contains("flower") || idLower.contains("pebble") ||
+                        idLower.contains("grass_patch")) {
                         continue;
                     }
                 }
@@ -391,6 +432,7 @@ public class InGameController {
                 }
             }
             if (toDestroy != null) {
+                clearedSceneryKeys.add(sceneryKey(toDestroy));
                 sceneryObjects.remove(toDestroy);
                 if (entityPane != null) {
                     entityPane.getChildren().remove(toDestroy);
@@ -534,9 +576,10 @@ public class InGameController {
         p.setProperty("view.elapsed", Long.toString(elapsedTimeInDay));
         p.setProperty("view.helperDays", Integer.toString(helperDaysLeft));
 
-        p.setProperty("scenery.count", Integer.toString(sceneryObjects.size()));
-        for (int i = 0; i < sceneryObjects.size(); i++) {
-            p.setProperty("scenery." + i, sceneryKey(sceneryObjects.get(i)));
+        p.setProperty("cleared.count", Integer.toString(clearedSceneryKeys.size()));
+        int ci = 0;
+        for (String key : clearedSceneryKeys) {
+            p.setProperty("cleared." + (ci++), key);
         }
 
         p.setProperty("animal.count", Integer.toString(animals.size()));
@@ -569,20 +612,16 @@ public class InGameController {
                 playerCharacter.setTranslateY(playerY);
             }
 
-            // cleared obstacles
-            if (p.getProperty("scenery.count") != null) {
-                int n = Integer.parseInt(p.getProperty("scenery.count"));
-                java.util.Set<String> keep = new HashSet<>();
-                for (int i = 0; i < n; i++) keep.add(p.getProperty("scenery." + i));
+            // cleared obstacles (chỉ xóa đúng những vật cản người chơi đã chủ động cuốc phá, KHÔNG xóa object mới của map)
+            clearedSceneryKeys.clear();
+            if (p.getProperty("cleared.count") != null) {
+                int n = Integer.parseInt(p.getProperty("cleared.count"));
+                for (int i = 0; i < n; i++) {
+                    String k = p.getProperty("cleared." + i);
+                    if (k != null && !k.isEmpty()) clearedSceneryKeys.add(k);
+                }
                 for (ImageView v : new java.util.ArrayList<>(sceneryObjects)) {
-                    String id = v.getId() != null ? v.getId().toLowerCase() : "";
-                    // Không bao giờ xóa hàng rào, công trình, NPC, cầu, lều, nhà
-                    if (id.contains("fence") || id.contains("house") || id.contains("tent") ||
-                        id.contains("bridge") || id.contains("flag") || id.contains("well") ||
-                        id.contains("barn") || id.contains("pet_shop") || id.contains("npc")) {
-                        continue;
-                    }
-                    if (!keep.contains(sceneryKey(v))) {
+                    if (clearedSceneryKeys.contains(sceneryKey(v))) {
                         sceneryObjects.remove(v);
                         if (entityPane != null) entityPane.getChildren().remove(v);
                     }
@@ -919,10 +958,11 @@ public class InGameController {
             if (objId != null) {
                 String idLower = objId.toLowerCase();
                 if (idLower.contains("bridge")) {
-                    double railingWidth = 35;
-                    javafx.geometry.Rectangle2D leftRailing = new javafx.geometry.Rectangle2D(ox, oy, railingWidth, oh);
-                    javafx.geometry.Rectangle2D rightRailing = new javafx.geometry.Rectangle2D(ox + ow - railingWidth, oy, railingWidth, oh);
-                    javafx.geometry.Rectangle2D walkableDeck = new javafx.geometry.Rectangle2D(ox + railingWidth, oy, ow - 2 * railingWidth, oh);
+                    double railingWidth = 30;
+                    javafx.geometry.Rectangle2D leftRailing = new javafx.geometry.Rectangle2D(ox, oy + 12, railingWidth, Math.max(10, oh - 24));
+                    javafx.geometry.Rectangle2D rightRailing = new javafx.geometry.Rectangle2D(ox + ow - railingWidth, oy + 12, railingWidth, Math.max(10, oh - 24));
+                    // Mở rộng sàn cầu lên/xuống thêm 30px để bước lên/xuống hai đầu cầu mượt mà, không bị kẹt mép nước
+                    javafx.geometry.Rectangle2D walkableDeck = new javafx.geometry.Rectangle2D(ox + railingWidth, oy - 30, ow - 2 * railingWidth, oh + 60);
 
                     if (playerBoxX.intersects(walkableDeck)) onBridgeX = true;
                     if (playerBoxY.intersects(walkableDeck)) onBridgeY = true;
@@ -935,12 +975,18 @@ public class InGameController {
                     
                     continue;
                 }
-                if (idLower.isEmpty() || idLower.contains("flag") || idLower.contains("crop") || idLower.contains("bush") || idLower.contains("pumpkin") || idLower.contains("dirt") || idLower.contains("path") || idLower.contains("terrain")) continue;
+                if (idLower.isEmpty() || idLower.contains("flag") || idLower.contains("crop") || idLower.contains("bush") ||
+                    idLower.contains("pumpkin") || idLower.contains("dirt") || idLower.contains("path") ||
+                    idLower.contains("terrain") || idLower.contains("wheat") || idLower.contains("construction") ||
+                    idLower.contains("farm_rake") || idLower.contains("farm_hoe") || idLower.contains("farm_shovel") ||
+                    idLower.contains("flower") || idLower.contains("pebble") || idLower.contains("broken_") ||
+                    idLower.contains("wood_sticks") || idLower.contains("clay_pot") || idLower.contains("grass_patch") ||
+                    idLower.contains("windmill_blades")) continue;
             }
 
             // Tự động điều chỉnh hitbox siêu khít (Tight hitbox) để xóa "block tàng hình"
             double hw, hh, cx, cy;
-            if (objId != null && (objId.toLowerCase().contains("house") || objId.toLowerCase().contains("barn"))) {
+            if (objId != null && (objId.toLowerCase().contains("house") || objId.toLowerCase().contains("barn") || objId.toLowerCase().contains("windmill"))) {
                 // Những công trình lớn: hitbox thu gọn xuống phần móng (đáy 25%)
                 hw = ow * 0.8;
                 hh = oh * 0.25;
@@ -1098,6 +1144,21 @@ public class InGameController {
         for (Animal animal : animals) {
             animal.update();
         }
+
+        // Xoay cánh quạt cối xay gió mượt mà
+        if (windmillBladeFrames != null && !windmillBladeViews.isEmpty()) {
+            long nowMs = System.currentTimeMillis();
+            if (nowMs - lastWindmillTick >= 180) {
+                lastWindmillTick = nowMs;
+                windmillFrameIdx = (windmillFrameIdx + 1) % windmillBladeFrames.length;
+                javafx.scene.image.Image fImg = windmillBladeFrames[windmillFrameIdx];
+                if (fImg != null) {
+                    for (ImageView bv : windmillBladeViews) {
+                        bv.setImage(fImg);
+                    }
+                }
+            }
+        }
         
         // Cập nhật Y-coordinate (chiều sâu 2.5D) cho nhân vật và vũ khí
         playerCharacter.setUserData(playerY + 50.0);
@@ -1181,6 +1242,17 @@ public class InGameController {
 
         // 2. LỚP GIỮA: Xây dựng các công trình kiến trúc và trang trí
         sceneryObjects = new java.util.ArrayList<>();
+        clearedSceneryKeys.clear();
+        windmillBladeViews.clear();
+        if (windmillBladeFrames == null) {
+            windmillBladeFrames = new javafx.scene.image.Image[6];
+            for (int fi = 0; fi < 6; fi++) {
+                try {
+                    java.io.InputStream is = getClass().getResourceAsStream("/view/assets/tiled/objects/windmill_blades_" + fi + ".png");
+                    if (is != null) windmillBladeFrames[fi] = new javafx.scene.image.Image(is);
+                } catch (Exception ignored) {}
+            }
+        }
         
         // Xác định AnimalZone trước để mọi con vật tạo ra đều nằm gọn bên trong hàng rào AnimalZone
         if (tmxMap != null && tmxMap.objects != null) {
@@ -1290,8 +1362,17 @@ public class InGameController {
                         }
                         
                         // Sort by Y for depth
-                        if (objName.toLowerCase().contains("bridge")) {
+                        String lowerName = objName.toLowerCase();
+                        if (lowerName.contains("bridge")) {
                             objView.setUserData(-1000.0); // Always draw bridge behind everything else (like ground)
+                        } else if (lowerName.contains("grass_patch")) {
+                            objView.setUserData(-700.0); // Tufted dark-olive grass patches sit right on top of ground under everything
+                        } else if (lowerName.contains("dirt_spot") || lowerName.contains("flower") || lowerName.contains("pebble")) {
+                            objView.setUserData(-600.0); // Ground dirt patches, wildflowers, pebbles stay under everything
+                        } else if (lowerName.contains("construction") || lowerName.contains("farm_rake") || lowerName.contains("farm_hoe") || lowerName.contains("farm_shovel") || lowerName.contains("broken_")) {
+                            objView.setUserData(-500.0); // Ground decals always stay underneath player/trees/buildings
+                        } else if (lowerName.contains("garden_bed")) {
+                            objView.setUserData(objView.getLayoutY() + 10.0); // Pumpkins/vines inside bed sort on top
                         } else {
                             objView.setUserData((double)(objView.getLayoutY() + (obj.height * scale)));
                         }
@@ -1301,14 +1382,24 @@ public class InGameController {
                             objView.setRotate(obj.rotation);
                         }
                         
-                        if ("flag".equalsIgnoreCase(objName) || objName.startsWith("flag")) {
-                            // Keep original shape, no viewport animation
-                            // objView.setViewport(new javafx.geometry.Rectangle2D(0, 0, img.getWidth() / 6, img.getHeight()));
-                            // animatedFlags.add(objView);
-                        }
-                        
                         objView.setId(objName);
                         sceneryObjects.add(objView);
+
+                        // Tự động gắn cánh quạt xoay cho cối xay gió (windmill)
+                        if (lowerName.equals("windmill") && windmillBladeFrames != null && windmillBladeFrames[0] != null) {
+                            ImageView blades = new ImageView(windmillBladeFrames[0]);
+                            double bw = objView.getFitWidth() * 1.38;
+                            double bh = bw;
+                            blades.setFitWidth(bw);
+                            blades.setFitHeight(bh);
+                            blades.setLayoutX(objView.getLayoutX() + (objView.getFitWidth() - bw) / 2.0);
+                            blades.setLayoutY(objView.getLayoutY() - bh * 0.12);
+                            blades.setSmooth(false);
+                            blades.setId("windmill_blades");
+                            blades.setUserData(((Double) objView.getUserData()) + 1.0);
+                            sceneryObjects.add(blades);
+                            windmillBladeViews.add(blades);
+                        }
                     } else if (obj.gid > 0) {
                         System.err.println("Warning: Missing image for gid " + obj.gid + " and name " + objName);
                     }

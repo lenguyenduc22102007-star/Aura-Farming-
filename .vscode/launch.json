@@ -6,7 +6,7 @@
             "name": "Run JavaFX Project",
             "request": "launch",
             "mainClass": "Main",
-            "vmArgs": "--module-path \"C:\\Users\\Dell7560\\Downloads\\javafx-sdk-27\\lib\" --add-modules javafx.controls,javafx.fxml"
+            "vmArgs": "--module-path \"${workspaceFolder}/lib/javafx/lib\" --add-modules javafx.controls,javafx.fxml"
         }
     ]
 }
