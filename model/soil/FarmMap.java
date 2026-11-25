@@ -69,4 +69,24 @@ public class FarmMap {
 
     public int getWidth() { return width; }
     public int getHeight() { return height; }
+
+    /** Marks cells whose center lies strictly inside the given world-pixel FarmZone bounds. */
+    public void applyFarmZone(double minX, double minY, double maxX, double maxY) {
+        for (int r = 0; r < height; r++) {
+            for (int c = 0; c < width; c++) {
+                double cx = c * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
+                double cy = r * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
+                grid[r][c].setInFarmZone(cx > minX && cx < maxX && cy > minY && cy < maxY);
+            }
+        }
+    }
+
+    /** Marks every cell as part of the farming zone (used when a map defines no FarmZone). */
+    public void clearFarmZoneRestriction() {
+        for (int r = 0; r < height; r++) {
+            for (int c = 0; c < width; c++) {
+                grid[r][c].setInFarmZone(true);
+            }
+        }
+    }
 }

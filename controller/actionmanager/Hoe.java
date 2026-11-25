@@ -8,7 +8,7 @@ import model.soil.CellState;
 public class Hoe implements ToolStrategy {
     @Override
     public boolean executeOnTarget(Cell c) {
-        if (c == null) {
+        if (c == null || !c.isInFarmZone()) {
             return false;
         }
 

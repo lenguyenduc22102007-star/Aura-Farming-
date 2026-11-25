@@ -8,6 +8,7 @@ import model.player_inventory.Player;
 import model.soil.Beetle;
 import model.soil.Cell;
 import model.soil.CellState;
+import model.soil.FarmMap;
 import utils.Constant;
 
 public class ToolStrategyTest {
@@ -28,6 +29,17 @@ public class ToolStrategyTest {
         crop.addStress(crop.getCropData().getMaxStress());
         check(new Hoe().executeOnTarget(c2) && c2.getCrop() == null && c2.getCellState() == CellState.UNTILLED, "Hoe clears DEAD crop to UNTILLED");
         check(!new Hoe().executeOnTarget(null), "Hoe on null must return false");
+
+        FarmMap zonedMap = new FarmMap(5, 5);
+        // Only cell (row=2, col=2) -> pixel [128..192, 128..192] is inside FarmZone
+        zonedMap.applyFarmZone(Constant.CELL_SIZE * 2, Constant.CELL_SIZE * 2,
+                Constant.CELL_SIZE * 3, Constant.CELL_SIZE * 3);
+        Cell outsideCell = zonedMap.getCell(0, 0);
+        Cell insideCell = zonedMap.getCell(2, 2);
+        check(!new Hoe().executeOnTarget(outsideCell) && outsideCell.getCellState() == CellState.UNTILLED,
+                "Hoe must not till cells outside FarmZone");
+        check(new Hoe().executeOnTarget(insideCell) && insideCell.getCellState() == CellState.TILLED,
+                "Hoe tills cells inside FarmZone");
 
         Cell c3 = new Cell(0, 0);
         int expectedWater = Math.min(Constant.MAX_MOISTURE, c3.getMoistureLevel() + Constant.WATER_PER_USE);

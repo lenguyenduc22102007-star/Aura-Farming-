@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "PlayerControllerTest",
+            "request": "launch",
+            "mainClass": "test.PlayerControllerTest",
+            "projectName": "Farming_8838fec3"
+        },
+        {
+            "type": "java",
             "name": "Run JavaFX Project",
             "request": "launch",
             "mainClass": "Main",

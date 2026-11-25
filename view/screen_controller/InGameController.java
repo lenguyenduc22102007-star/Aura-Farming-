@@ -49,31 +49,51 @@ import java.util.function.Consumer;
 public class InGameController {
 
     // --- tool hotbar ---
-    @FXML private ToggleButton hoeTool;
-    @FXML private ToggleButton waterTool;
-    @FXML private ToggleButton seedTool;
-    @FXML private ToggleButton handTool;
-    @FXML private ToggleButton fertilizerTool;
-    @FXML private ToggleButton bagTool;
+    @FXML
+    private ToggleButton hoeTool;
+    @FXML
+    private ToggleButton waterTool;
+    @FXML
+    private ToggleButton seedTool;
+    @FXML
+    private ToggleButton handTool;
+    @FXML
+    private ToggleButton fertilizerTool;
+    @FXML
+    private ToggleButton bagTool;
 
     // --- weather selector ---
-    @FXML private ToggleButton sunWeatherButton;
-    @FXML private ToggleButton rainWeatherButton;
-    @FXML private ToggleButton dryWeatherButton;
+    @FXML
+    private ToggleButton sunWeatherButton;
+    @FXML
+    private ToggleButton rainWeatherButton;
+    @FXML
+    private ToggleButton dryWeatherButton;
 
     // --- layout + labels ---
-    @FXML private BorderPane rootPane;
-    @FXML private GridPane farmGrid;
-    @FXML private javafx.scene.layout.Pane weatherOverlay;
+    @FXML
+    private BorderPane rootPane;
+    @FXML
+    private GridPane farmGrid;
+    @FXML
+    private javafx.scene.layout.Pane weatherOverlay;
     private javafx.scene.shape.Rectangle timeOverlayRect;
-    @FXML private Label toolLabel;
-    @FXML private TextField notificationField;
-    @FXML private TextField dayField;
-    @FXML private Label moneyField;
-    @FXML private Label cellLabel;
-    @FXML private Label waterLabel;
-    @FXML private Label nutrientLabel;
-    @FXML private Label cropLabel;
+    @FXML
+    private Label toolLabel;
+    @FXML
+    private TextField notificationField;
+    @FXML
+    private TextField dayField;
+    @FXML
+    private Label moneyField;
+    @FXML
+    private Label cellLabel;
+    @FXML
+    private Label waterLabel;
+    @FXML
+    private Label nutrientLabel;
+    @FXML
+    private Label cropLabel;
 
     private SceneRouter router;
 
@@ -85,7 +105,7 @@ public class InGameController {
     private DemoController demoController;
 
     private int helperDaysLeft = 0;
-    
+
     // tool strategy instances
     private Hoe hoe;
     private WateringCan wateringCan;
@@ -135,7 +155,8 @@ public class InGameController {
     }
 
     private void setupTimeOverlay() {
-        if (rootPane == null) return;
+        if (rootPane == null)
+            return;
         if (timeOverlayRect == null) {
             timeOverlayRect = new javafx.scene.shape.Rectangle();
             timeOverlayRect.setMouseTransparent(true);
@@ -171,38 +192,38 @@ public class InGameController {
     private int windmillFrameIdx = 0;
 
     public void setGame(FarmMap farmMap, Player player, GameManager gameManager,
-                        PlayerController playerController, DemoController demoController) {
+            PlayerController playerController, DemoController demoController) {
         setGame(farmMap, player, gameManager, playerController, demoController, null);
     }
 
     public void setGame(FarmMap farmMap, Player player, GameManager gameManager,
-                        PlayerController playerController, DemoController demoController,
-                        view.screen_util.TiledMap tmxMap) {
-        this.farmMap          = farmMap;
-        this.player           = player;
-        this.gameManager      = gameManager;
+            PlayerController playerController, DemoController demoController,
+            view.screen_util.TiledMap tmxMap) {
+        this.farmMap = farmMap;
+        this.player = player;
+        this.gameManager = gameManager;
         this.playerController = playerController;
-        this.demoController   = demoController;
-        this.tmxMap           = tmxMap;
+        this.demoController = demoController;
+        this.tmxMap = tmxMap;
 
-        this.hoe            = new Hoe();
-        this.wateringCan    = new WateringCan();
-        this.seedBag        = new SeedBag(player);
-        this.hand           = new Hand(player);
-        this.fertilizerBag  = new FertilizerBag("Standard Fertilizer", player);
-        this.feedBag        = new FeedBag(player);
+        this.hoe = new Hoe();
+        this.wateringCan = new WateringCan();
+        this.seedBag = new SeedBag(player);
+        this.hand = new Hand(player);
+        this.fertilizerBag = new FertilizerBag("Standard Fertilizer", player);
+        this.feedBag = new FeedBag(player);
 
         moneyField.textProperty().bind(player.moneyProperty().asString("$%d"));
 
         wireButtons();
         setKeyHandlers();
-        
+
         // Thay thế hàm buildGrid bằng hàm xây bản đồ tự do
-        buildFreeMap(); 
+        buildFreeMap();
 
         selectTool(hand, handTool);
         Platform.runLater(this::refreshAll);
-        
+
         // Bắt đầu vòng lặp game
         startGameLoop();
     }
@@ -232,7 +253,8 @@ public class InGameController {
         seedTool.setFocusTraversable(false);
         handTool.setFocusTraversable(false);
         fertilizerTool.setFocusTraversable(false);
-        if (bagTool != null) bagTool.setFocusTraversable(false);
+        if (bagTool != null)
+            bagTool.setFocusTraversable(false);
         sunWeatherButton.setFocusTraversable(false);
         rainWeatherButton.setFocusTraversable(false);
         dryWeatherButton.setFocusTraversable(false);
@@ -241,14 +263,28 @@ public class InGameController {
             activeKeys.add(event.getCode()); // Thêm phím vào danh sách để di chuyển
 
             switch (event.getCode()) {
-                case ESCAPE:  togglePause();   break;
-                case DIGIT1:  openSeedPicker(); break;
-                case DIGIT2:  selectTool(hoe, hoeTool);            break;
-                case DIGIT3:  selectTool(wateringCan, waterTool);  break;
-                case DIGIT4:  selectTool(hand, handTool);          break;
-                case DIGIT5:  selectTool(fertilizerBag, fertilizerTool); break;
-                case DIGIT6:  openFeedBagPicker();                 break;
-                case J:       // Nút Action (Cuốc đất, trồng cây)
+                case ESCAPE:
+                    togglePause();
+                    break;
+                case DIGIT1:
+                    openSeedPicker();
+                    break;
+                case DIGIT2:
+                    selectTool(hoe, hoeTool);
+                    break;
+                case DIGIT3:
+                    selectTool(wateringCan, waterTool);
+                    break;
+                case DIGIT4:
+                    selectTool(hand, handTool);
+                    break;
+                case DIGIT5:
+                    selectTool(fertilizerBag, fertilizerTool);
+                    break;
+                case DIGIT6:
+                    openFeedBagPicker();
+                    break;
+                case J: // Nút Action (Cuốc đất, trồng cây)
                 case SPACE:
                     interactWithFacingCell();
                     break;
@@ -294,28 +330,39 @@ public class InGameController {
         int col = (int) ((playerX + 22) / Constant.CELL_SIZE);
         int row = (int) ((playerY + 50) / Constant.CELL_SIZE);
 
-        switch(facing) {
-            case "UP":    row -= 1; break;
-            case "DOWN":  row += 1; break;
-            case "LEFT":  col -= 1; break;
-            case "RIGHT": col += 1; break;
+        switch (facing) {
+            case "UP":
+                row -= 1;
+                break;
+            case "DOWN":
+                row += 1;
+                break;
+            case "LEFT":
+                col -= 1;
+                break;
+            case "RIGHT":
+                col += 1;
+                break;
         }
 
         return farmMap.getCell(row, col);
     }
 
     private boolean isCellBlockedByStructure(Cell cell) {
-        if (cell == null || sceneryObjects == null) return false;
+        if (cell == null || sceneryObjects == null)
+            return false;
         double cellX = cell.getX() * Constant.CELL_SIZE + 8;
         double cellY = cell.getY() * Constant.CELL_SIZE + 8;
-        javafx.geometry.Rectangle2D cellBox = new javafx.geometry.Rectangle2D(cellX, cellY, Constant.CELL_SIZE - 16, Constant.CELL_SIZE - 16);
+        javafx.geometry.Rectangle2D cellBox = new javafx.geometry.Rectangle2D(cellX, cellY, Constant.CELL_SIZE - 16,
+                Constant.CELL_SIZE - 16);
         for (ImageView objView : sceneryObjects) {
             String id = objView.getId();
-            if (id == null) continue;
+            if (id == null)
+                continue;
             String idLower = id.toLowerCase();
             if (idLower.contains("tent") || idLower.contains("campfire") || idLower.contains("house") ||
-                idLower.contains("barn") || idLower.contains("well") || idLower.contains("pet_shop") ||
-                idLower.contains("windmill") || idLower.contains("garden_bed")) {
+                    idLower.contains("barn") || idLower.contains("well") || idLower.contains("pet_shop") ||
+                    idLower.contains("windmill") || idLower.contains("garden_bed")) {
                 double ox = objView.getLayoutX() + objView.getTranslateX();
                 double oy = objView.getLayoutY() + objView.getTranslateY();
                 double ow = objView.getFitWidth();
@@ -323,8 +370,7 @@ public class InGameController {
                 double hh = (idLower.contains("tent") || idLower.contains("campfire")) ? oh * 0.72 : oh * 0.45;
                 double hw = ow * 0.82;
                 javafx.geometry.Rectangle2D structBox = new javafx.geometry.Rectangle2D(
-                    ox + (ow - hw) / 2, oy + oh - hh, hw, hh
-                );
+                        ox + (ow - hw) / 2, oy + oh - hh, hw, hh);
                 if (cellBox.intersects(structBox)) {
                     return true;
                 }
@@ -334,20 +380,29 @@ public class InGameController {
     }
 
     private void interactWithFacingCell() {
-        if (router.hasOverlay()) return;
-        
+        if (router.hasOverlay())
+            return;
+
         actionTime = System.currentTimeMillis(); // Kích hoạt hiệu ứng vung vũ khí
 
         double targetX = playerX + 22;
         double targetY = playerY + 50;
         double reach = 40;
-        switch(facing) {
-            case "UP":    targetY -= reach; break;
-            case "DOWN":  targetY += reach; break;
-            case "LEFT":  targetX -= reach; break;
-            case "RIGHT": targetX += reach; break;
+        switch (facing) {
+            case "UP":
+                targetY -= reach;
+                break;
+            case "DOWN":
+                targetY += reach;
+                break;
+            case "LEFT":
+                targetX -= reach;
+                break;
+            case "RIGHT":
+                targetX += reach;
+                break;
         }
-        
+
         javafx.geometry.Rectangle2D hitBox = new javafx.geometry.Rectangle2D(targetX - 10, targetY - 10, 20, 20);
 
         // Kiểm tra tương tác với Máng ăn, NPC và Pet Shop
@@ -361,7 +416,8 @@ public class InGameController {
                 String id = objView.getId();
                 if (id != null) {
                     javafx.geometry.Bounds b = objView.getBoundsInParent();
-                    javafx.geometry.Rectangle2D bRect = new javafx.geometry.Rectangle2D(b.getMinX(), b.getMinY(), Math.max(1, b.getWidth()), Math.max(1, b.getHeight()));
+                    javafx.geometry.Rectangle2D bRect = new javafx.geometry.Rectangle2D(b.getMinX(), b.getMinY(),
+                            Math.max(1, b.getWidth()), Math.max(1, b.getHeight()));
                     if (hitBox.intersects(bRect)) {
                         if (id.equals("pet_shop")) {
                             openShop();
@@ -374,58 +430,73 @@ public class InGameController {
                 }
             }
         }
-        
+
         // Đập phá vật cản (Lúa dại ở FarmZone, Đá, Cây, Bụi cỏ, Khúc gỗ...) bằng Cuốc
-        if (playerController.getCurrentTool().getName().equals("Hoe")) {
-            // Ưu tiên dọn đúng ô lúa dại (wheat_patch) ở ô đang hướng tới để lộ mặt đất trồng cây
-            Cell facingForWheat = getFacingCell();
-            if (facingForWheat != null) {
-                double fcx = facingForWheat.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
-                double fcy = facingForWheat.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
-                ImageView wheatToClear = null;
-                for (ImageView objView : sceneryObjects) {
-                    String id = objView.getId();
-                    if (id != null && id.toLowerCase().contains("wheat")) {
-                        double wx = objView.getLayoutX() + objView.getFitWidth() / 2.0;
-                        double wy = objView.getLayoutY() + objView.getFitHeight() / 2.0;
-                        if (Math.abs(wx - fcx) < 22 && Math.abs(wy - fcy) < 22) {
-                            wheatToClear = objView;
-                            break;
-                        }
+        if (playerController.getCurrentTool() instanceof Hoe) {
+            Cell facingCell = getFacingCell();
+            if (!isCellInFarmZone(facingCell)) {
+                notify("Chỉ có thể dùng cuốc trong vùng nông trại (FarmZone)!");
+                rootPane.requestFocus();
+                return;
+            }
+            // Ưu tiên dọn đúng ô lúa dại (wheat_patch) ở ô đang hướng tới để lộ mặt đất
+            // trồng cây
+            double fcx = facingCell.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
+            double fcy = facingCell.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
+            ImageView wheatToClear = null;
+            for (ImageView objView : sceneryObjects) {
+                String id = objView.getId();
+                if (id != null && id.toLowerCase().contains("wheat")) {
+                    double wx = objView.getLayoutX() + objView.getFitWidth() / 2.0;
+                    double wy = objView.getLayoutY() + objView.getFitHeight() / 2.0;
+                    if (Math.abs(wx - fcx) < 22 && Math.abs(wy - fcy) < 22) {
+                        wheatToClear = objView;
+                        break;
                     }
                 }
-                if (wheatToClear != null) {
-                    clearedSceneryKeys.add(sceneryKey(wheatToClear));
-                    sceneryObjects.remove(wheatToClear);
-                    if (entityPane != null) {
-                        entityPane.getChildren().remove(wheatToClear);
-                    } else {
-                        mapPane.getChildren().remove(wheatToClear);
-                    }
-                    notify("Đã đào sạch bụi lúa! Giờ có thể cuốc đất trồng cây.");
-                    rootPane.requestFocus();
-                    return;
+            }
+            if (wheatToClear != null) {
+                clearedSceneryKeys.add(sceneryKey(wheatToClear));
+                sceneryObjects.remove(wheatToClear);
+                if (entityPane != null) {
+                    entityPane.getChildren().remove(wheatToClear);
+                } else {
+                    mapPane.getChildren().remove(wheatToClear);
                 }
+                notify("Đã đào sạch bụi lúa! Giờ có thể cuốc đất trồng cây.");
+                rootPane.requestFocus();
+                return;
             }
 
             ImageView toDestroy = null;
             for (ImageView objView : sceneryObjects) {
+                if (farmZone != null) {
+                    double ocx = objView.getLayoutX() + objView.getTranslateX() + objView.getFitWidth() / 2.0;
+                    double ocy = objView.getLayoutY() + objView.getTranslateY() + objView.getFitHeight() / 2.0;
+                    if (!farmZone.contains(ocx, ocy)) {
+                        continue;
+                    }
+                }
                 String id = objView.getId();
                 if (id != null) {
                     String idLower = id.toLowerCase();
-                    // Không phá nhà, lều, lửa trại, cối xay gió, cầu, hàng rào, cờ, giếng, chuồng, đèn đường, biển chỉ dẫn, hoa/đất trang trí
+                    // Không phá nhà, lều, lửa trại, cối xay gió, cầu, hàng rào, cờ, giếng, chuồng,
+                    // đèn đường, biển chỉ dẫn, hoa/đất trang trí
                     if (idLower.contains("house") || idLower.contains("tent") || idLower.contains("campfire") ||
-                        idLower.contains("windmill") || idLower.contains("streetlamp") || idLower.contains("lantern") ||
-                        idLower.contains("signpost") || idLower.contains("garden_bed") || idLower.contains("construction") ||
-                        idLower.contains("wheat") || idLower.contains("bridge") || idLower.contains("fence") ||
-                        idLower.contains("flag") || idLower.contains("well") || idLower.contains("barn") ||
-                        idLower.contains("dirt_spot") || idLower.contains("flower") || idLower.contains("pebble") ||
-                        idLower.contains("grass_patch")) {
+                            idLower.contains("windmill") || idLower.contains("streetlamp")
+                            || idLower.contains("lantern") ||
+                            idLower.contains("signpost") || idLower.contains("garden_bed")
+                            || idLower.contains("construction") ||
+                            idLower.contains("wheat") || idLower.contains("bridge") || idLower.contains("fence") ||
+                            idLower.contains("flag") || idLower.contains("well") || idLower.contains("barn") ||
+                            idLower.contains("dirt_spot") || idLower.contains("flower") || idLower.contains("pebble") ||
+                            idLower.contains("grass_patch")) {
                         continue;
                     }
                 }
                 javafx.geometry.Bounds b = objView.getBoundsInParent();
-                javafx.geometry.Rectangle2D bRect = new javafx.geometry.Rectangle2D(b.getMinX(), b.getMinY(), Math.max(1, b.getWidth()), Math.max(1, b.getHeight()));
+                javafx.geometry.Rectangle2D bRect = new javafx.geometry.Rectangle2D(b.getMinX(), b.getMinY(),
+                        Math.max(1, b.getWidth()), Math.max(1, b.getHeight()));
                 if (hitBox.intersects(bRect)) {
                     toDestroy = objView;
                     break;
@@ -458,17 +529,18 @@ public class InGameController {
                 return;
             }
             // Thử thả thú nuôi từ kho đồ nếu đang bấm vào bãi cỏ trống
-            if (playerController.getCurrentTool().getName().equals("Hand") && targetCell.getTerrain() == TerrainType.GRASS && targetCell.getCrop() == null) {
+            if (playerController.getCurrentTool().getName().equals("Hand")
+                    && targetCell.getTerrain() == TerrainType.GRASS && targetCell.getCrop() == null) {
                 model.game_item.Item babyCow = player.getInventory().findByName("Baby Cow");
                 model.game_item.Item babyPig = player.getInventory().findByName("Baby Pig");
                 model.game_item.Item babyChicken = player.getInventory().findByName("Baby Chicken");
 
-                
                 if (babyCow != null && player.getInventory().getItemCount(babyCow) >= 1) {
                     player.getInventory().removeItem(babyCow, 1);
                     Animal a = new Animal(targetX, targetY, 1);
                     animals.add(a);
-                    if (entityPane != null) entityPane.getChildren().add(a.view);
+                    if (entityPane != null)
+                        entityPane.getChildren().add(a.view);
                     notify("Đã thả Bò con! (Cho ăn mỗi ngày để lớn)");
                     rootPane.requestFocus();
                     return;
@@ -476,7 +548,8 @@ public class InGameController {
                     player.getInventory().removeItem(babyPig, 1);
                     Animal a = new Animal(targetX, targetY, 3);
                     animals.add(a);
-                    if (entityPane != null) entityPane.getChildren().add(a.view);
+                    if (entityPane != null)
+                        entityPane.getChildren().add(a.view);
                     notify("Đã thả Lợn con! (Cho ăn mỗi ngày để lớn)");
                     rootPane.requestFocus();
                     return;
@@ -484,7 +557,8 @@ public class InGameController {
                     player.getInventory().removeItem(babyChicken, 1);
                     Animal a = new Animal(targetX, targetY, 0);
                     animals.add(a);
-                    if (entityPane != null) entityPane.getChildren().add(a.view);
+                    if (entityPane != null)
+                        entityPane.getChildren().add(a.view);
                     notify("Đã thả Gà con! (Cho ăn mỗi ngày để lớn)");
                     rootPane.requestFocus();
                     return;
@@ -494,26 +568,27 @@ public class InGameController {
             boolean ok = playerController.interactWithCell(targetCell);
             notify(ok ? "Thao tác thành công!" : "Không thể làm điều này ở đây");
             revertSeedToolIfEmpty();
-            
+
             // Tối ưu hóa: Chỉ cập nhật ô đất vừa thao tác, tránh gây giật khung hình
             int row = targetCell.getY();
             int col = targetCell.getX();
             if (tiles != null && row < tiles.length && col < tiles[0].length) {
                 tiles[row][col].style();
             }
-            
+
             updateHover(targetCell);
         } else {
             notify("Hướng này không có đất trống!");
         }
-        
+
         // Luôn lấy lại focus cho rootPane để không bị liệt phím di chuyển
         rootPane.requestFocus();
     }
 
     // ======================== ZORO DIALOG ========================
     private void openZoroDialog() {
-        if (router.hasOverlay()) return;
+        if (router.hasOverlay())
+            return;
         NpcDialog dlg = new NpcDialog(router, "Zoro").onClosed(() -> rootPane.requestFocus());
         dlg.open("Chào bạn, bạn cần gì?", zoroMainOptions(dlg));
     }
@@ -521,39 +596,46 @@ public class InGameController {
     private NpcDialog.Option[] zoroMainOptions(NpcDialog dlg) {
         String hireLabel = "Thuê (" + (helperDaysLeft > 0 ? "Đang làm" : "1000$") + ")";
         return new NpcDialog.Option[] {
-            new NpcDialog.Option("Nói chuyện", true, () -> {
-                String[] lines = {
-                    "Dạo này thời tiết thất thường quá nhỉ.",
-                    "Cửa hàng của tôi luôn có những hạt giống tốt nhất!",
-                    "Nếu bận quá, bạn có thể thuê tôi chăm sóc thú nuôi.",
-                    "Nông trại của bạn trông có vẻ phát triển tốt đấy!"
-                };
-                dlg.setPage(lines[new java.util.Random().nextInt(lines.length)],
-                        new NpcDialog.Option("Quay lại", true, () -> dlg.setPage("Bạn cần gì nữa không?", zoroMainOptions(dlg))),
-                        new NpcDialog.Option("Rời đi", false, dlg::close));
-            }),
-            new NpcDialog.Option("Cửa hàng", false, () -> { dlg.close(); openShop(); }),
-            new NpcDialog.Option(hireLabel, false, () -> {
-                if (helperDaysLeft > 0) {
-                    dlg.setPage("Tôi đang làm việc cho bạn rồi! (còn " + helperDaysLeft + " ngày)",
-                            new NpcDialog.Option("Quay lại", true, () -> dlg.setPage("Bạn cần gì nữa không?", zoroMainOptions(dlg))));
-                } else {
-                    dlg.setPage("Ngươi muốn thuê ta cho thú ăn à?\nGiá: 1000$ cho 7 ngày. Đồng ý chứ?",
-                            new NpcDialog.Option("Đồng ý", true, () -> {
-                                if (player.deductMoney(1000)) {
-                                    helperDaysLeft = 7;
-                                    notify("Đã thuê Zoro 7 ngày!");
-                                    dlg.setPage("Thỏa thuận xong! Cứ giao thú nuôi cho ta.",
-                                            new NpcDialog.Option("Cảm ơn", true, dlg::close));
-                                } else {
-                                    dlg.setPage("Ngươi không đủ 1000$ rồi...",
-                                            new NpcDialog.Option("Quay lại", true, () -> dlg.setPage("Bạn cần gì nữa không?", zoroMainOptions(dlg))));
-                                }
-                            }),
-                            new NpcDialog.Option("Thôi", false, () -> dlg.setPage("Bạn cần gì nữa không?", zoroMainOptions(dlg))));
-                }
-            }),
-            new NpcDialog.Option("Rời đi", false, dlg::close)
+                new NpcDialog.Option("Nói chuyện", true, () -> {
+                    String[] lines = {
+                            "Dạo này thời tiết thất thường quá nhỉ.",
+                            "Cửa hàng của tôi luôn có những hạt giống tốt nhất!",
+                            "Nếu bận quá, bạn có thể thuê tôi chăm sóc thú nuôi.",
+                            "Nông trại của bạn trông có vẻ phát triển tốt đấy!"
+                    };
+                    dlg.setPage(lines[new java.util.Random().nextInt(lines.length)],
+                            new NpcDialog.Option("Quay lại", true,
+                                    () -> dlg.setPage("Bạn cần gì nữa không?", zoroMainOptions(dlg))),
+                            new NpcDialog.Option("Rời đi", false, dlg::close));
+                }),
+                new NpcDialog.Option("Cửa hàng", false, () -> {
+                    dlg.close();
+                    openShop();
+                }),
+                new NpcDialog.Option(hireLabel, false, () -> {
+                    if (helperDaysLeft > 0) {
+                        dlg.setPage("Tôi đang làm việc cho bạn rồi! (còn " + helperDaysLeft + " ngày)",
+                                new NpcDialog.Option("Quay lại", true,
+                                        () -> dlg.setPage("Bạn cần gì nữa không?", zoroMainOptions(dlg))));
+                    } else {
+                        dlg.setPage("Ngươi muốn thuê ta cho thú ăn à?\nGiá: 1000$ cho 7 ngày. Đồng ý chứ?",
+                                new NpcDialog.Option("Đồng ý", true, () -> {
+                                    if (player.deductMoney(1000)) {
+                                        helperDaysLeft = 7;
+                                        notify("Đã thuê Zoro 7 ngày!");
+                                        dlg.setPage("Thỏa thuận xong! Cứ giao thú nuôi cho ta.",
+                                                new NpcDialog.Option("Cảm ơn", true, dlg::close));
+                                    } else {
+                                        dlg.setPage("Ngươi không đủ 1000$ rồi...",
+                                                new NpcDialog.Option("Quay lại", true, () -> dlg
+                                                        .setPage("Bạn cần gì nữa không?", zoroMainOptions(dlg))));
+                                    }
+                                }),
+                                new NpcDialog.Option("Thôi", false,
+                                        () -> dlg.setPage("Bạn cần gì nữa không?", zoroMainOptions(dlg))));
+                    }
+                }),
+                new NpcDialog.Option("Rời đi", false, dlg::close)
         };
     }
 
@@ -568,7 +650,10 @@ public class InGameController {
         return v.getId() + "@" + (int) v.getLayoutX() + "," + (int) v.getLayoutY();
     }
 
-    /** Write everything the controller owns (position, clock, animals, cleared obstacles) into p. */
+    /**
+     * Write everything the controller owns (position, clock, animals, cleared
+     * obstacles) into p.
+     */
     public void exportViewState(java.util.Properties p) {
         p.setProperty("view.playerX", Double.toString(playerX));
         p.setProperty("view.playerY", Double.toString(playerY));
@@ -593,7 +678,9 @@ public class InGameController {
         }
     }
 
-    /** Restore the state written by {@link #exportViewState}. Call after setGame. */
+    /**
+     * Restore the state written by {@link #exportViewState}. Call after setGame.
+     */
     public void importViewState(java.util.Properties p) {
         try {
             playerX = Double.parseDouble(p.getProperty("view.playerX", Double.toString(playerX)));
@@ -612,18 +699,21 @@ public class InGameController {
                 playerCharacter.setTranslateY(playerY);
             }
 
-            // cleared obstacles (chỉ xóa đúng những vật cản người chơi đã chủ động cuốc phá, KHÔNG xóa object mới của map)
+            // cleared obstacles (chỉ xóa đúng những vật cản người chơi đã chủ động cuốc
+            // phá, KHÔNG xóa object mới của map)
             clearedSceneryKeys.clear();
             if (p.getProperty("cleared.count") != null) {
                 int n = Integer.parseInt(p.getProperty("cleared.count"));
                 for (int i = 0; i < n; i++) {
                     String k = p.getProperty("cleared." + i);
-                    if (k != null && !k.isEmpty()) clearedSceneryKeys.add(k);
+                    if (k != null && !k.isEmpty())
+                        clearedSceneryKeys.add(k);
                 }
                 for (ImageView v : new java.util.ArrayList<>(sceneryObjects)) {
                     if (clearedSceneryKeys.contains(sceneryKey(v))) {
                         sceneryObjects.remove(v);
-                        if (entityPane != null) entityPane.getChildren().remove(v);
+                        if (entityPane != null)
+                            entityPane.getChildren().remove(v);
                     }
                 }
             }
@@ -631,7 +721,8 @@ public class InGameController {
             // animals
             if (p.getProperty("animal.count") != null) {
                 for (Animal a : animals) {
-                    if (entityPane != null) entityPane.getChildren().remove(a.view);
+                    if (entityPane != null)
+                        entityPane.getChildren().remove(a.view);
                 }
                 animals.clear();
                 int n = Integer.parseInt(p.getProperty("animal.count"));
@@ -640,9 +731,11 @@ public class InGameController {
                     Animal a = new Animal(Double.parseDouble(f[1]), Double.parseDouble(f[2]), Integer.parseInt(f[0]));
                     a.ageDays = Integer.parseInt(f[3]);
                     a.applySpriteScale();
-                    if (Boolean.parseBoolean(f[4])) a.feed();
+                    if (Boolean.parseBoolean(f[4]))
+                        a.feed();
                     animals.add(a);
-                    if (entityPane != null) entityPane.getChildren().add(a.view);
+                    if (entityPane != null)
+                        entityPane.getChildren().add(a.view);
                 }
             }
         } catch (RuntimeException e) {
@@ -692,7 +785,8 @@ public class InGameController {
             }
             if (toHarvest != null) {
                 animals.remove(toHarvest);
-                if (entityPane != null) entityPane.getChildren().remove(toHarvest.view);
+                if (entityPane != null)
+                    entityPane.getChildren().remove(toHarvest.view);
                 int money = toHarvest.getSellPrice();
                 String name = toHarvest.getAnimalName();
                 player.addMoney(money);
@@ -709,7 +803,8 @@ public class InGameController {
                 javafx.geometry.Rectangle2D aRect = new javafx.geometry.Rectangle2D(a.x - 18, a.y - 18, 66, 66);
                 if (hitBox.intersects(aRect)) {
                     toFeed = a;
-                    if (!a.isFed) break;
+                    if (!a.isFed)
+                        break;
                 }
             }
         }
@@ -721,14 +816,17 @@ public class InGameController {
                     player.getInventory().removeItem(feedItem, 1);
                     toFeed.feed();
                     revertBagToolIfEmpty();
-                    notify("Đã cho " + aName + " ăn " + feedItem.getName() + "! (Tiến độ: Ngày " + toFeed.ageDays + "/5 - Mai sẽ lớn thêm)");
+                    notify("Đã cho " + aName + " ăn " + feedItem.getName() + "! (Tiến độ: Ngày " + toFeed.ageDays
+                            + "/5 - Mai sẽ lớn thêm)");
                 } else {
-                    notify(aName + " đã no hôm nay! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays) + " ngày để bán)");
+                    notify(aName + " đã no hôm nay! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays)
+                            + " ngày để bán)");
                 }
             } else {
                 model.game_item.Item rawCrop = null;
                 for (model.game_item.Item item : player.getInventory().getItems().keySet()) {
-                    if (item instanceof model.game_item.HarvestedCropItem && player.getInventory().getItemCount(item) > 0) {
+                    if (item instanceof model.game_item.HarvestedCropItem
+                            && player.getInventory().getItemCount(item) > 0) {
                         rawCrop = item;
                         break;
                     }
@@ -738,13 +836,16 @@ public class InGameController {
                         player.getInventory().removeItem(rawCrop, 1);
                         toFeed.feed();
                         revertBagToolIfEmpty();
-                        notify("Đã cho " + aName + " ăn bằng " + rawCrop.getName() + "! (Tiến độ: Ngày " + toFeed.ageDays + "/5)");
+                        notify("Đã cho " + aName + " ăn bằng " + rawCrop.getName() + "! (Tiến độ: Ngày "
+                                + toFeed.ageDays + "/5)");
                     } else {
-                        notify(aName + " đã no hôm nay! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays) + " ngày để bán)");
+                        notify(aName + " đã no hôm nay! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays)
+                                + " ngày để bán)");
                     }
                 } else {
                     if (toFeed.isFed) {
-                        notify(aName + " đã no hôm nay! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays) + " ngày để bán)");
+                        notify(aName + " đã no hôm nay! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays)
+                                + " ngày để bán)");
                     } else {
                         notify(aName + " đang đói! Bấm vào Cặp (Bag - phím 6) hoặc vào Shop mua thức ăn nhé!");
                     }
@@ -792,7 +893,7 @@ public class InGameController {
         lastFrameTime = System.currentTimeMillis();
         elapsedTimeInDay = 0;
         Platform.runLater(() -> rootPane.requestFocus());
-        
+
         gameLoop = new AnimationTimer() {
             @Override
             public void handle(long now) {
@@ -808,7 +909,7 @@ public class InGameController {
                     if (!router.hasOverlay()) {
                         updatePlayerPosition();
                         updateRainEffect();
-                        
+
                         // Tự động qua ngày sau mỗi 135 giây (135000 ms)
                         elapsedTimeInDay += delta;
                         if (elapsedTimeInDay >= 135000) {
@@ -836,7 +937,8 @@ public class InGameController {
     private int lastDisplayedMinute = -1;
 
     private void updateTimeDisplay() {
-        if (dayField == null || gameManager == null) return;
+        if (dayField == null || gameManager == null)
+            return;
         double progress = Math.min(1.0, Math.max(0.0, elapsedTimeInDay / 135000.0));
         // Giả lập từ 06:00 đến 22:00 (16 tiếng một ngày)
         int totalMins = (int) (progress * 16 * 60);
@@ -851,7 +953,8 @@ public class InGameController {
     }
 
     private void updateFlagsAnimation() {
-        if (animatedFlags == null || animatedFlags.isEmpty()) return;
+        if (animatedFlags == null || animatedFlags.isEmpty())
+            return;
         int frameCount = 6;
         int frameIndex = (int) ((System.currentTimeMillis() / 150) % frameCount);
         for (ImageView flag : animatedFlags) {
@@ -859,18 +962,21 @@ public class InGameController {
             if (img != null) {
                 double frameWidth = img.getWidth() / frameCount;
                 double frameHeight = img.getHeight();
-                javafx.geometry.Rectangle2D viewport = new javafx.geometry.Rectangle2D(frameIndex * frameWidth, 0, frameWidth, frameHeight);
+                javafx.geometry.Rectangle2D viewport = new javafx.geometry.Rectangle2D(frameIndex * frameWidth, 0,
+                        frameWidth, frameHeight);
                 flag.setViewport(viewport);
             }
         }
     }
 
     private void updateRainEffect() {
-        if (weatherOverlay == null) return;
-        
+        if (weatherOverlay == null)
+            return;
+
         model.weather.WeatherType cur = gameManager.getCurrentWeather() != null
-                ? gameManager.getCurrentWeather().getType() : null;
-        
+                ? gameManager.getCurrentWeather().getType()
+                : null;
+
         if (cur == model.weather.WeatherType.RAINY) {
             double w = Math.max(1200, rootPane.getWidth());
             // Spawn 2-3 new raindrops every frame
@@ -878,7 +984,7 @@ public class InGameController {
                 javafx.scene.shape.Line drop = new javafx.scene.shape.Line(0, 0, 0, 15);
                 drop.setStroke(javafx.scene.paint.Color.rgb(180, 220, 255, 0.8));
                 drop.setStrokeWidth(2.5);
-                
+
                 // Vì mưa bay xiên từ phải sang trái, ta cần mở rộng vùng spawn bên phải
                 drop.setLayoutX(Math.random() * (w + 400));
                 drop.setLayoutY(-20);
@@ -886,7 +992,7 @@ public class InGameController {
                 weatherOverlay.getChildren().add(drop);
             }
         }
-        
+
         // Move drops and remove off-screen ones
         double h = Math.max(800, rootPane.getHeight());
         java.util.List<javafx.scene.Node> toRemove = new java.util.ArrayList<>();
@@ -909,10 +1015,26 @@ public class InGameController {
         double dy = 0;
         isWalking = false;
 
-        if (activeKeys.contains(KeyCode.W)) { dy -= speed; facing = "UP"; isWalking = true; }
-        if (activeKeys.contains(KeyCode.S)) { dy += speed; facing = "DOWN"; isWalking = true; }
-        if (activeKeys.contains(KeyCode.A)) { dx -= speed; facing = "LEFT"; isWalking = true; }
-        if (activeKeys.contains(KeyCode.D)) { dx += speed; facing = "RIGHT"; isWalking = true; }
+        if (activeKeys.contains(KeyCode.W)) {
+            dy -= speed;
+            facing = "UP";
+            isWalking = true;
+        }
+        if (activeKeys.contains(KeyCode.S)) {
+            dy += speed;
+            facing = "DOWN";
+            isWalking = true;
+        }
+        if (activeKeys.contains(KeyCode.A)) {
+            dx -= speed;
+            facing = "LEFT";
+            isWalking = true;
+        }
+        if (activeKeys.contains(KeyCode.D)) {
+            dx += speed;
+            facing = "RIGHT";
+            isWalking = true;
+        }
 
         double nextX = playerX + dx;
         double nextY = playerY + dy;
@@ -920,73 +1042,96 @@ public class InGameController {
         // Giới hạn không cho nhân vật đi ra ngoài rìa bản đồ
         double mapW = farmMap.getWidth() * Constant.CELL_SIZE;
         double mapH = farmMap.getHeight() * Constant.CELL_SIZE;
-        
-        if (nextX < 0) nextX = 0;
-        if (nextY < 0) nextY = 0;
-        if (nextX > mapW - 40) nextX = mapW - 40;
-        if (nextY > mapH - 40) nextY = mapH - 40;
+
+        if (nextX < 0)
+            nextX = 0;
+        if (nextY < 0)
+            nextY = 0;
+        if (nextX > mapW - 40)
+            nextX = mapW - 40;
+        if (nextY > mapH - 40)
+            nextY = mapH - 40;
 
         int colX = (int) ((nextX + 20) / Constant.CELL_SIZE);
         int rowX = (int) ((playerY + 20) / Constant.CELL_SIZE);
-        boolean waterX = farmMap.getCell(rowX, colX) != null && farmMap.getCell(rowX, colX).getTerrain() == TerrainType.WATER;
-        
+        boolean waterX = farmMap.getCell(rowX, colX) != null
+                && farmMap.getCell(rowX, colX).getTerrain() == TerrainType.WATER;
+
         int colY = (int) ((playerX + 20) / Constant.CELL_SIZE);
         int rowY = (int) ((nextY + 20) / Constant.CELL_SIZE);
-        boolean waterY = farmMap.getCell(rowY, colY) != null && farmMap.getCell(rowY, colY).getTerrain() == TerrainType.WATER;
+        boolean waterY = farmMap.getCell(rowY, colY) != null
+                && farmMap.getCell(rowY, colY).getTerrain() == TerrainType.WATER;
 
         // TMX Object Collision
         javafx.geometry.Rectangle2D oldBox = new javafx.geometry.Rectangle2D(playerX + 10, playerY + 20, 20, 20);
         javafx.geometry.Rectangle2D playerBoxX = new javafx.geometry.Rectangle2D(nextX + 10, playerY + 20, 20, 20);
         javafx.geometry.Rectangle2D playerBoxY = new javafx.geometry.Rectangle2D(playerX + 10, nextY + 20, 20, 20);
-        
+
         boolean colX_obj = false;
         boolean colY_obj = false;
         boolean onBridgeX = false;
         boolean onBridgeY = false;
-        
+
         for (ImageView objView : sceneryObjects) {
             String objId = objView.getId();
-            
-            // Tính toán vị trí trực tiếp để tránh lag (KHÔNG dùng getBoundsInParent vì quá nặng khi gọi liên tục)
+
+            // Tính toán vị trí trực tiếp để tránh lag (KHÔNG dùng getBoundsInParent vì quá
+            // nặng khi gọi liên tục)
             double ox = objView.getLayoutX() + objView.getTranslateX();
             double oy = objView.getLayoutY() + objView.getTranslateY();
             double ow = objView.getFitWidth();
             double oh = objView.getFitHeight();
 
-            if (ow <= 0 || oh <= 0) continue;
-            
+            if (ow <= 0 || oh <= 0)
+                continue;
+
             if (objId != null) {
                 String idLower = objId.toLowerCase();
                 if (idLower.contains("bridge")) {
                     double railingWidth = 30;
-                    javafx.geometry.Rectangle2D leftRailing = new javafx.geometry.Rectangle2D(ox, oy + 12, railingWidth, Math.max(10, oh - 24));
-                    javafx.geometry.Rectangle2D rightRailing = new javafx.geometry.Rectangle2D(ox + ow - railingWidth, oy + 12, railingWidth, Math.max(10, oh - 24));
-                    // Mở rộng sàn cầu lên/xuống thêm 30px để bước lên/xuống hai đầu cầu mượt mà, không bị kẹt mép nước
-                    javafx.geometry.Rectangle2D walkableDeck = new javafx.geometry.Rectangle2D(ox + railingWidth, oy - 30, ow - 2 * railingWidth, oh + 60);
+                    javafx.geometry.Rectangle2D leftRailing = new javafx.geometry.Rectangle2D(ox, oy + 12, railingWidth,
+                            Math.max(10, oh - 24));
+                    javafx.geometry.Rectangle2D rightRailing = new javafx.geometry.Rectangle2D(ox + ow - railingWidth,
+                            oy + 12, railingWidth, Math.max(10, oh - 24));
+                    // Mở rộng sàn cầu lên/xuống thêm 30px để bước lên/xuống hai đầu cầu mượt mà,
+                    // không bị kẹt mép nước
+                    javafx.geometry.Rectangle2D walkableDeck = new javafx.geometry.Rectangle2D(ox + railingWidth,
+                            oy - 30, ow - 2 * railingWidth, oh + 60);
 
-                    if (playerBoxX.intersects(walkableDeck)) onBridgeX = true;
-                    if (playerBoxY.intersects(walkableDeck)) onBridgeY = true;
+                    if (playerBoxX.intersects(walkableDeck))
+                        onBridgeX = true;
+                    if (playerBoxY.intersects(walkableDeck))
+                        onBridgeY = true;
 
-                    if (playerBoxX.intersects(leftRailing) && !oldBox.intersects(leftRailing)) colX_obj = true;
-                    if (playerBoxY.intersects(leftRailing) && !oldBox.intersects(leftRailing)) colY_obj = true;
+                    if (playerBoxX.intersects(leftRailing) && !oldBox.intersects(leftRailing))
+                        colX_obj = true;
+                    if (playerBoxY.intersects(leftRailing) && !oldBox.intersects(leftRailing))
+                        colY_obj = true;
 
-                    if (playerBoxX.intersects(rightRailing) && !oldBox.intersects(rightRailing)) colX_obj = true;
-                    if (playerBoxY.intersects(rightRailing) && !oldBox.intersects(rightRailing)) colY_obj = true;
-                    
+                    if (playerBoxX.intersects(rightRailing) && !oldBox.intersects(rightRailing))
+                        colX_obj = true;
+                    if (playerBoxY.intersects(rightRailing) && !oldBox.intersects(rightRailing))
+                        colY_obj = true;
+
                     continue;
                 }
-                if (idLower.isEmpty() || idLower.contains("flag") || idLower.contains("crop") || idLower.contains("bush") ||
-                    idLower.contains("pumpkin") || idLower.contains("dirt") || idLower.contains("path") ||
-                    idLower.contains("terrain") || idLower.contains("wheat") || idLower.contains("construction") ||
-                    idLower.contains("farm_rake") || idLower.contains("farm_hoe") || idLower.contains("farm_shovel") ||
-                    idLower.contains("flower") || idLower.contains("pebble") || idLower.contains("broken_") ||
-                    idLower.contains("wood_sticks") || idLower.contains("clay_pot") || idLower.contains("grass_patch") ||
-                    idLower.contains("windmill_blades")) continue;
+                if (idLower.isEmpty() || idLower.contains("flag") || idLower.contains("crop")
+                        || idLower.contains("bush") ||
+                        idLower.contains("pumpkin") || idLower.contains("dirt") || idLower.contains("path") ||
+                        idLower.contains("terrain") || idLower.contains("wheat") || idLower.contains("construction") ||
+                        idLower.contains("farm_rake") || idLower.contains("farm_hoe") || idLower.contains("farm_shovel")
+                        ||
+                        idLower.contains("flower") || idLower.contains("pebble") || idLower.contains("broken_") ||
+                        idLower.contains("wood_sticks") || idLower.contains("clay_pot")
+                        || idLower.contains("grass_patch") ||
+                        idLower.contains("windmill_blades"))
+                    continue;
             }
 
             // Tự động điều chỉnh hitbox siêu khít (Tight hitbox) để xóa "block tàng hình"
             double hw, hh, cx, cy;
-            if (objId != null && (objId.toLowerCase().contains("house") || objId.toLowerCase().contains("barn") || objId.toLowerCase().contains("windmill"))) {
+            if (objId != null && (objId.toLowerCase().contains("house") || objId.toLowerCase().contains("barn")
+                    || objId.toLowerCase().contains("windmill"))) {
                 // Những công trình lớn: hitbox thu gọn xuống phần móng (đáy 25%)
                 hw = ow * 0.8;
                 hh = oh * 0.25;
@@ -1011,20 +1156,27 @@ public class InGameController {
                 cx = ox + (ow - hw) / 2;
                 cy = oy + oh - hh - 5;
             }
-            
+
             javafx.geometry.Rectangle2D objBox = new javafx.geometry.Rectangle2D(cx, cy, hw, hh);
-            
-            if (playerBoxX.intersects(objBox) && !oldBox.intersects(objBox)) colX_obj = true;
-            if (playerBoxY.intersects(objBox) && !oldBox.intersects(objBox)) colY_obj = true;
-            
-            if (colX_obj && colY_obj) break;
+
+            if (playerBoxX.intersects(objBox) && !oldBox.intersects(objBox))
+                colX_obj = true;
+            if (playerBoxY.intersects(objBox) && !oldBox.intersects(objBox))
+                colY_obj = true;
+
+            if (colX_obj && colY_obj)
+                break;
         }
-        
-        if (waterX && !onBridgeX) nextX = playerX;
-        if (waterY && !onBridgeY) nextY = playerY;
-        
-        if (colX_obj) nextX = playerX;
-        if (colY_obj) nextY = playerY;
+
+        if (waterX && !onBridgeX)
+            nextX = playerX;
+        if (waterY && !onBridgeY)
+            nextY = playerY;
+
+        if (colX_obj)
+            nextX = playerX;
+        if (colY_obj)
+            nextY = playerY;
 
         playerX = nextX;
         playerY = nextY;
@@ -1032,10 +1184,12 @@ public class InGameController {
         // Xử lý Flip (Quay mặt)
         if (facing.equals("LEFT")) {
             playerCharacter.setScaleX(-1);
-            if (weaponView != null) weaponView.setScaleX(-1);
+            if (weaponView != null)
+                weaponView.setScaleX(-1);
         } else if (facing.equals("RIGHT")) {
             playerCharacter.setScaleX(1);
-            if (weaponView != null) weaponView.setScaleX(1);
+            if (weaponView != null)
+                weaponView.setScaleX(1);
         }
 
         // Wobble Animation (nhún nhảy khi đi)
@@ -1043,7 +1197,7 @@ public class InGameController {
         if (isWalking) {
             lastMoveTime++;
             bobbing = Math.sin(lastMoveTime * 0.4) * 4.0; // Nhún lên xuống 4 pixel
-            
+
             // Xoay tay chân (Swing)
             double swingAngle = Math.sin(lastMoveTime * 0.6) * 30; // Góc xoay tối đa 30 độ
             if (leftArmSwing != null) {
@@ -1061,7 +1215,8 @@ public class InGameController {
             }
         }
 
-        // Cập nhật vị trí nhân vật trên bản đồ (Dùng setTranslate để tối ưu FPS, không làm lag 600 ô đất)
+        // Cập nhật vị trí nhân vật trên bản đồ (Dùng setTranslate để tối ưu FPS, không
+        // làm lag 600 ô đất)
         playerCharacter.setTranslateX(playerX);
         playerCharacter.setTranslateY(playerY + bobbing);
 
@@ -1069,13 +1224,13 @@ public class InGameController {
         if (weaponView != null) {
             double weaponBaseX = facing.equals("LEFT") ? playerX - 10 : playerX + 30;
             double weaponBaseY = playerY + 25 + bobbing; // Cầm ở ngang tay
-            
+
             // Swing Animation (Cuốc đất)
             double weaponRotation = 0;
             if (System.currentTimeMillis() - actionTime < 250) {
                 // Đang vung vũ khí (kéo dài 250ms)
                 double progress = (System.currentTimeMillis() - actionTime) / 250.0;
-                
+
                 // Hiệu ứng chém: Giơ lên (-60 độ) rồi bổ mạnh xuống (90 độ)
                 double angle;
                 if (progress < 0.3) {
@@ -1083,7 +1238,7 @@ public class InGameController {
                 } else {
                     angle = -60 + 150 * ((progress - 0.3) / 0.7); // Bổ xuống
                 }
-                
+
                 weaponRotation = facing.equals("LEFT") ? -angle : angle;
                 // Hơi nhích vũ khí tới trước một chút khi bổ
                 weaponBaseX += (facing.equals("LEFT") ? -10 : 10) * Math.sin(progress * Math.PI);
@@ -1094,21 +1249,23 @@ public class InGameController {
 
             weaponView.setTranslateX(weaponBaseX);
             weaponView.setTranslateY(weaponBaseY);
-            
+
             // Dùng hàm xoay mặc định (tâm ở giữa vũ khí) vì Transform phức tạp hơn
             weaponView.setRotate(weaponRotation);
         }
-        
+
         // ==========================================
         // CAMERA CHUYỂN ĐỘNG (Bí quyết của Soul Knight)
         // ==========================================
         // Lấy tâm màn hình
         double screenW = rootPane.getWidth();
         double screenH = rootPane.getHeight();
-        if (screenW == 0) screenW = 1200; // Fallback
-        if (screenH == 0) screenH = 800;  // Fallback
-        
-        double screenCenterX = screenW / 2.0; 
+        if (screenW == 0)
+            screenW = 1200; // Fallback
+        if (screenH == 0)
+            screenH = 800; // Fallback
+
+        double screenCenterX = screenW / 2.0;
         double screenCenterY = screenH / 2.0;
 
         // Tính toán vị trí camera (muốn nhân vật ở giữa)
@@ -1116,31 +1273,35 @@ public class InGameController {
         double camY = playerY - screenCenterY + 20;
 
         // Giới hạn camera không cho nhìn ra ngoài map (khắc phục mảng trống)
-        
+
         double maxCamX = Math.max(0, mapW - screenW);
         double maxCamY = Math.max(0, mapH - screenH);
-        
+
         camX = Math.max(0, Math.min(camX, maxCamX));
         camY = Math.max(0, Math.min(camY, maxCamY));
 
         // Dịch chuyển ngược toàn bộ mặt đất theo camera
-        mapPane.setTranslateX(-camX); 
+        mapPane.setTranslateX(-camX);
         mapPane.setTranslateY(-camY);
         if (entityPane != null) {
             entityPane.setTranslateX(-camX);
             entityPane.setTranslateY(-camY);
         }
-        
+
         // Cập nhật vị trí ô đang hướng tới (Highlight) để dễ thao tác
         Cell fCell = getFacingCell();
         if (fCell != null && facingHighlight != null && !isCellBlockedByStructure(fCell)) {
+            boolean hoeOutsideFarm = playerController != null
+                    && playerController.getCurrentTool() instanceof Hoe
+                    && !isCellInFarmZone(fCell);
+            facingHighlight.setStroke(hoeOutsideFarm ? Color.web("#FF5252") : Color.WHITE);
             facingHighlight.setVisible(true);
             facingHighlight.setTranslateX(fCell.getX() * Constant.CELL_SIZE);
             facingHighlight.setTranslateY(fCell.getY() * Constant.CELL_SIZE);
         } else if (facingHighlight != null) {
             facingHighlight.setVisible(false);
         }
-        
+
         for (Animal animal : animals) {
             animal.update();
         }
@@ -1159,25 +1320,25 @@ public class InGameController {
                 }
             }
         }
-        
+
         // Cập nhật Y-coordinate (chiều sâu 2.5D) cho nhân vật và vũ khí
         playerCharacter.setUserData(playerY + 50.0);
         if (weaponView != null) {
             weaponView.setUserData(playerY + 51.0);
         }
-        
+
         // Sắp xếp động toàn bộ vật thể (Depth Sorting)
         if (entityPane != null) {
             javafx.collections.FXCollections.sort(entityPane.getChildren(), (n1, n2) -> {
-                double y1 = n1.getUserData() instanceof Double ? (Double)n1.getUserData() : 0.0;
-                double y2 = n2.getUserData() instanceof Double ? (Double)n2.getUserData() : 0.0;
+                double y1 = n1.getUserData() instanceof Double ? (Double) n1.getUserData() : 0.0;
+                double y2 = n2.getUserData() instanceof Double ? (Double) n2.getUserData() : 0.0;
                 return Double.compare(y1, y2);
             });
         }
     }
 
     // ======================== VẼ BẢN ĐỒ TỰ DO ========================
-// ======================== VẼ BẢN ĐỒ TỰ DO ========================
+    // ======================== VẼ BẢN ĐỒ TỰ DO ========================
     private void buildFreeMap() {
         // Ẩn lưới cũ đi (Không xóa để tránh lỗi FXML)
         farmGrid.setVisible(false);
@@ -1188,11 +1349,13 @@ public class InGameController {
         }
         mapPane = new Pane();
         entityPane = new Pane();
-        
+
         setupTimeOverlay();
-        
-        // Tối ưu hóa FPS cực mạnh: Tách layer tĩnh (mapPane) ra khỏi layer động (entityPane).
-        // Cài đặt Cache cho mapPane giúp JavaFX không phải tính toán lại 6400 node mỗi khi di chuyển camera.
+
+        // Tối ưu hóa FPS cực mạnh: Tách layer tĩnh (mapPane) ra khỏi layer động
+        // (entityPane).
+        // Cài đặt Cache cho mapPane giúp JavaFX không phải tính toán lại 6400 node mỗi
+        // khi di chuyển camera.
         // mapPane.setCache(true);
         // mapPane.setCacheHint(javafx.scene.CacheHint.SPEED);
 
@@ -1210,7 +1373,7 @@ public class InGameController {
         StackPane parentStack = (StackPane) farmGrid.getParent();
         StackPane.setAlignment(mapPane, Pos.TOP_LEFT);
         StackPane.setAlignment(entityPane, Pos.TOP_LEFT);
-        
+
         // Chèn bản đồ và entities vào ngay dưới lớp thời tiết (weatherOverlay)
         parentStack.getChildren().add(1, mapPane);
         parentStack.getChildren().add(2, entityPane);
@@ -1218,12 +1381,11 @@ public class InGameController {
         int rows = farmMap.getHeight();
         int cols = farmMap.getWidth();
         tiles = new Tile[rows][cols];
-        
 
-        
         // Xóa thú vật cũ
         for (Animal a : animals) {
-            if (entityPane != null) entityPane.getChildren().remove(a.view);
+            if (entityPane != null)
+                entityPane.getChildren().remove(a.view);
         }
         animals.clear();
 
@@ -1232,10 +1394,10 @@ public class InGameController {
             for (int c = 0; c < cols; c++) {
                 Tile tile = new Tile(farmMap.getCell(r, c));
                 tiles[r][c] = tile;
-                
+
                 tile.pane.setLayoutX(c * Constant.CELL_SIZE);
                 tile.pane.setLayoutY(r * Constant.CELL_SIZE);
-                
+
                 mapPane.getChildren().add(tile.pane);
             }
         }
@@ -1248,167 +1410,195 @@ public class InGameController {
             windmillBladeFrames = new javafx.scene.image.Image[6];
             for (int fi = 0; fi < 6; fi++) {
                 try {
-                    java.io.InputStream is = getClass().getResourceAsStream("/view/assets/tiled/objects/windmill_blades_" + fi + ".png");
-                    if (is != null) windmillBladeFrames[fi] = new javafx.scene.image.Image(is);
-                } catch (Exception ignored) {}
+                    java.io.InputStream is = getClass()
+                            .getResourceAsStream("/view/assets/tiled/objects/windmill_blades_" + fi + ".png");
+                    if (is != null)
+                        windmillBladeFrames[fi] = new javafx.scene.image.Image(is);
+                } catch (Exception ignored) {
+                }
             }
         }
-        
-        // Xác định AnimalZone trước để mọi con vật tạo ra đều nằm gọn bên trong hàng rào AnimalZone
+
+        // Xác định AnimalZone và FarmZone từ TMX
+        animalZone = null;
+        farmZone = null;
         if (tmxMap != null && tmxMap.objects != null) {
             double zs = (tmxMap.tileWidth > 0) ? (double) Constant.CELL_SIZE / tmxMap.tileWidth : 1.0;
             for (view.screen_util.TiledMap.TiledObject obj : tmxMap.objects) {
                 String objName = obj.name != null ? obj.name.toLowerCase() : "";
                 String type = obj.type != null ? obj.type.toLowerCase() : "";
-                if (("zone".equals(type) || objName.endsWith("zone")) && objName.equals("animalzone")) {
-                    // Giới hạn chặt vào bên trong hàng rào chuồng thú (bên phải rào dọc x=985, dưới rào ngang y=948, trên bờ sông y=1253)
-                    double zx = Math.max(obj.x, 985) * zs;
-                    double zy = Math.max(obj.y, 948) * zs;
-                    double maxZx = Math.min(obj.x + obj.width, 1540) * zs;
-                    double maxZy = Math.min(obj.y + obj.height, 1253) * zs;
-                    animalZone = new javafx.geometry.Rectangle2D(zx, zy, Math.max(200, maxZx - zx), Math.max(180, maxZy - zy));
-                    break;
+                if ("zone".equals(type) || objName.endsWith("zone")) {
+                    if (objName.equals("animalzone")) {
+                        // Giới hạn chặt vào bên trong hàng rào chuồng thú (bên phải rào dọc x=985, dưới
+                        // rào ngang y=948, trên bờ sông y=1253)
+                        double zx = Math.max(obj.x, 985) * zs;
+                        double zy = Math.max(obj.y, 948) * zs;
+                        double maxZx = Math.min(obj.x + obj.width, 1540) * zs;
+                        double maxZy = Math.min(obj.y + obj.height, 1253) * zs;
+                        animalZone = new javafx.geometry.Rectangle2D(zx, zy, Math.max(200, maxZx - zx),
+                                Math.max(180, maxZy - zy));
+                    } else if (objName.equals("farmzone")) {
+                        farmZone = new javafx.geometry.Rectangle2D(obj.x * zs, obj.y * zs, obj.width * zs,
+                                obj.height * zs);
+                    }
                 }
             }
         }
+        if (farmZone != null) {
+            farmMap.applyFarmZone(farmZone.getMinX(), farmZone.getMinY(), farmZone.getMaxX(), farmZone.getMaxY());
+        } else {
+            farmMap.clearFarmZoneRestriction();
+        }
 
         // Render objects from TMX map
-            if (tmxMap != null && tmxMap.objects != null) {
-                for (view.screen_util.TiledMap.TiledObject obj : tmxMap.objects) {
-                    String objName = obj.name != null ? obj.name.toLowerCase() : "";
-                    String type = obj.type != null ? obj.type.toLowerCase() : "";
-                    
-                    // Xử lý Gameplay Zones
-                    if ("zone".equals(type) || objName.endsWith("zone")) {
-                        continue;
-                    }
-                    
-                    // Bỏ qua các tile thú tĩnh không tên đặt nhầm ngoài map
-                    if (objName.isEmpty() && (obj.gid == 22 || obj.gid == 23 || obj.gid == 24 || obj.gid == 3)) {
-                        continue;
-                    }
+        if (tmxMap != null && tmxMap.objects != null) {
+            for (view.screen_util.TiledMap.TiledObject obj : tmxMap.objects) {
+                String objName = obj.name != null ? obj.name.toLowerCase() : "";
+                String type = obj.type != null ? obj.type.toLowerCase() : "";
 
-                    // Xử lý Thú vật (Cow, Chicken, Pig)
-                    double scale = 1.0;
-                    if (tmxMap != null && tmxMap.tileWidth > 0) {
-                        scale = (double) Constant.CELL_SIZE / tmxMap.tileWidth;
-                    }
+                // Xử lý Gameplay Zones
+                if ("zone".equals(type) || objName.endsWith("zone")) {
+                    continue;
+                }
 
-                    // Xử lý Thú vật (Cow, Chicken, Pig)
-                    if ("animal".equals(type) || objName.equals("cow") || objName.equals("chicken") || objName.equals("pig")) {
-                        int aType = objName.equals("cow") ? 1 : (objName.equals("pig") ? 3 : 0);
-                        // Tiled coordinates for tile-objects are at bottom-left
-                        double ax = obj.x * scale;
-                        double ay = (obj.y - obj.height) * scale;
-                        if (obj.gid == 0) {
-                            ay = obj.y * scale; // Standard rect objects are top-left
-                        }
-                        Animal animal = new Animal(ax, ay, aType);
-                        animals.add(animal);
-                        if (entityPane != null) entityPane.getChildren().add(animal.view);
-                        continue;
-                    }
+                // Bỏ qua các tile thú tĩnh không tên đặt nhầm ngoài map
+                if (objName.isEmpty() && (obj.gid == 22 || obj.gid == 23 || obj.gid == 24 || obj.gid == 3)) {
+                    continue;
+                }
 
-                    // Xử lý các Object tĩnh
-                    javafx.scene.image.Image img = null;
-                    if (obj.gid > 0) {
-                        img = tmxMap.getTileImage(obj.gid);
+                // Xử lý Thú vật (Cow, Chicken, Pig)
+                double scale = 1.0;
+                if (tmxMap != null && tmxMap.tileWidth > 0) {
+                    scale = (double) Constant.CELL_SIZE / tmxMap.tileWidth;
+                }
+
+                // Xử lý Thú vật (Cow, Chicken, Pig)
+                if ("animal".equals(type) || objName.equals("cow") || objName.equals("chicken")
+                        || objName.equals("pig")) {
+                    int aType = objName.equals("cow") ? 1 : (objName.equals("pig") ? 3 : 0);
+                    // Tiled coordinates for tile-objects are at bottom-left
+                    double ax = obj.x * scale;
+                    double ay = (obj.y - obj.height) * scale;
+                    if (obj.gid == 0) {
+                        ay = obj.y * scale; // Standard rect objects are top-left
                     }
-                    
-                    // Fallback nếu thiếu gid (do lỗi cập nhật objects.tsx)
-                    if (img == null && !objName.isEmpty()) {
-                        String baseName = objName.replaceAll("\\d+$", ""); // VD: bush3 -> bush
-                        String[] possiblePaths = {
+                    Animal animal = new Animal(ax, ay, aType);
+                    animals.add(animal);
+                    if (entityPane != null)
+                        entityPane.getChildren().add(animal.view);
+                    continue;
+                }
+
+                // Xử lý các Object tĩnh
+                javafx.scene.image.Image img = null;
+                if (obj.gid > 0) {
+                    img = tmxMap.getTileImage(obj.gid);
+                }
+
+                // Fallback nếu thiếu gid (do lỗi cập nhật objects.tsx)
+                if (img == null && !objName.isEmpty()) {
+                    String baseName = objName.replaceAll("\\d+$", ""); // VD: bush3 -> bush
+                    String[] possiblePaths = {
                             "/view/assets/tiled/objects/" + baseName + ".png",
                             "/view/assets/tiled/objects/" + objName + ".png",
                             "/view/assets/tiled/objects/" + baseName + "_tile.png",
                             "/view/assets/tiled/objects/" + objName + "_tile.png"
-                        };
-                        for (String p : possiblePaths) {
-                            java.io.InputStream is = getClass().getResourceAsStream(p);
-                            if (is != null) {
-                                img = new javafx.scene.image.Image(is);
-                                break;
-                            }
-                        }
-                        // Thử các tên ánh xạ tiếng Việt
-                        if (img == null) {
-                            String mappedPath = null;
-                            if (baseName.equals("rock_large")) mappedPath = "/view/assets/tiled/objects/dato_tile.png";
-                            else if (baseName.equals("rock_small")) mappedPath = "/view/assets/tiled/objects/danho_tile.png";
-                            else if (baseName.equals("stump")) mappedPath = "/view/assets/tiled/objects/goccay_tile.png";
-                            else if (baseName.equals("log")) mappedPath = "/view/assets/tiled/objects/thancay_tile.png";
-                            else if (baseName.equals("bush")) mappedPath = "/view/assets/tiled/objects/buicay1_tile.png";
-                            
-                            if (mappedPath != null) {
-                                java.io.InputStream is = getClass().getResourceAsStream(mappedPath);
-                                if (is != null) img = new javafx.scene.image.Image(is);
-                            }
+                    };
+                    for (String p : possiblePaths) {
+                        java.io.InputStream is = getClass().getResourceAsStream(p);
+                        if (is != null) {
+                            img = new javafx.scene.image.Image(is);
+                            break;
                         }
                     }
+                    // Thử các tên ánh xạ tiếng Việt
+                    if (img == null) {
+                        String mappedPath = null;
+                        if (baseName.equals("rock_large"))
+                            mappedPath = "/view/assets/tiled/objects/dato_tile.png";
+                        else if (baseName.equals("rock_small"))
+                            mappedPath = "/view/assets/tiled/objects/danho_tile.png";
+                        else if (baseName.equals("stump"))
+                            mappedPath = "/view/assets/tiled/objects/goccay_tile.png";
+                        else if (baseName.equals("log"))
+                            mappedPath = "/view/assets/tiled/objects/thancay_tile.png";
+                        else if (baseName.equals("bush"))
+                            mappedPath = "/view/assets/tiled/objects/buicay1_tile.png";
 
-                    if (img != null) {
-                        ImageView objView = new ImageView(img);
-                        objView.setFitWidth(obj.width * scale);
-                        objView.setFitHeight(obj.height * scale);
-                        objView.setLayoutX(obj.x * scale);
-                        
-                        // Default behavior for Tiled tile-objects (gid > 0): Y is bottom
-                        // If it's a regular rect object (gid == 0), Y is top
-                        if (obj.gid > 0) {
-                            objView.setLayoutY((obj.y - obj.height) * scale);
-                        } else {
-                            objView.setLayoutY(obj.y * scale);
+                        if (mappedPath != null) {
+                            java.io.InputStream is = getClass().getResourceAsStream(mappedPath);
+                            if (is != null)
+                                img = new javafx.scene.image.Image(is);
                         }
-                        
-                        // Sort by Y for depth
-                        String lowerName = objName.toLowerCase();
-                        if (lowerName.contains("bridge")) {
-                            objView.setUserData(-1000.0); // Always draw bridge behind everything else (like ground)
-                        } else if (lowerName.contains("grass_patch")) {
-                            objView.setUserData(-700.0); // Tufted dark-olive grass patches sit right on top of ground under everything
-                        } else if (lowerName.contains("dirt_spot") || lowerName.contains("flower") || lowerName.contains("pebble")) {
-                            objView.setUserData(-600.0); // Ground dirt patches, wildflowers, pebbles stay under everything
-                        } else if (lowerName.contains("construction") || lowerName.contains("farm_rake") || lowerName.contains("farm_hoe") || lowerName.contains("farm_shovel") || lowerName.contains("broken_")) {
-                            objView.setUserData(-500.0); // Ground decals always stay underneath player/trees/buildings
-                        } else if (lowerName.contains("garden_bed")) {
-                            objView.setUserData(objView.getLayoutY() + 10.0); // Pumpkins/vines inside bed sort on top
-                        } else {
-                            objView.setUserData((double)(objView.getLayoutY() + (obj.height * scale)));
-                        }
-                        objView.setSmooth(false);
-                        
-                        if (obj.rotation != 0) {
-                            objView.setRotate(obj.rotation);
-                        }
-                        
-                        objView.setId(objName);
-                        sceneryObjects.add(objView);
-
-                        // Tự động gắn cánh quạt xoay cho cối xay gió (windmill)
-                        if (lowerName.equals("windmill") && windmillBladeFrames != null && windmillBladeFrames[0] != null) {
-                            ImageView blades = new ImageView(windmillBladeFrames[0]);
-                            double bw = objView.getFitWidth() * 1.38;
-                            double bh = bw;
-                            blades.setFitWidth(bw);
-                            blades.setFitHeight(bh);
-                            blades.setLayoutX(objView.getLayoutX() + (objView.getFitWidth() - bw) / 2.0);
-                            blades.setLayoutY(objView.getLayoutY() - bh * 0.12);
-                            blades.setSmooth(false);
-                            blades.setId("windmill_blades");
-                            blades.setUserData(((Double) objView.getUserData()) + 1.0);
-                            sceneryObjects.add(blades);
-                            windmillBladeViews.add(blades);
-                        }
-                    } else if (obj.gid > 0) {
-                        System.err.println("Warning: Missing image for gid " + obj.gid + " and name " + objName);
                     }
                 }
+
+                if (img != null) {
+                    ImageView objView = new ImageView(img);
+                    objView.setFitWidth(obj.width * scale);
+                    objView.setFitHeight(obj.height * scale);
+                    objView.setLayoutX(obj.x * scale);
+
+                    // Default behavior for Tiled tile-objects (gid > 0): Y is bottom
+                    // If it's a regular rect object (gid == 0), Y is top
+                    if (obj.gid > 0) {
+                        objView.setLayoutY((obj.y - obj.height) * scale);
+                    } else {
+                        objView.setLayoutY(obj.y * scale);
+                    }
+
+                    // Sort by Y for depth
+                    String lowerName = objName.toLowerCase();
+                    if (lowerName.contains("bridge")) {
+                        objView.setUserData(-1000.0); // Always draw bridge behind everything else (like ground)
+                    } else if (lowerName.contains("grass_patch")) {
+                        objView.setUserData(-700.0); // Tufted dark-olive grass patches sit right on top of ground under
+                                                     // everything
+                    } else if (lowerName.contains("dirt_spot") || lowerName.contains("flower")
+                            || lowerName.contains("pebble")) {
+                        objView.setUserData(-600.0); // Ground dirt patches, wildflowers, pebbles stay under everything
+                    } else if (lowerName.contains("construction") || lowerName.contains("farm_rake")
+                            || lowerName.contains("farm_hoe") || lowerName.contains("farm_shovel")
+                            || lowerName.contains("broken_")) {
+                        objView.setUserData(-500.0); // Ground decals always stay underneath player/trees/buildings
+                    } else if (lowerName.contains("garden_bed")) {
+                        objView.setUserData(objView.getLayoutY() + 10.0); // Pumpkins/vines inside bed sort on top
+                    } else {
+                        objView.setUserData((double) (objView.getLayoutY() + (obj.height * scale)));
+                    }
+                    objView.setSmooth(false);
+
+                    if (obj.rotation != 0) {
+                        objView.setRotate(obj.rotation);
+                    }
+
+                    objView.setId(objName);
+                    sceneryObjects.add(objView);
+
+                    // Tự động gắn cánh quạt xoay cho cối xay gió (windmill)
+                    if (lowerName.equals("windmill") && windmillBladeFrames != null && windmillBladeFrames[0] != null) {
+                        ImageView blades = new ImageView(windmillBladeFrames[0]);
+                        double bw = objView.getFitWidth() * 1.38;
+                        double bh = bw;
+                        blades.setFitWidth(bw);
+                        blades.setFitHeight(bh);
+                        blades.setLayoutX(objView.getLayoutX() + (objView.getFitWidth() - bw) / 2.0);
+                        blades.setLayoutY(objView.getLayoutY() - bh * 0.12);
+                        blades.setSmooth(false);
+                        blades.setId("windmill_blades");
+                        blades.setUserData(((Double) objView.getUserData()) + 1.0);
+                        sceneryObjects.add(blades);
+                        windmillBladeViews.add(blades);
+                    }
+                } else if (obj.gid > 0) {
+                    System.err.println("Warning: Missing image for gid " + obj.gid + " and name " + objName);
+                }
             }
-            
-            // THÊM PET SHOP VÀ NPC TỪ YÊU CẦU CỦA USER ĐÃ ĐƯỢC ĐƯA VÀO TMX MAP MẶC ĐỊNH
-            
-        sceneryObjects.sort((o1, o2) -> Double.compare((double)o1.getUserData(), (double)o2.getUserData()));
+        }
+
+        // THÊM PET SHOP VÀ NPC TỪ YÊU CẦU CỦA USER ĐÃ ĐƯỢC ĐƯA VÀO TMX MAP MẶC ĐỊNH
+
+        sceneryObjects.sort((o1, o2) -> Double.compare((double) o1.getUserData(), (double) o2.getUserData()));
         if (entityPane != null) {
             entityPane.getChildren().addAll(sceneryObjects);
         }
@@ -1426,9 +1616,10 @@ public class InGameController {
                         javafx.geometry.Rectangle2D testBox = new javafx.geometry.Rectangle2D(testX, testY, 64, 64);
                         boolean overlap = false;
                         for (ImageView obj : sceneryObjects) {
-                            javafx.geometry.Rectangle2D bRect = new javafx.geometry.Rectangle2D(obj.getLayoutX(), obj.getLayoutY(), obj.getFitWidth(), obj.getFitHeight());
+                            javafx.geometry.Rectangle2D bRect = new javafx.geometry.Rectangle2D(obj.getLayoutX(),
+                                    obj.getLayoutY(), obj.getFitWidth(), obj.getFitHeight());
                             if (testBox.intersects(bRect)) {
-                                overlap = true; 
+                                overlap = true;
                                 break;
                             }
                         }
@@ -1445,52 +1636,69 @@ public class InGameController {
             // --- Đầu và Mũ rơm ---
             javafx.scene.Group headGroup = new javafx.scene.Group();
             javafx.scene.shape.Rectangle face = new javafx.scene.shape.Rectangle(20, 20, Color.PEACHPUFF);
-            face.setX(12); face.setY(2);
+            face.setX(12);
+            face.setY(2);
             javafx.scene.shape.Rectangle eyeL = new javafx.scene.shape.Rectangle(3, 4, Color.BLACK);
-            eyeL.setX(15); eyeL.setY(10);
+            eyeL.setX(15);
+            eyeL.setY(10);
             javafx.scene.shape.Rectangle eyeR = new javafx.scene.shape.Rectangle(3, 4, Color.BLACK);
-            eyeR.setX(26); eyeR.setY(10);
+            eyeR.setX(26);
+            eyeR.setY(10);
             javafx.scene.shape.Rectangle hair = new javafx.scene.shape.Rectangle(22, 8, Color.rgb(30, 30, 30));
-            hair.setX(11); hair.setY(0);
+            hair.setX(11);
+            hair.setY(0);
             javafx.scene.shape.Rectangle hatBrim = new javafx.scene.shape.Rectangle(34, 4, Color.GOLDENROD);
-            hatBrim.setX(5); hatBrim.setY(-2);
+            hatBrim.setX(5);
+            hatBrim.setY(-2);
             javafx.scene.shape.Rectangle hatBand = new javafx.scene.shape.Rectangle(20, 4, Color.CRIMSON);
-            hatBand.setX(12); hatBand.setY(-6);
+            hatBand.setX(12);
+            hatBand.setY(-6);
             javafx.scene.shape.Rectangle hatTop = new javafx.scene.shape.Rectangle(18, 6, Color.GOLDENROD);
-            hatTop.setX(13); hatTop.setY(-12);
+            hatTop.setX(13);
+            hatTop.setY(-12);
             headGroup.getChildren().addAll(face, hair, eyeL, eyeR, hatTop, hatBand, hatBrim);
 
             // --- Thân (Ngực trần + Áo khoác đỏ + Thắt lưng vàng) ---
             javafx.scene.Group bodyGroup = new javafx.scene.Group();
             javafx.scene.shape.Rectangle chest = new javafx.scene.shape.Rectangle(24, 24, Color.PEACHPUFF);
-            chest.setX(10); chest.setY(20);
+            chest.setX(10);
+            chest.setY(20);
             javafx.scene.shape.Line scar1 = new javafx.scene.shape.Line(16, 26, 28, 38);
-            scar1.setStroke(Color.SADDLEBROWN); scar1.setStrokeWidth(2);
+            scar1.setStroke(Color.SADDLEBROWN);
+            scar1.setStrokeWidth(2);
             javafx.scene.shape.Line scar2 = new javafx.scene.shape.Line(28, 26, 16, 38);
-            scar2.setStroke(Color.SADDLEBROWN); scar2.setStrokeWidth(2);
+            scar2.setStroke(Color.SADDLEBROWN);
+            scar2.setStrokeWidth(2);
             javafx.scene.shape.Rectangle jacketL = new javafx.scene.shape.Rectangle(6, 22, Color.CRIMSON);
-            jacketL.setX(10); jacketL.setY(20);
+            jacketL.setX(10);
+            jacketL.setY(20);
             javafx.scene.shape.Rectangle jacketR = new javafx.scene.shape.Rectangle(6, 22, Color.CRIMSON);
-            jacketR.setX(28); jacketR.setY(20);
+            jacketR.setX(28);
+            jacketR.setY(20);
             javafx.scene.shape.Rectangle sash = new javafx.scene.shape.Rectangle(26, 6, Color.GOLD);
-            sash.setX(9); sash.setY(40);
+            sash.setX(9);
+            sash.setY(40);
             bodyGroup.getChildren().addAll(chest, scar1, scar2, jacketL, jacketR, sash);
 
             // --- Tay (Tay áo đỏ, bàn tay màu da) ---
             javafx.scene.Group leftArmGroup = new javafx.scene.Group();
             javafx.scene.shape.Rectangle lSleeve = new javafx.scene.shape.Rectangle(8, 10, Color.CRIMSON);
-            lSleeve.setX(2); lSleeve.setY(22);
+            lSleeve.setX(2);
+            lSleeve.setY(22);
             javafx.scene.shape.Rectangle lHand = new javafx.scene.shape.Rectangle(6, 8, Color.PEACHPUFF);
-            lHand.setX(3); lHand.setY(32);
+            lHand.setX(3);
+            lHand.setY(32);
             leftArmGroup.getChildren().addAll(lSleeve, lHand);
             leftArmSwing = new javafx.scene.transform.Rotate(0, 6, 22);
             leftArmGroup.getTransforms().add(leftArmSwing);
 
             javafx.scene.Group rightArmGroup = new javafx.scene.Group();
             javafx.scene.shape.Rectangle rSleeve = new javafx.scene.shape.Rectangle(8, 10, Color.CRIMSON);
-            rSleeve.setX(34); rSleeve.setY(22);
+            rSleeve.setX(34);
+            rSleeve.setY(22);
             javafx.scene.shape.Rectangle rHand = new javafx.scene.shape.Rectangle(6, 8, Color.PEACHPUFF);
-            rHand.setX(35); rHand.setY(32);
+            rHand.setX(35);
+            rHand.setY(32);
             rightArmGroup.getChildren().addAll(rSleeve, rHand);
             rightArmSwing = new javafx.scene.transform.Rotate(0, 38, 22);
             rightArmGroup.getTransforms().add(rightArmSwing);
@@ -1498,33 +1706,43 @@ public class InGameController {
             // --- Chân (Quần short xanh dương, ống cuộn trắng, chân màu da, dép đen) ---
             javafx.scene.Group leftLegGroup = new javafx.scene.Group();
             javafx.scene.shape.Rectangle lShorts = new javafx.scene.shape.Rectangle(10, 10, Color.ROYALBLUE);
-            lShorts.setX(10); lShorts.setY(46);
+            lShorts.setX(10);
+            lShorts.setY(46);
             javafx.scene.shape.Rectangle lCuff = new javafx.scene.shape.Rectangle(12, 4, Color.WHITE);
-            lCuff.setX(9); lCuff.setY(54);
+            lCuff.setX(9);
+            lCuff.setY(54);
             javafx.scene.shape.Rectangle lCalf = new javafx.scene.shape.Rectangle(6, 8, Color.PEACHPUFF);
-            lCalf.setX(12); lCalf.setY(58);
+            lCalf.setX(12);
+            lCalf.setY(58);
             javafx.scene.shape.Rectangle lSandal = new javafx.scene.shape.Rectangle(8, 2, Color.BLACK);
-            lSandal.setX(11); lSandal.setY(66);
+            lSandal.setX(11);
+            lSandal.setY(66);
             leftLegGroup.getChildren().addAll(lShorts, lCuff, lCalf, lSandal);
             leftLegSwing = new javafx.scene.transform.Rotate(0, 15, 46);
             leftLegGroup.getTransforms().add(leftLegSwing);
 
             javafx.scene.Group rightLegGroup = new javafx.scene.Group();
             javafx.scene.shape.Rectangle rShorts = new javafx.scene.shape.Rectangle(10, 10, Color.ROYALBLUE);
-            rShorts.setX(24); rShorts.setY(46);
+            rShorts.setX(24);
+            rShorts.setY(46);
             javafx.scene.shape.Rectangle rCuff = new javafx.scene.shape.Rectangle(12, 4, Color.WHITE);
-            rCuff.setX(23); rCuff.setY(54);
+            rCuff.setX(23);
+            rCuff.setY(54);
             javafx.scene.shape.Rectangle rCalf = new javafx.scene.shape.Rectangle(6, 8, Color.PEACHPUFF);
-            rCalf.setX(26); rCalf.setY(58);
+            rCalf.setX(26);
+            rCalf.setY(58);
             javafx.scene.shape.Rectangle rSandal = new javafx.scene.shape.Rectangle(8, 2, Color.BLACK);
-            rSandal.setX(25); rSandal.setY(66);
+            rSandal.setX(25);
+            rSandal.setY(66);
             rightLegGroup.getChildren().addAll(rShorts, rCuff, rCalf, rSandal);
             rightLegSwing = new javafx.scene.transform.Rotate(0, 29, 46);
             rightLegGroup.getTransforms().add(rightLegSwing);
 
-            playerCharacter.getChildren().addAll(leftArmGroup, leftLegGroup, rightLegGroup, bodyGroup, headGroup, rightArmGroup);
+            playerCharacter.getChildren().addAll(leftArmGroup, leftLegGroup, rightLegGroup, bodyGroup, headGroup,
+                    rightArmGroup);
             playerCharacter.setManaged(false);
-            if (entityPane != null) entityPane.getChildren().add(playerCharacter);
+            if (entityPane != null)
+                entityPane.getChildren().add(playerCharacter);
         }
         playerCharacter.setTranslateX(playerX);
         playerCharacter.setTranslateY(playerY);
@@ -1535,7 +1753,8 @@ public class InGameController {
             weaponView.setFitHeight(30);
             weaponView.setPreserveRatio(true);
             weaponView.setManaged(false);
-            if (entityPane != null) entityPane.getChildren().add(weaponView);
+            if (entityPane != null)
+                entityPane.getChildren().add(weaponView);
         }
     }
 
@@ -1557,28 +1776,31 @@ public class InGameController {
         resetFeedingSchedule(0.0);
         lastFrameTime = System.currentTimeMillis();
         lastDisplayedMinute = -1;
-        for (Animal a : animals) a.eatTrough = null;
+        for (Animal a : animals)
+            a.eatTrough = null;
         if (timeOverlayRect != null) {
             timeOverlayRect.setFill(getTimeOverlayColor(0.0));
         }
 
         gameManager.advanceDay();
-        
+
         // Auto-feed by helper
         if (helperDaysLeft > 0) {
             helperDaysLeft--;
             model.game_item.Item feedItem = player.getInventory().findByName("Animal Feed");
             int feedCount = (feedItem != null) ? player.getInventory().getItemCount(feedItem) : 0;
             int feedNeeded = 0;
-            for (Animal a : animals) { 
-                if (a.type != 2 && a.ageDays < 5 && !a.isFed) feedNeeded++; 
+            for (Animal a : animals) {
+                if (a.type != 2 && a.ageDays < 5 && !a.isFed)
+                    feedNeeded++;
             }
-            
+
             if (feedNeeded > 0) {
                 if (feedCount >= feedNeeded) {
                     player.getInventory().removeItem(feedItem, feedNeeded);
                     for (Animal a : animals) {
-                        if (a.type != 2 && a.ageDays < 5) a.feed();
+                        if (a.type != 2 && a.ageDays < 5)
+                            a.feed();
                     }
                     notify("Người làm thuê đã cho thú ăn! (Còn " + helperDaysLeft + " ngày)");
                 } else {
@@ -1586,7 +1808,7 @@ public class InGameController {
                 }
             }
         }
-        
+
         // Thú vật lớn lên sau khi qua ngày
         int grewCount = 0;
         int readyToSellCount = 0;
@@ -1595,7 +1817,8 @@ public class InGameController {
                 if (a.isFed) {
                     a.ageDays++;
                     a.isFed = false;
-                    if (a.heartEmoji != null) a.heartEmoji.setVisible(false);
+                    if (a.heartEmoji != null)
+                        a.heartEmoji.setVisible(false);
                     a.applySpriteScale();
                     grewCount++;
                     if (a.ageDays >= 5) {
@@ -1604,7 +1827,7 @@ public class InGameController {
                 }
             }
         }
-        
+
         String growthMsg = "";
         if (readyToSellCount > 0) {
             growthMsg = " (💰 " + readyToSellCount + " thú đã đủ lớn để bán!)";
@@ -1620,7 +1843,8 @@ public class InGameController {
 
     private void selectTool(ToolStrategy tool, ToggleButton btn) {
         playerController.useTool(tool);
-        if (btn != null) btn.setSelected(true);
+        if (btn != null)
+            btn.setSelected(true);
         if (tool != seedBag) {
             resetSeedToolIcon();
         }
@@ -1631,19 +1855,24 @@ public class InGameController {
         toolLabel.setText("TOOL : " + (cur != null ? cur.getName().toUpperCase() : "(none)"));
 
         if (weaponView != null) {
-            if (cur instanceof Hoe) weaponView.setImage(Assets.HOE_ICON);
-            else if (cur instanceof WateringCan) weaponView.setImage(Assets.WATER_ICON);
-            else if (cur instanceof Hand) weaponView.setImage(Assets.HAND_ICON);
-            else if (cur instanceof SeedBag) weaponView.setImage(Assets.SEED_ICON);
-            else if (cur instanceof FertilizerBag) weaponView.setImage(Assets.FERTILIZER_ICON);
+            if (cur instanceof Hoe)
+                weaponView.setImage(Assets.HOE_ICON);
+            else if (cur instanceof WateringCan)
+                weaponView.setImage(Assets.WATER_ICON);
+            else if (cur instanceof Hand)
+                weaponView.setImage(Assets.HAND_ICON);
+            else if (cur instanceof SeedBag)
+                weaponView.setImage(Assets.SEED_ICON);
+            else if (cur instanceof FertilizerBag)
+                weaponView.setImage(Assets.FERTILIZER_ICON);
             else if (cur instanceof FeedBag) {
                 Item selected = feedBag.getSelectedItem();
                 Image icon = selected != null ? Assets.getShopIcon(selected) : Assets.BAG_ICON;
                 weaponView.setImage(icon != null ? icon : Assets.BAG_ICON);
-            }
-            else weaponView.setImage(null);
+            } else
+                weaponView.setImage(null);
         }
-        
+
         // Trả focus lại cho màn hình game để có thể di chuyển
         rootPane.requestFocus();
     }
@@ -1655,9 +1884,11 @@ public class InGameController {
     }
 
     private void onCellClick(Cell cell) {
-        if (router.hasOverlay()) return;
-        
-        // Hỗ trợ click chuột trực tiếp vào ô có thú nuôi để bán hoặc cho ăn (bằng Hand hoặc FeedBag)
+        if (router.hasOverlay())
+            return;
+
+        // Hỗ trợ click chuột trực tiếp vào ô có thú nuôi để bán hoặc cho ăn (bằng Hand
+        // hoặc FeedBag)
         ToolStrategy curTool = playerController.getCurrentTool();
         if (curTool instanceof Hand || curTool instanceof FeedBag) {
             double clickX = cell.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
@@ -1666,31 +1897,40 @@ public class InGameController {
             double playerCenterY = playerY + 50;
             double maxReach = (curTool instanceof FeedBag) ? Constant.CELL_SIZE * 8.0 : Constant.CELL_SIZE * 3.5;
             if (Math.hypot(clickX - playerCenterX, clickY - playerCenterY) <= maxReach) {
-                javafx.geometry.Rectangle2D clickHitBox = new javafx.geometry.Rectangle2D(clickX - 32, clickY - 32, 64, 64);
+                javafx.geometry.Rectangle2D clickHitBox = new javafx.geometry.Rectangle2D(clickX - 32, clickY - 32, 64,
+                        64);
                 if (tryDepositFeed(clickHitBox) || tryInteractWithAnimal(clickHitBox)) {
                     return;
                 }
             }
         }
 
+        if (curTool instanceof Hoe && !isCellInFarmZone(cell)) {
+            notify("Chỉ có thể dùng cuốc trong vùng nông trại (FarmZone)!");
+            rootPane.requestFocus();
+            return;
+        }
+
         boolean ok = playerController.interactWithCell(cell);
         notify(ok ? "" : "Can't use this tool here");
         revertSeedToolIfEmpty();
         revertBagToolIfEmpty();
-        
-        // Tối ưu hóa: Chỉ cập nhật (refresh) ô đất vừa tương tác, thay vì refresh toàn bộ map (gây lag)
+
+        // Tối ưu hóa: Chỉ cập nhật (refresh) ô đất vừa tương tác, thay vì refresh toàn
+        // bộ map (gây lag)
         if (tiles != null && cell.getY() < tiles.length && cell.getX() < tiles[0].length) {
             tiles[cell.getY()][cell.getX()].style();
         }
-        
+
         updateHover(cell);
-        
+
         // Giữ focus cho rootPane sau khi click chuột
         rootPane.requestFocus();
     }
 
     private void revertSeedToolIfEmpty() {
-        if (playerController.getCurrentTool() != seedBag) return;
+        if (playerController.getCurrentTool() != seedBag)
+            return;
         String name = seedBag.getSeedName();
         Item item = (name != null) ? player.getInventory().findByName(name) : null;
         if (item == null || player.getInventory().getItemCount(item) <= 0) {
@@ -1699,11 +1939,13 @@ public class InGameController {
     }
 
     private void revertBagToolIfEmpty() {
-        if (playerController.getCurrentTool() != feedBag) return;
+        if (playerController.getCurrentTool() != feedBag)
+            return;
         Item item = feedBag.getSelectedItem();
         if (item == null) {
             resetBagToolIcon();
-            if (weaponView != null) weaponView.setImage(Assets.BAG_ICON);
+            if (weaponView != null)
+                weaponView.setImage(Assets.BAG_ICON);
         }
     }
 
@@ -1716,7 +1958,8 @@ public class InGameController {
     }
 
     private void openFeedBagPicker() {
-        if (router.hasOverlay()) return;
+        if (router.hasOverlay())
+            return;
 
         StackPane scrim = new StackPane();
         scrim.getStyleClass().add("overlay-scrim");
@@ -1742,7 +1985,8 @@ public class InGameController {
             for (java.util.Map.Entry<Item, Integer> e : player.getInventory().getItems().entrySet()) {
                 Item item = e.getKey();
                 int qty = e.getValue();
-                if (qty > 0 && (item instanceof model.game_item.AnimalFeedItem || item instanceof model.game_item.HarvestedCropItem)) {
+                if (qty > 0 && (item instanceof model.game_item.AnimalFeedItem
+                        || item instanceof model.game_item.HarvestedCropItem)) {
                     any = true;
                     listBox.getChildren().add(makeFeedBagRow(item, qty));
                 }
@@ -1769,7 +2013,8 @@ public class InGameController {
 
     private HBox makeFeedBagRow(final Item foodItem, int qty) {
         Image iconImg = Assets.getShopIcon(foodItem);
-        if (iconImg == null) iconImg = Assets.BAG_ICON;
+        if (iconImg == null)
+            iconImg = Assets.BAG_ICON;
         ImageView icon = Assets.imageView(iconImg, 36);
 
         Label name = new Label(foodItem.getName() + "  x" + qty);
@@ -1798,7 +2043,8 @@ public class InGameController {
     }
 
     private void openSeedPicker() {
-        if (router.hasOverlay()) return;
+        if (router.hasOverlay())
+            return;
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource(Screens.SEED_PICKER_FXML));
             Parent overlay = loader.load();
@@ -1810,8 +2056,7 @@ public class InGameController {
                         updateSeedToolIcon(name);
                         InGameController.this.notify("Loaded " + name);
                     },
-                    () -> router.closeOverlay()
-            );
+                    () -> router.closeOverlay());
             router.showOverlay(overlay);
         } catch (IOException ex) {
             throw new SmartFarmException("Could not open the seed picker", ex);
@@ -1822,14 +2067,16 @@ public class InGameController {
     private void refreshAll() {
         if (tiles != null) {
             for (Tile[] row : tiles) {
-                for (Tile t : row) t.style();
+                for (Tile t : row)
+                    t.style();
             }
         }
         lastDisplayedMinute = -1;
         updateTimeDisplay();
         syncWeatherToggles();
         applyWeatherTheme();
-        if (hovered != null) updateHover(hovered);
+        if (hovered != null)
+            updateHover(hovered);
     }
 
     private void applyWeatherTheme() {
@@ -1838,17 +2085,24 @@ public class InGameController {
                 : WeatherType.SUNNY;
         final String cls;
         switch (type) {
-            case RAINY:   cls = "weather-rainy";   break;
-            case DROUGHT: cls = "weather-drought"; break;
+            case RAINY:
+                cls = "weather-rainy";
+                break;
+            case DROUGHT:
+                cls = "weather-drought";
+                break;
             case SUNNY:
-            default:      cls = "weather-sunny";   break;
+            default:
+                cls = "weather-sunny";
+                break;
         }
         setWeatherClass(rootPane, cls);
         setWeatherClass(weatherOverlay, cls);
     }
 
     private static void setWeatherClass(Region node, String cls) {
-        if (node == null) return;
+        if (node == null)
+            return;
         node.getStyleClass().removeAll("weather-sunny", "weather-rainy", "weather-drought");
         if (!node.getStyleClass().contains(cls)) {
             node.getStyleClass().add(cls);
@@ -1872,7 +2126,8 @@ public class InGameController {
 
     private void syncWeatherToggles() {
         WeatherType cur = gameManager.getCurrentWeather() != null
-                ? gameManager.getCurrentWeather().getType() : null;
+                ? gameManager.getCurrentWeather().getType()
+                : null;
         sunWeatherButton.setSelected(cur == WeatherType.SUNNY);
         rainWeatherButton.setSelected(cur == WeatherType.RAINY);
         dryWeatherButton.setSelected(cur == WeatherType.DROUGHT);
@@ -1880,7 +2135,8 @@ public class InGameController {
 
     private String weatherName() {
         return gameManager.getCurrentWeather() != null
-                ? String.valueOf(gameManager.getCurrentWeather().getType()) : "-";
+                ? String.valueOf(gameManager.getCurrentWeather().getType())
+                : "-";
     }
 
     private void notify(String msg) {
@@ -1925,7 +2181,8 @@ public class InGameController {
     }
 
     private void updateBagToolIcon(String feedName) {
-        if (bagTool == null) return;
+        if (bagTool == null)
+            return;
         Image sprite = null;
         Item item = player.getInventory().findByName(feedName);
         if (item != null) {
@@ -1950,19 +2207,21 @@ public class InGameController {
     }
 
     // ======================== cell tile (Giữ nguyên) ========================
-private final class Tile {
+    private final class Tile {
         final Cell cell;
         final StackPane pane = new StackPane();
         final ImageView backgroundView = new ImageView(); // THÊM DÒNG NÀY: Khai báo lớp ảnh nền
         final ImageView pestMark = Assets.imageView(Assets.BEETLE_ICON, 20);
-        final javafx.scene.shape.Rectangle dirtOverlay = new javafx.scene.shape.Rectangle(Constant.CELL_SIZE + 1.5, Constant.CELL_SIZE + 1.5, Color.rgb(0, 0, 0, 0.2));
+        final javafx.scene.shape.Rectangle dirtOverlay = new javafx.scene.shape.Rectangle(Constant.CELL_SIZE + 1.5,
+                Constant.CELL_SIZE + 1.5, Color.rgb(0, 0, 0, 0.2));
         final ImageView cropView = new ImageView();
         final ProgressBar progressBar = new ProgressBar();
 
         Tile(final Cell cell) {
             this.cell = cell;
-            
-            // Cài đặt kích thước cho ảnh nền lấp đầy ô đất, cộng thêm 1 pixel để đè lên viền/rãnh gạch (grid lines)
+
+            // Cài đặt kích thước cho ảnh nền lấp đầy ô đất, cộng thêm 1 pixel để đè lên
+            // viền/rãnh gạch (grid lines)
             backgroundView.setFitWidth(Constant.CELL_SIZE + 1.5);
             backgroundView.setFitHeight(Constant.CELL_SIZE + 1.5);
             backgroundView.setSmooth(false); // Fix: Tắt chế độ làm mờ để pixel art luôn sắc nét
@@ -1975,7 +2234,7 @@ private final class Tile {
             pane.setMinSize(Constant.CELL_SIZE, Constant.CELL_SIZE);
             pane.setPrefSize(Constant.CELL_SIZE, Constant.CELL_SIZE);
             pane.setCursor(Cursor.HAND);
-            
+
             // QUAN TRỌNG: Thêm backgroundView vào đầu tiên để nó nằm dưới cùng (làm nền)
             dirtOverlay.setVisible(false);
             pane.getChildren().addAll(backgroundView, dirtOverlay, cropView, progressBar, pestMark);
@@ -1985,9 +2244,9 @@ private final class Tile {
 
             style();
         }
-// ...
+        // ...
 
-void style() {
+        void style() {
             // 1. Dán ảnh đồ họa Pixel từ TMX Map thay vì dùng mã màu Hex
             backgroundView.setEffect(null);
             pane.setStyle("");
@@ -1996,10 +2255,11 @@ void style() {
             if (tmxMap != null && !tmxMap.layers.isEmpty()) {
                 gid = tmxMap.layers.get(0).data[cell.getY()][cell.getX()];
             }
-            
-            // Nếu ô đất đã được xới hoặc được định nghĩa là Đất Trồng, luôn luôn hiển thị là Đất
+
+            // Nếu ô đất đã được xới hoặc được định nghĩa là Đất Trồng, luôn luôn hiển thị
+            // là Đất
             if (cell.getTerrain() == TerrainType.DIRT) {
-                gid = 3; 
+                gid = 3;
             }
 
             if (gid > 0 && tmxMap != null) {
@@ -2015,11 +2275,12 @@ void style() {
 
             // Xử lý khi ô đất bị xới (TILLED)
             if (cell.getCellState() == CellState.TILLED) {
-                // Đất đã cuốc: Trông đậm hơn (Bật lớp phủ đen thay vì dùng ColorAdjust gây lag fps)
+                // Đất đã cuốc: Trông đậm hơn (Bật lớp phủ đen thay vì dùng ColorAdjust gây lag
+                // fps)
                 double darkness = 0.2 + (cell.getMoistureLevel() / 200.0); // Tối thiểu giảm 20% độ sáng
                 dirtOverlay.setFill(Color.rgb(0, 0, 0, Math.min(1.0, darkness)));
                 dirtOverlay.setVisible(true);
-                
+
                 // Thu nhỏ tile 5% để tạo khe hở (cảm giác đất bị xới nứt nẻ)
                 backgroundView.setScaleX(0.95);
                 backgroundView.setScaleY(0.95);
@@ -2035,12 +2296,14 @@ void style() {
             String border = "transparent";
             double bw = 0;
             Crop crop = cell.getCrop();
-            
+
             if (crop != null && crop.getCurrentState() == GrowthState.HARVEST) {
-                border = "#F6D46F"; bw = 3;
+                border = "#F6D46F";
+                bw = 3;
             } else if (crop != null && (crop.getCurrentState() == GrowthState.DEAD
                     || crop.getCurrentState() == GrowthState.ROTTEN)) {
-                border = "#B23A2A"; bw = 2.5;
+                border = "#B23A2A";
+                bw = 2.5;
             }
 
             pane.setBorder(new Border(
@@ -2056,40 +2319,45 @@ void style() {
                 progressBar.setVisible(
                         crop.getCurrentState() != GrowthState.HARVEST
                                 && crop.getCurrentState() != GrowthState.DEAD
-                                && crop.getCurrentState() != GrowthState.ROTTEN
-                );
+                                && crop.getCurrentState() != GrowthState.ROTTEN);
                 progressBar.setProgress(crop.getCurrentGrowthProgress() / 100.0);
             }
-            
+
             pestMark.setVisible(cell.getPest() != null);
         }
 
-    private static String lerpHex(String a, String b, double t) {
-        t = Math.max(0, Math.min(1, t));
-        int[] ca = rgb(a), cb = rgb(b);
-        int r  = (int) Math.round(ca[0] + (cb[0] - ca[0]) * t);
-        int g  = (int) Math.round(ca[1] + (cb[1] - ca[1]) * t);
-        int bl = (int) Math.round(ca[2] + (cb[2] - ca[2]) * t);
-        return String.format("#%02X%02X%02X", r, g, bl);
-    }
+        private static String lerpHex(String a, String b, double t) {
+            t = Math.max(0, Math.min(1, t));
+            int[] ca = rgb(a), cb = rgb(b);
+            int r = (int) Math.round(ca[0] + (cb[0] - ca[0]) * t);
+            int g = (int) Math.round(ca[1] + (cb[1] - ca[1]) * t);
+            int bl = (int) Math.round(ca[2] + (cb[2] - ca[2]) * t);
+            return String.format("#%02X%02X%02X", r, g, bl);
+        }
 
-    private static int[] rgb(String hex) {
-        return new int[]{
-                Integer.parseInt(hex.substring(1, 3), 16),
-                Integer.parseInt(hex.substring(3, 5), 16),
-                Integer.parseInt(hex.substring(5, 7), 16)
-        };
+        private static int[] rgb(String hex) {
+            return new int[] {
+                    Integer.parseInt(hex.substring(1, 3), 16),
+                    Integer.parseInt(hex.substring(3, 5), 16),
+                    Integer.parseInt(hex.substring(5, 7), 16)
+            };
+        }
     }
-}
 
     // ======================== ANIMAL NPCs ========================
     private java.util.List<Animal> animals = new java.util.ArrayList<>();
     /** Khu vực chăn thả (AnimalZone trong TMX); null nếu map không định nghĩa. */
     private javafx.geometry.Rectangle2D animalZone;
+    /** Khu vực trồng trọt (FarmZone trong TMX); null nếu map không định nghĩa. */
+    private javafx.geometry.Rectangle2D farmZone;
+
+    private boolean isCellInFarmZone(Cell cell) {
+        return cell != null && cell.isInFarmZone();
+    }
 
     // ======================== MÁNG ĂN TỰ ĐỘNG ========================
     private static final int TROUGH_CAPACITY = 10;
-    private static final double[] MEAL_TIMES = {0.25, 0.60}; // ~10:00 và ~15:36
+    private static final double[] MEAL_TIMES = { 0.25, 0.60 }; // ~10:00 và ~15:36
     private final boolean[] mealStarted = new boolean[2];
     private final boolean[] mealReminded = new boolean[2];
     private boolean eveningWarned = false;
@@ -2114,16 +2382,21 @@ void style() {
             this.y = y;
 
             javafx.scene.shape.Rectangle body = new javafx.scene.shape.Rectangle(70, 26, Color.web("#7A4F28"));
-            body.setArcWidth(8); body.setArcHeight(8);
-            body.setStroke(Color.web("#241A0E")); body.setStrokeWidth(2);
+            body.setArcWidth(8);
+            body.setArcHeight(8);
+            body.setStroke(Color.web("#241A0E"));
+            body.setStrokeWidth(2);
             javafx.scene.shape.Rectangle inner = new javafx.scene.shape.Rectangle(6, 5, 58, 14);
             inner.setFill(Color.web("#3A2910"));
-            inner.setArcWidth(4); inner.setArcHeight(4);
+            inner.setArcWidth(4);
+            inner.setArcHeight(4);
             feedFill = new javafx.scene.shape.Rectangle(6, 5, 0, 14);
             feedFill.setFill(Color.web("#F0CC52"));
-            feedFill.setArcWidth(4); feedFill.setArcHeight(4);
+            feedFill.setArcWidth(4);
+            feedFill.setArcHeight(4);
 
-            text.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.9), 3, 0.5, 0, 1);");
+            text.setStyle(
+                    "-fx-font-size: 12px; -fx-font-weight: bold; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.9), 3, 0.5, 0, 1);");
             text.setX(4);
             text.setY(-6);
 
@@ -2141,7 +2414,8 @@ void style() {
         }
 
         boolean take() {
-            if (amount <= 0) return false;
+            if (amount <= 0)
+                return false;
             amount--;
             refresh();
             return true;
@@ -2171,18 +2445,22 @@ void style() {
 
     private void buildTroughs() {
         troughs = new java.util.ArrayList<>();
-        if (animalZone == null || entityPane == null) return;
+        if (animalZone == null || entityPane == null)
+            return;
         // Đặt máng ăn hoàn toàn bên trong khu chăn nuôi (AnimalZone)
         double ty = animalZone.getMinY() + 14;
         double w = animalZone.getWidth();
         troughs.add(new FeedTrough(0, "\uD83D\uDC14", "Gà", animalZone.getMinX() + w * 0.15, ty));
         troughs.add(new FeedTrough(1, "\uD83D\uDC04", "Bò", animalZone.getMinX() + w * 0.45, ty));
         troughs.add(new FeedTrough(3, "\uD83D\uDC16", "Lợn", animalZone.getMinX() + w * 0.75, ty));
-        for (FeedTrough t : troughs) entityPane.getChildren().add(t.view);
+        for (FeedTrough t : troughs)
+            entityPane.getChildren().add(t.view);
     }
 
     private FeedTrough troughFor(int type) {
-        for (FeedTrough t : troughs) if (t.animalType == type) return t;
+        for (FeedTrough t : troughs)
+            if (t.animalType == type)
+                return t;
         return null;
     }
 
@@ -2195,9 +2473,12 @@ void style() {
         StringBuilder sb = new StringBuilder();
         for (FeedTrough t : troughs) {
             int need = 0;
-            for (Animal a : animals) if (a.type == t.animalType && needsFeeding(a)) need++;
+            for (Animal a : animals)
+                if (a.type == t.animalType && needsFeeding(a))
+                    need++;
             if (need > t.amount) {
-                if (sb.length() > 0) sb.append(", ");
+                if (sb.length() > 0)
+                    sb.append(", ");
                 sb.append(t.name);
             }
         }
@@ -2219,7 +2500,8 @@ void style() {
     }
 
     private void updateFeedingSchedule() {
-        if (troughs.isEmpty()) return;
+        if (troughs.isEmpty())
+            return;
         double p = elapsedTimeInDay / 135000.0;
         long now = System.currentTimeMillis();
 
@@ -2228,14 +2510,16 @@ void style() {
                 mealReminded[i] = true;
                 String s = troughShortage();
                 if (!s.isEmpty()) {
-                    showToast("\uD83D\uDD14 Sắp đến giờ ăn (" + clockText(MEAL_TIMES[i]) + ")! Máng thiếu thức ăn: " + s);
+                    showToast(
+                            "\uD83D\uDD14 Sắp đến giờ ăn (" + clockText(MEAL_TIMES[i]) + ")! Máng thiếu thức ăn: " + s);
                 }
             }
             if (!mealStarted[i] && p >= MEAL_TIMES[i]) {
                 mealStarted[i] = true;
                 boolean anyHungry = false;
                 for (Animal a : animals) {
-                    if (!needsFeeding(a)) continue;
+                    if (!needsFeeding(a))
+                        continue;
                     anyHungry = true;
                     FeedTrough t = troughFor(a.type);
                     if (t != null && t.amount > 0) {
@@ -2255,9 +2539,12 @@ void style() {
         if (!eveningWarned && p >= 0.85) {
             eveningWarned = true;
             int hungry = 0;
-            for (Animal a : animals) if (needsFeeding(a)) hungry++;
+            for (Animal a : animals)
+                if (needsFeeding(a))
+                    hungry++;
             if (hungry > 0) {
-                showToast("\u26A0 Còn " + hungry + " thú chưa được ăn hôm nay! Bỏ Animal Feed vào máng hoặc cho ăn trực tiếp.");
+                showToast("\u26A0 Còn " + hungry
+                        + " thú chưa được ăn hôm nay! Bỏ Animal Feed vào máng hoặc cho ăn trực tiếp.");
             }
         }
     }
@@ -2268,7 +2555,8 @@ void style() {
 
     private void showToast(String msg) {
         notify(msg);
-        if (rootPane == null) return;
+        if (rootPane == null)
+            return;
         if (toastLabel == null) {
             toastLabel = new Label();
             toastLabel.getStyleClass().add("npc-name");
@@ -2286,10 +2574,13 @@ void style() {
         toastLabel.setLayoutX(Math.max(0, (rootPane.getWidth() - 620) / 2));
         toastLabel.toFront();
         toastLabel.setOpacity(1);
-        if (toastAnim != null) toastAnim.stop();
+        if (toastAnim != null)
+            toastAnim.stop();
         javafx.animation.PauseTransition hold = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(6));
-        javafx.animation.FadeTransition fade = new javafx.animation.FadeTransition(javafx.util.Duration.seconds(1.5), toastLabel);
-        fade.setFromValue(1); fade.setToValue(0);
+        javafx.animation.FadeTransition fade = new javafx.animation.FadeTransition(javafx.util.Duration.seconds(1.5),
+                toastLabel);
+        fade.setFromValue(1);
+        fade.setToValue(0);
         toastAnim = new javafx.animation.SequentialTransition(hold, fade);
         toastAnim.play();
     }
@@ -2297,7 +2588,8 @@ void style() {
     /** Đổ thức ăn từ Cặp / Kho vào máng đang đứng trước mặt. */
     private boolean tryDepositFeed(javafx.geometry.Rectangle2D hitBox) {
         for (FeedTrough t : troughs) {
-            if (!hitBox.intersects(t.bounds())) continue;
+            if (!hitBox.intersects(t.bounds()))
+                continue;
             model.game_item.Item feed = findAvailableFeedItem(t.animalType);
             int have = feed != null ? player.getInventory().getItemCount(feed) : 0;
             if (have <= 0) {
@@ -2308,7 +2600,8 @@ void style() {
                 int added = t.add(have);
                 player.getInventory().removeItem(feed, added);
                 revertBagToolIfEmpty();
-                notify("Đã đổ " + added + " " + feed.getName() + " vào máng " + t.name + " (" + t.amount + "/" + TROUGH_CAPACITY + ")");
+                notify("Đã đổ " + added + " " + feed.getName() + " vào máng " + t.name + " (" + t.amount + "/"
+                        + TROUGH_CAPACITY + ")");
             }
             rootPane.requestFocus();
             return true;
@@ -2357,7 +2650,8 @@ void style() {
             double oy = objView.getLayoutY() + objView.getTranslateY();
             double ow = objView.getFitWidth();
             double oh = objView.getFitHeight();
-            if (ow <= 0 || oh <= 0) continue;
+            if (ow <= 0 || oh <= 0)
+                continue;
             double hw = Math.min(30, ow * 0.45);
             double hh = Math.min(22, oh * 0.25);
             double cx = ox + (ow - hw) / 2;
@@ -2368,7 +2662,7 @@ void style() {
         }
         return false;
     }
-    
+
     private class Animal {
         javafx.scene.Group view;
         javafx.scene.Node spriteNode;
@@ -2398,11 +2692,13 @@ void style() {
                 startX = clampToAnimalZoneX(startX);
                 startY = clampToAnimalZoneY(startY);
             }
-            this.x = startX; this.y = startY;
-            this.targetX = startX; this.targetY = startY;
+            this.x = startX;
+            this.y = startY;
+            this.targetX = startX;
+            this.targetY = startY;
             this.type = type;
             this.view = new javafx.scene.Group();
-            
+
             double spriteWidth = 30;
 
             if (type == 0) { // Gà (Chicken) - 2 chân di chuyển
@@ -2417,16 +2713,19 @@ void style() {
                 view.getChildren().add(cowModel);
             } else if (type == 2) { // Vịt trời (Duck)
                 javafx.scene.Group duckGroup = new javafx.scene.Group();
-                javafx.scene.shape.Polygon body = new javafx.scene.shape.Polygon(0,5, 12,0, 20,5, 12,10);
+                javafx.scene.shape.Polygon body = new javafx.scene.shape.Polygon(0, 5, 12, 0, 20, 5, 12, 10);
                 body.setFill(Color.SADDLEBROWN);
-                javafx.scene.shape.Polygon wing = new javafx.scene.shape.Polygon(10,5, 15,-10, 18,5);
+                javafx.scene.shape.Polygon wing = new javafx.scene.shape.Polygon(10, 5, 15, -10, 18, 5);
                 wing.setFill(Color.DARKGREEN);
                 javafx.scene.shape.Rectangle head = new javafx.scene.shape.Rectangle(6, 5, Color.DARKGREEN);
-                head.setX(16); head.setY(0);
+                head.setX(16);
+                head.setY(0);
                 javafx.scene.shape.Rectangle beak = new javafx.scene.shape.Rectangle(4, 2, Color.ORANGE);
-                beak.setX(22); beak.setY(2);
+                beak.setX(22);
+                beak.setY(2);
                 duckGroup.getChildren().addAll(body, wing, head, beak);
-                duckGroup.setScaleX(-1.5); duckGroup.setScaleY(1.5); // Bay hướng trái
+                duckGroup.setScaleX(-1.5);
+                duckGroup.setScaleY(1.5); // Bay hướng trái
                 spriteNode = duckGroup;
                 view.getChildren().add(duckGroup);
                 speed = 2.0 + Math.random() * 1.5;
@@ -2436,11 +2735,12 @@ void style() {
                 spriteWidth = 40;
                 view.getChildren().add(pigModel);
             }
-            
+
             if (type != 2) {
                 // Biểu tượng tim khi được cho ăn
                 heartEmoji = new javafx.scene.text.Text("❤️");
-                heartEmoji.setStyle("-fx-font-size: 14px; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 3, 0, 0, 1);");
+                heartEmoji.setStyle(
+                        "-fx-font-size: 14px; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 3, 0, 0, 1);");
                 heartEmoji.setVisible(false);
                 heartEmoji.setManaged(false);
                 heartEmoji.setX(spriteWidth / 2.0 - 7);
@@ -2449,21 +2749,20 @@ void style() {
                 // Bảng hiệu báo đủ điều kiện bán
                 saleBadge = new javafx.scene.control.Label("💰 BÁN (" + getSellPrice() + "$)");
                 saleBadge.setStyle(
-                    "-fx-background-color: linear-gradient(to bottom, #FFE066, #FF9800);" +
-                    "-fx-text-fill: #3E2723;" +
-                    "-fx-font-family: 'Segoe UI', 'Arial', sans-serif;" +
-                    "-fx-font-weight: bold;" +
-                    "-fx-font-size: 10px;" +
-                    "-fx-background-radius: 8;" +
-                    "-fx-border-color: #FFFFFF, #E65100;" +
-                    "-fx-border-width: 1.2, 0.8;" +
-                    "-fx-border-radius: 8, 7;" +
-                    "-fx-padding: 1 5 1 5;" +
-                    "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.5), 4, 0, 0, 1);"
-                );
+                        "-fx-background-color: linear-gradient(to bottom, #FFE066, #FF9800);" +
+                                "-fx-text-fill: #3E2723;" +
+                                "-fx-font-family: 'Segoe UI', 'Arial', sans-serif;" +
+                                "-fx-font-weight: bold;" +
+                                "-fx-font-size: 10px;" +
+                                "-fx-background-radius: 8;" +
+                                "-fx-border-color: #FFFFFF, #E65100;" +
+                                "-fx-border-width: 1.2, 0.8;" +
+                                "-fx-border-radius: 8, 7;" +
+                                "-fx-padding: 1 5 1 5;" +
+                                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.5), 4, 0, 0, 1);");
                 saleBadge.setVisible(false);
                 saleBadge.setManaged(false);
-                
+
                 final double finalW = spriteWidth;
                 saleBadge.widthProperty().addListener((obs, oldW, newW) -> {
                     saleBadge.setLayoutX((finalW / 2.0) - (newW.doubleValue() / 2.0));
@@ -2474,14 +2773,15 @@ void style() {
                 applySpriteScale();
             }
 
-            view.setTranslateX(x); view.setTranslateY(y);
+            view.setTranslateX(x);
+            view.setTranslateY(y);
             view.setManaged(false);
         }
 
         // --- NÓN RƠM PHONG CÁCH LUFFY CHO THÚ NUÔI ---
         private javafx.scene.Group createLuffyStrawHat(double x, double y, double scale) {
             javafx.scene.Group hat = new javafx.scene.Group();
-            
+
             // Vành nón rộng màu vàng rơm
             Rectangle hatBrim = new Rectangle(20 * scale, 3 * scale, Color.GOLDENROD);
             hatBrim.setX(x - 10 * scale);
@@ -2512,9 +2812,11 @@ void style() {
             // 1. Chân sau - phía xa (Back-Far Leg)
             javafx.scene.Group blGroup = new javafx.scene.Group();
             Rectangle blLeg = new Rectangle(4, 9, Color.rgb(215, 215, 215));
-            blLeg.setX(11); blLeg.setY(19);
+            blLeg.setX(11);
+            blLeg.setY(19);
             Rectangle blHoof = new Rectangle(4, 3, Color.rgb(45, 45, 45));
-            blHoof.setX(11); blHoof.setY(28);
+            blHoof.setX(11);
+            blHoof.setY(28);
             blGroup.getChildren().addAll(blLeg, blHoof);
             legBLSwing = new javafx.scene.transform.Rotate(0, 13, 19);
             blGroup.getTransforms().add(legBLSwing);
@@ -2522,9 +2824,11 @@ void style() {
             // 2. Chân trước - phía xa (Front-Far Leg)
             javafx.scene.Group flGroup = new javafx.scene.Group();
             Rectangle flLeg = new Rectangle(4, 9, Color.rgb(215, 215, 215));
-            flLeg.setX(30); flLeg.setY(19);
+            flLeg.setX(30);
+            flLeg.setY(19);
             Rectangle flHoof = new Rectangle(4, 3, Color.rgb(45, 45, 45));
-            flHoof.setX(30); flHoof.setY(28);
+            flHoof.setX(30);
+            flHoof.setY(28);
             flGroup.getChildren().addAll(flLeg, flHoof);
             legFLSwing = new javafx.scene.transform.Rotate(0, 32, 19);
             flGroup.getTransforms().add(legFLSwing);
@@ -2532,9 +2836,11 @@ void style() {
             // 3. Đuôi bò (Tail)
             javafx.scene.Group tailGroup = new javafx.scene.Group();
             Rectangle tailStem = new Rectangle(2, 8, Color.rgb(230, 230, 230));
-            tailStem.setX(7); tailStem.setY(12);
+            tailStem.setX(7);
+            tailStem.setY(12);
             Rectangle tailTuft = new Rectangle(3, 4, Color.rgb(40, 40, 40));
-            tailTuft.setX(6.5); tailTuft.setY(20);
+            tailTuft.setX(6.5);
+            tailTuft.setY(20);
             tailGroup.getChildren().addAll(tailStem, tailTuft);
             tailSwing = new javafx.scene.transform.Rotate(0, 8, 12);
             tailGroup.getTransforms().add(tailSwing);
@@ -2542,63 +2848,89 @@ void style() {
             // 4. Thân bò (Torso & Patches)
             javafx.scene.Group bodyGroup = new javafx.scene.Group();
             Rectangle udder = new Rectangle(6, 3, Color.rgb(255, 192, 203));
-            udder.setX(11); udder.setY(23);
+            udder.setX(11);
+            udder.setY(23);
             Rectangle body = new Rectangle(30, 18, Color.WHITE);
-            body.setX(8); body.setY(8);
-            body.setArcWidth(10); body.setArcHeight(10);
+            body.setX(8);
+            body.setY(8);
+            body.setArcWidth(10);
+            body.setArcHeight(10);
             // Đốm đen bò sữa
             Rectangle spot1 = new Rectangle(10, 8, Color.rgb(40, 40, 40));
-            spot1.setX(12); spot1.setY(8);
-            spot1.setArcWidth(6); spot1.setArcHeight(6);
+            spot1.setX(12);
+            spot1.setY(8);
+            spot1.setArcWidth(6);
+            spot1.setArcHeight(6);
             Rectangle spot2 = new Rectangle(8, 7, Color.rgb(40, 40, 40));
-            spot2.setX(24); spot2.setY(14);
-            spot2.setArcWidth(5); spot2.setArcHeight(5);
+            spot2.setX(24);
+            spot2.setY(14);
+            spot2.setArcWidth(5);
+            spot2.setArcHeight(5);
             bodyGroup.getChildren().addAll(udder, body, spot1, spot2);
 
             // 5. Đầu bò (Head, Snout, Eyes, Horns, Straw Hat)
             javafx.scene.Group headGroup = new javafx.scene.Group();
             Rectangle head = new Rectangle(14, 15, Color.WHITE);
-            head.setX(29); head.setY(6);
-            head.setArcWidth(8); head.setArcHeight(8);
+            head.setX(29);
+            head.setY(6);
+            head.setArcWidth(8);
+            head.setArcHeight(8);
             Rectangle headSpot = new Rectangle(6, 7, Color.rgb(40, 40, 40));
-            headSpot.setX(30); headSpot.setY(7);
-            headSpot.setArcWidth(4); headSpot.setArcHeight(4);
+            headSpot.setX(30);
+            headSpot.setY(7);
+            headSpot.setArcWidth(4);
+            headSpot.setArcHeight(4);
             // Mõm hồng
             Rectangle muzzle = new Rectangle(10, 8, Color.rgb(255, 182, 193));
-            muzzle.setX(36); muzzle.setY(13);
-            muzzle.setArcWidth(6); muzzle.setArcHeight(6);
+            muzzle.setX(36);
+            muzzle.setY(13);
+            muzzle.setArcWidth(6);
+            muzzle.setArcHeight(6);
             Rectangle nostril1 = new Rectangle(2, 2, Color.rgb(180, 100, 120));
-            nostril1.setX(39); nostril1.setY(16);
+            nostril1.setX(39);
+            nostril1.setY(16);
             Rectangle nostril2 = new Rectangle(2, 2, Color.rgb(180, 100, 120));
-            nostril2.setX(43); nostril2.setY(16);
+            nostril2.setX(43);
+            nostril2.setY(16);
             // Mắt to tròn hoạt hình
             Rectangle eye = new Rectangle(3, 4, Color.rgb(20, 20, 20));
-            eye.setX(33); eye.setY(10);
-            eye.setArcWidth(2); eye.setArcHeight(2);
+            eye.setX(33);
+            eye.setY(10);
+            eye.setArcWidth(2);
+            eye.setArcHeight(2);
             Rectangle pupil = new Rectangle(1, 1, Color.WHITE);
-            pupil.setX(34); pupil.setY(11);
+            pupil.setX(34);
+            pupil.setY(11);
             // Sừng nhỏ
             Rectangle horn1 = new Rectangle(3, 4, Color.rgb(215, 190, 150));
-            horn1.setX(30); horn1.setY(3);
+            horn1.setX(30);
+            horn1.setY(3);
             Rectangle horn2 = new Rectangle(3, 4, Color.rgb(215, 190, 150));
-            horn2.setX(36); horn2.setY(3);
+            horn2.setX(36);
+            horn2.setY(3);
             // Tai
             Rectangle ear = new Rectangle(4, 5, Color.WHITE);
-            ear.setX(26); ear.setY(9);
-            ear.setArcWidth(3); ear.setArcHeight(3);
+            ear.setX(26);
+            ear.setY(9);
+            ear.setArcWidth(3);
+            ear.setArcHeight(3);
             Rectangle earInner = new Rectangle(2, 3, Color.rgb(255, 182, 193));
-            earInner.setX(27); earInner.setY(10);
+            earInner.setX(27);
+            earInner.setY(10);
             // Nón rơm Luffy
             javafx.scene.Group hat = createLuffyStrawHat(35, 3, 0.75);
 
-            headGroup.getChildren().addAll(ear, earInner, horn1, horn2, head, headSpot, eye, pupil, muzzle, nostril1, nostril2, hat);
+            headGroup.getChildren().addAll(ear, earInner, horn1, horn2, head, headSpot, eye, pupil, muzzle, nostril1,
+                    nostril2, hat);
 
             // 6. Chân sau - phía gần (Back-Near Leg)
             javafx.scene.Group brGroup = new javafx.scene.Group();
             Rectangle brLeg = new Rectangle(4, 9, Color.WHITE);
-            brLeg.setX(15); brLeg.setY(20);
+            brLeg.setX(15);
+            brLeg.setY(20);
             Rectangle brHoof = new Rectangle(4, 3, Color.rgb(45, 45, 45));
-            brHoof.setX(15); brHoof.setY(29);
+            brHoof.setX(15);
+            brHoof.setY(29);
             brGroup.getChildren().addAll(brLeg, brHoof);
             legBRSwing = new javafx.scene.transform.Rotate(0, 17, 20);
             brGroup.getTransforms().add(legBRSwing);
@@ -2606,9 +2938,11 @@ void style() {
             // 7. Chân trước - phía gần (Front-Near Leg)
             javafx.scene.Group frGroup = new javafx.scene.Group();
             Rectangle frLeg = new Rectangle(4, 9, Color.WHITE);
-            frLeg.setX(34); frLeg.setY(20);
+            frLeg.setX(34);
+            frLeg.setY(20);
             Rectangle frHoof = new Rectangle(4, 3, Color.rgb(45, 45, 45));
-            frHoof.setX(34); frHoof.setY(29);
+            frHoof.setX(34);
+            frHoof.setY(29);
             frGroup.getChildren().addAll(frLeg, frHoof);
             legFRSwing = new javafx.scene.transform.Rotate(0, 36, 20);
             frGroup.getTransforms().add(legFRSwing);
@@ -2624,9 +2958,11 @@ void style() {
             // 1. Chân sau - phía xa
             javafx.scene.Group blGroup = new javafx.scene.Group();
             Rectangle blLeg = new Rectangle(4, 7, Color.rgb(230, 145, 160));
-            blLeg.setX(9); blLeg.setY(16);
+            blLeg.setX(9);
+            blLeg.setY(16);
             Rectangle blHoof = new Rectangle(4, 2.5, Color.rgb(190, 80, 105));
-            blHoof.setX(9); blHoof.setY(23);
+            blHoof.setX(9);
+            blHoof.setY(23);
             blGroup.getChildren().addAll(blLeg, blHoof);
             legBLSwing = new javafx.scene.transform.Rotate(0, 11, 16);
             blGroup.getTransforms().add(legBLSwing);
@@ -2634,9 +2970,11 @@ void style() {
             // 2. Chân trước - phía xa
             javafx.scene.Group flGroup = new javafx.scene.Group();
             Rectangle flLeg = new Rectangle(4, 7, Color.rgb(230, 145, 160));
-            flLeg.setX(25); flLeg.setY(16);
+            flLeg.setX(25);
+            flLeg.setY(16);
             Rectangle flHoof = new Rectangle(4, 2.5, Color.rgb(190, 80, 105));
-            flHoof.setX(25); flHoof.setY(23);
+            flHoof.setX(25);
+            flHoof.setY(23);
             flGroup.getChildren().addAll(flLeg, flHoof);
             legFLSwing = new javafx.scene.transform.Rotate(0, 27, 16);
             flGroup.getTransforms().add(legFLSwing);
@@ -2644,9 +2982,11 @@ void style() {
             // 3. Đuôi xoăn
             javafx.scene.Group tailGroup = new javafx.scene.Group();
             Rectangle tail1 = new Rectangle(4, 2, Color.rgb(255, 150, 170));
-            tail1.setX(4); tail1.setY(12);
+            tail1.setX(4);
+            tail1.setY(12);
             Rectangle tail2 = new Rectangle(2, 4, Color.rgb(255, 150, 170));
-            tail2.setX(3); tail2.setY(10);
+            tail2.setX(3);
+            tail2.setY(10);
             tailGroup.getChildren().addAll(tail1, tail2);
             tailSwing = new javafx.scene.transform.Rotate(0, 6, 12);
             tailGroup.getTransforms().add(tailSwing);
@@ -2654,40 +2994,57 @@ void style() {
             // 4. Thân lợn mũm mĩm
             javafx.scene.Group bodyGroup = new javafx.scene.Group();
             Rectangle body = new Rectangle(26, 15, Color.rgb(255, 182, 193));
-            body.setX(7); body.setY(7);
-            body.setArcWidth(12); body.setArcHeight(12);
+            body.setX(7);
+            body.setY(7);
+            body.setArcWidth(12);
+            body.setArcHeight(12);
             bodyGroup.getChildren().add(body);
 
             // 5. Đầu lợn & Mũ rơm Luffy
             javafx.scene.Group headGroup = new javafx.scene.Group();
             Rectangle head = new Rectangle(13, 13, Color.rgb(255, 182, 193));
-            head.setX(24); head.setY(6);
-            head.setArcWidth(10); head.setArcHeight(10);
+            head.setX(24);
+            head.setY(6);
+            head.setArcWidth(10);
+            head.setArcHeight(10);
             // Mũi heo
             Rectangle snout = new Rectangle(8, 7, Color.rgb(255, 130, 160));
-            snout.setX(32); snout.setY(11);
-            snout.setArcWidth(6); snout.setArcHeight(6);
+            snout.setX(32);
+            snout.setY(11);
+            snout.setArcWidth(6);
+            snout.setArcHeight(6);
             Rectangle nostril1 = new Rectangle(2, 2, Color.rgb(180, 50, 80));
-            nostril1.setX(34); nostril1.setY(13);
+            nostril1.setX(34);
+            nostril1.setY(13);
             Rectangle nostril2 = new Rectangle(2, 2, Color.rgb(180, 50, 80));
-            nostril2.setX(37); nostril2.setY(13);
+            nostril2.setX(37);
+            nostril2.setY(13);
             // Mắt to đen lấp lánh
             Rectangle eye = new Rectangle(3, 3.5, Color.rgb(20, 20, 20));
-            eye.setX(28); eye.setY(9);
-            eye.setArcWidth(2); eye.setArcHeight(2);
+            eye.setX(28);
+            eye.setY(9);
+            eye.setArcWidth(2);
+            eye.setArcHeight(2);
             Rectangle pupil = new Rectangle(1, 1, Color.WHITE);
-            pupil.setX(29); pupil.setY(10);
+            pupil.setX(29);
+            pupil.setY(10);
             // Má hồng
             Rectangle blush = new Rectangle(4, 3, Color.rgb(255, 105, 180, 0.45));
-            blush.setX(27); blush.setY(13);
-            blush.setArcWidth(2); blush.setArcHeight(2);
+            blush.setX(27);
+            blush.setY(13);
+            blush.setArcWidth(2);
+            blush.setArcHeight(2);
             // Tai nhọn
             Rectangle ear1 = new Rectangle(4, 5, Color.rgb(255, 140, 165));
-            ear1.setX(23); ear1.setY(3);
-            ear1.setArcWidth(3); ear1.setArcHeight(3);
+            ear1.setX(23);
+            ear1.setY(3);
+            ear1.setArcWidth(3);
+            ear1.setArcHeight(3);
             Rectangle ear2 = new Rectangle(4, 5, Color.rgb(255, 140, 165));
-            ear2.setX(29); ear2.setY(3);
-            ear2.setArcWidth(3); ear2.setArcHeight(3);
+            ear2.setX(29);
+            ear2.setY(3);
+            ear2.setArcWidth(3);
+            ear2.setArcHeight(3);
             // Nón rơm Luffy
             javafx.scene.Group hat = createLuffyStrawHat(28, 3, 0.7);
 
@@ -2696,9 +3053,11 @@ void style() {
             // 6. Chân sau - phía gần
             javafx.scene.Group brGroup = new javafx.scene.Group();
             Rectangle brLeg = new Rectangle(4, 7, Color.rgb(255, 182, 193));
-            brLeg.setX(13); brLeg.setY(17);
+            brLeg.setX(13);
+            brLeg.setY(17);
             Rectangle brHoof = new Rectangle(4, 2.5, Color.rgb(210, 90, 120));
-            brHoof.setX(13); brHoof.setY(24);
+            brHoof.setX(13);
+            brHoof.setY(24);
             brGroup.getChildren().addAll(brLeg, brHoof);
             legBRSwing = new javafx.scene.transform.Rotate(0, 15, 17);
             brGroup.getTransforms().add(legBRSwing);
@@ -2706,9 +3065,11 @@ void style() {
             // 7. Chân trước - phía gần
             javafx.scene.Group frGroup = new javafx.scene.Group();
             Rectangle frLeg = new Rectangle(4, 7, Color.rgb(255, 182, 193));
-            frLeg.setX(29); frLeg.setY(17);
+            frLeg.setX(29);
+            frLeg.setY(17);
             Rectangle frHoof = new Rectangle(4, 2.5, Color.rgb(210, 90, 120));
-            frHoof.setX(29); frHoof.setY(24);
+            frHoof.setX(29);
+            frHoof.setY(24);
             frGroup.getChildren().addAll(frLeg, frHoof);
             legFRSwing = new javafx.scene.transform.Rotate(0, 31, 17);
             frGroup.getTransforms().add(legFRSwing);
@@ -2724,9 +3085,11 @@ void style() {
             // 1. Chân trái (Far Leg) - 2 chân di chuyển
             javafx.scene.Group lLegGroup = new javafx.scene.Group();
             Rectangle lStem = new Rectangle(2.5, 7, Color.rgb(220, 120, 20));
-            lStem.setX(10); lStem.setY(18);
+            lStem.setX(10);
+            lStem.setY(18);
             Rectangle lFoot = new Rectangle(5, 2, Color.rgb(220, 120, 20));
-            lFoot.setX(10); lFoot.setY(25);
+            lFoot.setX(10);
+            lFoot.setY(25);
             lLegGroup.getChildren().addAll(lStem, lFoot);
             legLSwing = new javafx.scene.transform.Rotate(0, 11, 18);
             lLegGroup.getTransforms().add(legLSwing);
@@ -2734,25 +3097,33 @@ void style() {
             // 2. Lông đuôi gà
             javafx.scene.Group tailGroup = new javafx.scene.Group();
             Rectangle feather1 = new Rectangle(4, 7, Color.rgb(235, 235, 235));
-            feather1.setX(3); feather1.setY(7);
-            feather1.setArcWidth(3); feather1.setArcHeight(3);
+            feather1.setX(3);
+            feather1.setY(7);
+            feather1.setArcWidth(3);
+            feather1.setArcHeight(3);
             Rectangle feather2 = new Rectangle(4, 9, Color.WHITE);
-            feather2.setX(5); feather2.setY(5);
-            feather2.setArcWidth(3); feather2.setArcHeight(3);
+            feather2.setX(5);
+            feather2.setY(5);
+            feather2.setArcWidth(3);
+            feather2.setArcHeight(3);
             tailGroup.getChildren().addAll(feather1, feather2);
 
             // 3. Thân gà tròn
             javafx.scene.Group bodyGroup = new javafx.scene.Group();
             Rectangle body = new Rectangle(16, 13, Color.WHITE);
-            body.setX(6); body.setY(9);
-            body.setArcWidth(12); body.setArcHeight(12);
+            body.setX(6);
+            body.setY(9);
+            body.setArcWidth(12);
+            body.setArcHeight(12);
             bodyGroup.getChildren().add(body);
 
             // 4. Cánh gà
             javafx.scene.Group wingGroup = new javafx.scene.Group();
             Rectangle wing = new Rectangle(9, 8, Color.rgb(245, 245, 245));
-            wing.setX(8); wing.setY(11);
-            wing.setArcWidth(6); wing.setArcHeight(6);
+            wing.setX(8);
+            wing.setY(11);
+            wing.setArcWidth(6);
+            wing.setArcHeight(6);
             wing.setStroke(Color.rgb(220, 220, 220));
             wing.setStrokeWidth(0.8);
             wingGroup.getChildren().add(wing);
@@ -2762,29 +3133,42 @@ void style() {
             // 5. Đầu gà, Mào đỏ, Mỏ vàng, Yếm đỏ & Mũ rơm Luffy
             javafx.scene.Group headGroup = new javafx.scene.Group();
             Rectangle head = new Rectangle(11, 11, Color.WHITE);
-            head.setX(15); head.setY(5);
-            head.setArcWidth(8); head.setArcHeight(8);
+            head.setX(15);
+            head.setY(5);
+            head.setArcWidth(8);
+            head.setArcHeight(8);
             // Mào gà đỏ
             Rectangle comb1 = new Rectangle(4, 5, Color.CRIMSON);
-            comb1.setX(16); comb1.setY(1);
-            comb1.setArcWidth(3); comb1.setArcHeight(3);
+            comb1.setX(16);
+            comb1.setY(1);
+            comb1.setArcWidth(3);
+            comb1.setArcHeight(3);
             Rectangle comb2 = new Rectangle(4, 6, Color.CRIMSON);
-            comb2.setX(19); comb2.setY(0);
-            comb2.setArcWidth(3); comb2.setArcHeight(3);
+            comb2.setX(19);
+            comb2.setY(0);
+            comb2.setArcWidth(3);
+            comb2.setArcHeight(3);
             // Mỏ vàng cam
             Rectangle beak = new Rectangle(5, 4, Color.rgb(255, 140, 0));
-            beak.setX(23); beak.setY(8);
-            beak.setArcWidth(2); beak.setArcHeight(2);
+            beak.setX(23);
+            beak.setY(8);
+            beak.setArcWidth(2);
+            beak.setArcHeight(2);
             // Yếm gà đỏ dưới mỏ
             Rectangle wattle = new Rectangle(3, 4, Color.CRIMSON);
-            wattle.setX(22); wattle.setY(12);
-            wattle.setArcWidth(2); wattle.setArcHeight(2);
+            wattle.setX(22);
+            wattle.setY(12);
+            wattle.setArcWidth(2);
+            wattle.setArcHeight(2);
             // Mắt gà
             Rectangle eye = new Rectangle(2.5, 3, Color.rgb(20, 20, 20));
-            eye.setX(19); eye.setY(7);
-            eye.setArcWidth(2); eye.setArcHeight(2);
+            eye.setX(19);
+            eye.setY(7);
+            eye.setArcWidth(2);
+            eye.setArcHeight(2);
             Rectangle pupil = new Rectangle(1, 1, Color.WHITE);
-            pupil.setX(20); pupil.setY(7.5);
+            pupil.setX(20);
+            pupil.setY(7.5);
             // Nón rơm Luffy
             javafx.scene.Group hat = createLuffyStrawHat(18, 2, 0.6);
 
@@ -2793,9 +3177,11 @@ void style() {
             // 6. Chân phải (Near Leg) - 2 chân di chuyển
             javafx.scene.Group rLegGroup = new javafx.scene.Group();
             Rectangle rStem = new Rectangle(2.5, 7, Color.rgb(255, 150, 0));
-            rStem.setX(15); rStem.setY(19);
+            rStem.setX(15);
+            rStem.setY(19);
             Rectangle rFoot = new Rectangle(6, 2, Color.rgb(255, 150, 0));
-            rFoot.setX(15); rFoot.setY(26);
+            rFoot.setX(15);
+            rFoot.setY(26);
             rLegGroup.getChildren().addAll(rStem, rFoot);
             legRSwing = new javafx.scene.transform.Rotate(0, 16, 19);
             rLegGroup.getTransforms().add(legRSwing);
@@ -2812,28 +3198,36 @@ void style() {
         }
 
         public int getSellPrice() {
-            if (type == 0) return 150; // Gà
-            if (type == 1) return 500; // Bò
-            if (type == 3) return 300; // Lợn
+            if (type == 0)
+                return 150; // Gà
+            if (type == 1)
+                return 500; // Bò
+            if (type == 3)
+                return 300; // Lợn
             return 0;
         }
 
         public String getAnimalName() {
-            if (type == 0) return "Gà";
-            if (type == 1) return "Bò";
-            if (type == 3) return "Lợn";
+            if (type == 0)
+                return "Gà";
+            if (type == 1)
+                return "Bò";
+            if (type == 3)
+                return "Lợn";
             return "Thú nuôi";
         }
 
         public void applySpriteScale() {
-            if (type == 2 || spriteNode == null) return;
+            if (type == 2 || spriteNode == null)
+                return;
             double s = getGrowthScale();
             double spriteHeight = (type == 0 ? 30 : (type == 1 ? 34 : 28));
-            
+
             // Giữ chân thú bám đất bằng cách dịch chuyển bù theo chiều cao scale
-            spriteNode.setTranslateY(- (spriteHeight / 2.0) * (s - 1.0));
-            
-            // Tất cả model procedural đều mặc định quay mặt sang phải, nên lật sang trái bằng -s
+            spriteNode.setTranslateY(-(spriteHeight / 2.0) * (s - 1.0));
+
+            // Tất cả model procedural đều mặc định quay mặt sang phải, nên lật sang trái
+            // bằng -s
             spriteNode.setScaleX(facingLeft ? -s : s);
             spriteNode.setScaleY(s);
             updateBadgePosition();
@@ -2847,10 +3241,11 @@ void style() {
         }
 
         public void updateBadgePosition() {
-            if (type == 2) return;
+            if (type == 2)
+                return;
             double s = getGrowthScale();
             double spriteHeight = (type == 0 ? 30 : (type == 1 ? 34 : 28));
-            badgeBaseY = - spriteHeight * (s - 1.0) - 16;
+            badgeBaseY = -spriteHeight * (s - 1.0) - 16;
             if (saleBadge != null) {
                 saleBadge.setLayoutY(badgeBaseY);
                 saleBadge.setVisible(ageDays >= 5);
@@ -2863,7 +3258,8 @@ void style() {
         public void feed() {
             if (!isFed) {
                 isFed = true;
-                if (heartEmoji != null) heartEmoji.setVisible(true);
+                if (heartEmoji != null)
+                    heartEmoji.setVisible(true);
             }
         }
 
@@ -2928,7 +3324,7 @@ void style() {
                         targetY = y;
                     } else {
                         if (Math.random() < 0.6) {
-                            pauseUntil = now + 1500 + (long)(Math.random() * 3000);
+                            pauseUntil = now + 1500 + (long) (Math.random() * 3000);
                         }
                         updateFacing(targetX < x);
                     }

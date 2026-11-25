@@ -15,6 +15,11 @@ public class Cell {
     /** All land terrain can be farmed (except WATER). */
     public boolean isFarmable() { return terrain != TerrainType.WATER; }
 
+    private boolean inFarmZone = true; // true by default so standalone cells in tests remain tillable
+
+    public boolean isInFarmZone() { return inFarmZone; }
+    public void setInFarmZone(boolean inFarmZone) { this.inFarmZone = inFarmZone; }
+
     private final int x;
     private final int y;
 
