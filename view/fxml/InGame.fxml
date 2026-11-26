@@ -115,19 +115,19 @@
 
          <Button fx:id="fishingGuideButton" mnemonicParsing="false" onAction="#toggleFishingGuide" prefHeight="34" prefWidth="150" text="SỔ CÁ [G]" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-text-fill: #FFF4D2; -fx-background-color: linear-gradient(to bottom, #9A5E31 0%, #6D3E1C 100%); -fx-border-color: #3B1E0A; -fx-border-width: 2.5px; -fx-background-radius: 8px; -fx-border-radius: 8px; -fx-cursor: hand;" />
 
-         <!-- BẢNG NHIỆM VỤ THU HOẠCH NGÀY (QUEST TRACKER) -->
+         <!-- BẢNG CHUỖI 1000 NHIỆM VỤ TỰ ĐỘNG (QUEST TRACKER) -->
 
-         <VBox fx:id="questTrackerBox" alignment="TOP_LEFT" prefWidth="156" spacing="4" style="-fx-background-color: linear-gradient(to bottom, #F8E7C6 0%, #E8CE9F 100%); -fx-border-color: #6B3C1A; -fx-border-width: 2.5px; -fx-background-radius: 9px; -fx-border-radius: 9px; -fx-padding: 7 9 8 9;">
+         <VBox fx:id="questTrackerBox" alignment="TOP_LEFT" prefWidth="162" spacing="5" style="-fx-background-color: linear-gradient(to bottom, #F8E7C6 0%, #E8CE9F 100%); -fx-border-color: #6B3C1A; -fx-border-width: 2.5px; -fx-background-radius: 9px; -fx-border-radius: 9px; -fx-padding: 8 9 9 9;">
 
-            <Label text="NHIỆM VỤ NGÀY" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: #6B2A0C;" />
+            <Label fx:id="questTitleLabel" text="NHIỆM VỤ #1" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: #6B2A0C;" />
 
-            <Label fx:id="questTomatoLabel" text="• Cà chua: 0/5" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #3E210C;" />
+            <Label fx:id="questDescLabel" wrapText="true" maxWidth="142" text="Thu hoạch 2 Cà chua" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #3E210C;" />
 
-            <Label fx:id="questPotatoLabel" text="• Khoai tây: 0/5" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #3E210C;" />
+            <Label fx:id="questProgressLabel" text="Tiến độ: 0 / 2" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #1F5C3A;" />
 
-            <Label fx:id="questCornLabel" text="• Ngô: 0/5" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #3E210C;" />
+            <Label fx:id="questRewardLabel" text="Thưởng: +$105" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #9A5212;" />
 
-            <Label fx:id="questRewardLabel" text="Thưởng: +200$" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 10.5px; -fx-font-weight: bold; -fx-text-fill: #9A5212;" />
+            <Button fx:id="questClaimButton" mnemonicParsing="false" focusTraversable="false" onAction="#onClaimQuestReward" prefHeight="28" prefWidth="142" text="🎁 Nhận Thưởng" visible="false" managed="false" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: #2B1200; -fx-background-color: linear-gradient(to bottom, #FFE066 0%, #F5A623 100%); -fx-border-color: #8A4F00; -fx-border-width: 2px; -fx-background-radius: 7px; -fx-border-radius: 7px; -fx-cursor: hand;" />
 
          </VBox>
 

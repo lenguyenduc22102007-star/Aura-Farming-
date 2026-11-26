@@ -7,8 +7,13 @@ import utils.Constant;
 public class Player {
     private final IntegerProperty money = new SimpleIntegerProperty(Constant.START_MONEY);
     private final Inventory inventory = new Inventory();
+    private final model.quest.QuestManager questManager = new model.quest.QuestManager();
     private double hunger = 100.0; // 0..100 (100 = no đầy)
     private double thirst = 100.0; // 0..100 (100 = đủ nước)
+
+    public model.quest.QuestManager getQuestManager() {
+        return questManager;
+    }
 
     public int getMoney() {
         return money.get();

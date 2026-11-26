@@ -100,6 +100,21 @@ public class Assets {
     public static Image TILLED_DRY_TILE;
     public static Image TILLED_WET_TILE;
 
+    // 6 ẢNH NPC BỂ BƠI & BOT ĐI DẠO (108x108 chuẩn tỉ lệ Luffy 94px, Chopper 64px, smooth = false)
+    public static Image NPC_NAMI;
+    public static Image NPC_HANCOCK;
+    public static Image NPC_ZORO;
+    public static Image NPC_SANJI;
+    public static Image NPC_CHOPPER;
+    public static Image NPC_USOPP;
+
+    public static Image[] NPC_NAMI_IDLE, NPC_NAMI_WALK;
+    public static Image[] NPC_HANCOCK_IDLE, NPC_HANCOCK_WALK;
+    public static Image[] NPC_ZORO_IDLE, NPC_ZORO_WALK;
+    public static Image[] NPC_SANJI_IDLE, NPC_SANJI_WALK;
+    public static Image[] NPC_CHOPPER_IDLE, NPC_CHOPPER_WALK;
+    public static Image[] NPC_USOPP_IDLE, NPC_USOPP_WALK;
+
     // PLAYER ACTION SPRITE FRAMES (72x72 side/action + 108x108 8-direction run/idle, smooth = false)
     public static Image[] LUFFY_HOE_FRAMES;
     public static Image[] LUFFY_HOE_RUN_FRAMES;
@@ -210,6 +225,27 @@ public class Assets {
         SHOP_ICONS.put(model.game_item.CookedFoodItem.ID_PORK_GRILL, FOOD_PORK_ICON);
         SHOP_ICONS.put(model.game_item.CookedFoodItem.ID_MILK_STEAK, FOOD_STEAK_ICON);
         SHOP_ICONS.put(model.game_item.CookedFoodItem.ID_FARM_HOTPOT, FOOD_HOTPOT_ICON);
+
+        // NPC POOL & ROAMING BOTS (108x108 chuẩn tỉ lệ Luffy + đủ frame Idle cử động thở & Walk 4 frame vung tay sải chân, smooth = false)
+        NPC_NAMI    = safeLoadPixelImage("/view/assets/npcs/nami.png", 108, 108);
+        NPC_HANCOCK = safeLoadPixelImage("/view/assets/npcs/hancock.png", 108, 108);
+        NPC_ZORO    = safeLoadPixelImage("/view/assets/npcs/zoro.png", 108, 108);
+        NPC_SANJI   = safeLoadPixelImage("/view/assets/npcs/sanji.png", 108, 108);
+        NPC_CHOPPER = safeLoadPixelImage("/view/assets/npcs/chopper.png", 108, 108);
+        NPC_USOPP   = safeLoadPixelImage("/view/assets/npcs/usopp.png", 108, 108);
+
+        NPC_NAMI_IDLE    = loadNpcFrames("nami", "idle", 2, NPC_NAMI);
+        NPC_NAMI_WALK    = loadNpcFrames("nami", "walk", 4, NPC_NAMI);
+        NPC_HANCOCK_IDLE = loadNpcFrames("hancock", "idle", 2, NPC_HANCOCK);
+        NPC_HANCOCK_WALK = loadNpcFrames("hancock", "walk", 4, NPC_HANCOCK);
+        NPC_ZORO_IDLE    = loadNpcFrames("zoro", "idle", 2, NPC_ZORO);
+        NPC_ZORO_WALK    = loadNpcFrames("zoro", "walk", 4, NPC_ZORO);
+        NPC_SANJI_IDLE   = loadNpcFrames("sanji", "idle", 2, NPC_SANJI);
+        NPC_SANJI_WALK   = loadNpcFrames("sanji", "walk", 4, NPC_SANJI);
+        NPC_CHOPPER_IDLE = loadNpcFrames("chopper", "idle", 2, NPC_CHOPPER);
+        NPC_CHOPPER_WALK = loadNpcFrames("chopper", "walk", 4, NPC_CHOPPER);
+        NPC_USOPP_IDLE   = loadNpcFrames("usopp", "idle", 2, NPC_USOPP);
+        NPC_USOPP_WALK   = loadNpcFrames("usopp", "walk", 4, NPC_USOPP);
 
         // PLAYER ACTION & RUN FRAMES (Cuốc đứng/bổ 4 frame, chạy cầm cuốc 4 frame, tưới 3 frame, chạy cầm bình 4 frame; smooth = false)
         LUFFY_HOE_FRAMES = new Image[4];
@@ -669,6 +705,15 @@ public class Assets {
     // LOAD IMAGE (Hàm cũ)
     private static Image loadImage(String path) {
         return new Image(Assets.class.getResourceAsStream(path));
+    }
+
+    private static Image[] loadNpcFrames(String npcPrefix, String kind, int count, Image fallback) {
+        Image[] arr = new Image[count];
+        for (int i = 0; i < count; i++) {
+            Image loaded = safeLoadPixelImage("/view/assets/npcs/" + npcPrefix + "_" + kind + "_" + i + ".png", 108, 108);
+            arr[i] = (loaded != null) ? loaded : fallback;
+        }
+        return arr;
     }
 
     private static Image[] loadCropStages(String cropPrefix) {

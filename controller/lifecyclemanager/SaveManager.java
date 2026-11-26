@@ -81,6 +81,10 @@ public final class SaveManager {
         p.setProperty("money", Integer.toString(player.getMoney()));
         p.setProperty("player.hunger", Double.toString(player.getHunger()));
         p.setProperty("player.thirst", Double.toString(player.getThirst()));
+        if (player.getQuestManager() != null) {
+            p.setProperty("quest.currentQuestIndex", Integer.toString(player.getQuestManager().getCurrentQuestIndex()));
+            p.setProperty("quest.currentQuestProgress", Integer.toString(player.getQuestManager().getCurrentQuestProgress()));
+        }
         p.setProperty("map.width", Integer.toString(map.getWidth()));
         p.setProperty("map.height", Integer.toString(map.getHeight()));
 
@@ -163,6 +167,11 @@ public final class SaveManager {
         else if (money < player.getMoney()) player.deductMoney(player.getMoney() - money);
         player.setHunger(Double.parseDouble(p.getProperty("player.hunger", "100.0")));
         player.setThirst(Double.parseDouble(p.getProperty("player.thirst", "100.0")));
+        if (player.getQuestManager() != null) {
+            int qIdx = Integer.parseInt(p.getProperty("quest.currentQuestIndex", "1"));
+            int qProg = Integer.parseInt(p.getProperty("quest.currentQuestProgress", "0"));
+            player.getQuestManager().restoreState(qIdx, qProg);
+        }
 
         int invCount = Integer.parseInt(p.getProperty("inv.count", "0"));
         for (int i = 0; i < invCount; i++) {

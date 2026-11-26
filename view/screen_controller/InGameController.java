@@ -61,10 +61,12 @@ public class InGameController {
     @FXML private ToggleButton rainWeatherButton;
     @FXML private ToggleButton dryWeatherButton;
     @FXML private javafx.scene.control.Button fishingGuideButton;
-    @FXML private Label questTomatoLabel;
-    @FXML private Label questPotatoLabel;
-    @FXML private Label questCornLabel;
+    @FXML private javafx.scene.layout.VBox questTrackerBox;
+    @FXML private Label questTitleLabel;
+    @FXML private Label questDescLabel;
+    @FXML private Label questProgressLabel;
     @FXML private Label questRewardLabel;
+    @FXML private javafx.scene.control.Button questClaimButton;
 
     // --- layout + labels ---
     @FXML private BorderPane rootPane;
@@ -125,10 +127,24 @@ public class InGameController {
     private final java.util.Map<model.game_item.FishSpecies, Double> fishMaxCm = new java.util.EnumMap<>(model.game_item.FishSpecies.class);
     private view.ui.FishingGuideOverlay activeFishingGuide = null;
     private view.ui.CampfireCookingOverlay activeCookingOverlay = null;
+    private view.ui.CasinoOverlay activeCasinoOverlay = null;
+    private view.npc.NpcManager npcManager = null;
     private javafx.scene.layout.StackPane activeSleepDialog = null;
     private boolean sleepTransitionRunning = false;
     private final java.util.List<double[]> houseDoorPoints = new java.util.ArrayList<>();
     private final java.util.List<double[]> campfirePoints = new java.util.ArrayList<>();
+    private final java.util.List<double[]> casinoDoorPoints = new java.util.ArrayList<>();
+    private final java.util.List<double[]> poolSunbathePoints = new java.util.ArrayList<>();
+    private final java.util.List<javafx.scene.shape.Line> poolWaveLines = new java.util.ArrayList<>();
+    private final java.util.List<javafx.scene.shape.Circle> poolSparkleDots = new java.util.ArrayList<>();
+    private final java.util.List<javafx.scene.shape.Circle> casinoMarqueeBulbs = new java.util.ArrayList<>();
+    private double poolWaterX = 0.0, poolWaterY = 0.0, poolWaterW = 0.0, poolWaterH = 0.0;
+    private double sunbatheLoungerX = 672.0, sunbatheLoungerY = 2630.0;
+    private boolean isSunbathing = false;
+    private double poolRelaxSpeedBuffSec = 0.0;
+    private int lastRenderedRelaxSec = -1;
+    private double sunbatheSparkleTimer = 0.0;
+    private boolean suppressQuestMoneyTracking = false;
     private final java.util.List<javafx.scene.shape.Circle> campfireGlows = new java.util.ArrayList<>();
     private double campfireEmberTimer = 0.0;
     private Label interactPromptLabel = null;
@@ -156,11 +172,6 @@ public class InGameController {
     private double recentLaborDecaySec = 0.0;
     private final java.util.Set<Tile> waterNeedTiles = new java.util.HashSet<>();
     private final java.util.Set<Tile> ripeCropTiles = new java.util.HashSet<>();
-    private static final int QUEST_TARGET = 5;
-    private int questTomato = 0;
-    private int questPotato = 0;
-    private int questCorn = 0;
-    private boolean questRewardClaimed = false;
 
     private String farmName = "Nông Trại Vui Vẻ";
     private Label survivalHeaderTitle = null;
@@ -347,6 +358,14 @@ public class InGameController {
         this.feedBag        = new FeedBag(player);
 
         moneyField.textProperty().bind(player.moneyProperty().asString("$%d"));
+        player.moneyProperty().addListener((obs, oldVal, newVal) -> {
+            if (!suppressQuestMoneyTracking && activeCasinoOverlay == null && oldVal != null && newVal != null) {
+                int earned = newVal.intValue() - oldVal.intValue();
+                if (earned > 0) {
+                    onQuestMoneyEarned(earned);
+                }
+            }
+        });
 
         wireButtons();
         setKeyHandlers();
@@ -516,7 +535,8 @@ public class InGameController {
             String idLower = id.toLowerCase();
             if (idLower.contains("tent") || idLower.contains("campfire") || idLower.contains("house") ||
                 idLower.contains("barn") || idLower.contains("well") || idLower.contains("pet_shop") ||
-                idLower.contains("windmill") || idLower.contains("garden_bed")) {
+                idLower.contains("windmill") || idLower.contains("garden_bed") ||
+                idLower.contains("casino") || idLower.contains("swimming_pool") || idLower.contains("pool_lounger")) {
                 double ox = objView.getLayoutX() + objView.getTranslateX();
                 double oy = objView.getLayoutY() + objView.getTranslateY();
                 double ow = objView.getFitWidth();
@@ -737,7 +757,7 @@ public class InGameController {
                 } else {
                     player.getInventory().addItem(item, 1);
                 }
-                recordHarvestForQuest(harvested.getName());
+                onQuestCropHarvested(harvested.getName());
                 return true;
             }
         }
@@ -855,10 +875,11 @@ public class InGameController {
         p.setProperty("view.elapsed", Long.toString(elapsedTimeInDay));
         p.setProperty("view.helperDays", Integer.toString(helperDaysLeft));
         p.setProperty("view.foodRareFish", Boolean.toString(foodRareFishBuff));
-        p.setProperty("quest.tomato", Integer.toString(questTomato));
-        p.setProperty("quest.potato", Integer.toString(questPotato));
-        p.setProperty("quest.corn", Integer.toString(questCorn));
-        p.setProperty("quest.claimed", Boolean.toString(questRewardClaimed));
+        p.setProperty("view.poolRelaxSec", Double.toString(poolRelaxSpeedBuffSec));
+        if (player != null && player.getQuestManager() != null) {
+            p.setProperty("quest.currentQuestIndex", Integer.toString(player.getQuestManager().getCurrentQuestIndex()));
+            p.setProperty("quest.currentQuestProgress", Integer.toString(player.getQuestManager().getCurrentQuestProgress()));
+        }
 
         p.setProperty("cleared.count", Integer.toString(clearedSceneryKeys.size()));
         int ci = 0;
@@ -879,6 +900,7 @@ public class InGameController {
 
     /** Restore the state written by {@link #exportViewState}. Call after setGame. */
     public void importViewState(java.util.Properties p) {
+        suppressQuestMoneyTracking = true;
         try {
             playerX = Double.parseDouble(p.getProperty("view.playerX", Double.toString(playerX)));
             playerY = Double.parseDouble(p.getProperty("view.playerY", Double.toString(playerY)));
@@ -886,10 +908,12 @@ public class InGameController {
             elapsedTimeInDay = Long.parseLong(p.getProperty("view.elapsed", "0"));
             helperDaysLeft = Integer.parseInt(p.getProperty("view.helperDays", "0"));
             foodRareFishBuff = Boolean.parseBoolean(p.getProperty("view.foodRareFish", "false"));
-            questTomato = Integer.parseInt(p.getProperty("quest.tomato", "0"));
-            questPotato = Integer.parseInt(p.getProperty("quest.potato", "0"));
-            questCorn = Integer.parseInt(p.getProperty("quest.corn", "0"));
-            questRewardClaimed = Boolean.parseBoolean(p.getProperty("quest.claimed", "false"));
+            poolRelaxSpeedBuffSec = Double.parseDouble(p.getProperty("view.poolRelaxSec", "0.0"));
+            if (player != null && player.getQuestManager() != null && p.getProperty("quest.currentQuestIndex") != null) {
+                int qIdx = Integer.parseInt(p.getProperty("quest.currentQuestIndex", "1"));
+                int qProg = Integer.parseInt(p.getProperty("quest.currentQuestProgress", "0"));
+                player.getQuestManager().restoreState(qIdx, qProg);
+            }
             if (fishShadows != null) fishShadows.setRareFishBuff(foodRareFishBuff);
             updateFoodBuffHud();
             updateSurvivalHud(animTimeSec);
@@ -940,6 +964,8 @@ public class InGameController {
             }
         } catch (RuntimeException e) {
             System.err.println("Could not fully restore view state: " + e);
+        } finally {
+            suppressQuestMoneyTracking = false;
         }
         refreshAll();
     }
@@ -989,6 +1015,7 @@ public class InGameController {
                 int money = toHarvest.getSellPrice();
                 String name = toHarvest.getAnimalName();
                 player.addMoney(money);
+                onQuestAnimalHarvested();
                 if (particleSystem != null) {
                     particleSystem.spawnHarvestSparkles(toHarvest.x + 18, toHarvest.y + 8);
                     particleSystem.spawnHeartBurst(toHarvest.x + 18, toHarvest.y - 8);
@@ -1065,6 +1092,7 @@ public class InGameController {
                     } else {
                         player.getInventory().addItem(prod, 1);
                     }
+                    onQuestAnimalHarvested();
                     notify("♥ Đã vuốt ve " + aName + " và thu được " + prod.getName() + "!");
                 } else {
                     notify("♥ " + aName + " rất vui! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays) + " ngày để bán)");
@@ -1321,6 +1349,22 @@ public class InGameController {
         if (droppedItemSystem != null) {
             droppedItemSystem.update(deltaRiverSec, timeSec, playerX + 22.0, playerY + 38.0);
         }
+        // Cập nhật 4 Bot đi dạo + Nami & Hancock ở bể bơi
+        if (npcManager != null) {
+            npcManager.update(deltaRiverSec, timeSec);
+        }
+        // Hiệu ứng mặt nước bể bơi gợn sóng lấp lánh nhẹ + biển hiệu đèn Casino nhấp nháy
+        updatePoolAndCasinoVisuals(timeSec);
+
+        // Đếm ngược hiệu ứng Buff "Thư giãn +20% tốc độ chạy" (2 phút) từ bể bơi
+        if (poolRelaxSpeedBuffSec > 0.0) {
+            poolRelaxSpeedBuffSec = Math.max(0.0, poolRelaxSpeedBuffSec - deltaRiverSec);
+            int secShown = (int) Math.ceil(poolRelaxSpeedBuffSec);
+            if (secShown != lastRenderedRelaxSec) {
+                lastRenderedRelaxSec = secShown;
+                updateFoodBuffHud();
+            }
+        }
         // Nhấp nhô nhẹ icon bình tưới nước xanh trên các ô cây trồng đang thiếu nước (O(số ô thiếu nước))
         if (!waterNeedTiles.isEmpty()) {
             for (Tile wt : waterNeedTiles) {
@@ -1382,33 +1426,52 @@ public class InGameController {
         }
 
         // Tụt chỉ số Đói & Khát tự nhiên rất nhẹ: giữ no ~4 tiếng trong game mới bắt đầu tụt Đói, Khát chỉ tụt nhanh khi làm việc nhiều
+        // Nếu đang nằm tắm nắng cạnh bể bơi: tự động hồi dần Đói/Khát & nạp Buff Thư giãn +20% tốc độ chạy (2 phút)!
+        if (isSunbathing && (dirX != 0 || dirY != 0)) {
+            stopSunbathing();
+        }
         if (player != null) {
-            if (recentLaborDecaySec > 0.0) {
-                recentLaborDecaySec = Math.max(0.0, recentLaborDecaySec - deltaRiverSec);
-                if (recentLaborDecaySec <= 0.0) {
-                    recentLaborStreak = 0;
+            if (isSunbathing) {
+                player.addHunger(6.5 * deltaRiverSec);
+                player.addThirst(8.0 * deltaRiverSec);
+                hungerGraceTimerSec = HUNGER_FULL_GRACE_SEC;
+                recentLaborStreak = 0;
+                recentLaborDecaySec = 0.0;
+                sunbatheSparkleTimer += deltaRiverSec;
+                if (sunbatheSparkleTimer >= 0.85 && particleSystem != null) {
+                    sunbatheSparkleTimer = 0.0;
+                    particleSystem.spawnHeartBurst(playerX + 22.0, playerY + 12.0);
                 }
-            }
-            if (hungerGraceTimerSec > 0.0) {
-                hungerGraceTimerSec = Math.max(0.0, hungerGraceTimerSec - deltaRiverSec);
+                updateSurvivalHud(timeSec);
             } else {
-                player.addHunger(-0.12 * deltaRiverSec);
+                if (recentLaborDecaySec > 0.0) {
+                    recentLaborDecaySec = Math.max(0.0, recentLaborDecaySec - deltaRiverSec);
+                    if (recentLaborDecaySec <= 0.0) {
+                        recentLaborStreak = 0;
+                    }
+                }
+                if (hungerGraceTimerSec > 0.0) {
+                    hungerGraceTimerSec = Math.max(0.0, hungerGraceTimerSec - deltaRiverSec);
+                } else {
+                    player.addHunger(-0.12 * deltaRiverSec);
+                }
+                WeatherType wType = (gameManager != null && gameManager.getCurrentWeather() != null)
+                        ? gameManager.getCurrentWeather().getType()
+                        : WeatherType.SUNNY;
+                double thirstDrainRate = (wType == WeatherType.DROUGHT) ? 0.18 : (wType == WeatherType.RAINY ? 0.04 : 0.10);
+                player.addThirst(-thirstDrainRate * deltaRiverSec);
+                updateSurvivalHud(timeSec);
             }
-            WeatherType wType = (gameManager != null && gameManager.getCurrentWeather() != null)
-                    ? gameManager.getCurrentWeather().getType()
-                    : WeatherType.SUNNY;
-            double thirstDrainRate = (wType == WeatherType.DROUGHT) ? 0.18 : (wType == WeatherType.RAINY ? 0.04 : 0.10);
-            player.addThirst(-thirstDrainRate * deltaRiverSec);
-            updateSurvivalHud(timeSec);
         }
 
-        if (!lockedOnBoat) {
+        if (!lockedOnBoat && !isSunbathing) {
             if (dirX != 0 || dirY != 0) {
                 isWalking = true;
-                // Chuẩn hóa tốc độ chạy chéo (8 hướng mượt mà) + Phạt kiệt sức (55% tốc độ khi Đói/Khát <= 0)
+                // Chuẩn hóa tốc độ chạy chéo (8 hướng mượt mà) + Phạt kiệt sức (55%) + Buff Thư giãn bể bơi (+20%)
                 double norm = (dirX != 0 && dirY != 0) ? 0.70710678 : 1.0;
                 double exhaustionFactor = (player != null && player.isExhausted()) ? 0.55 : 1.0;
-                double effectiveSpeed = speed * exhaustionFactor;
+                double relaxFactor = (poolRelaxSpeedBuffSec > 0.0) ? 1.20 : 1.0;
+                double effectiveSpeed = speed * exhaustionFactor * relaxFactor;
                 dx = dirX * effectiveSpeed * norm;
                 dy = dirY * effectiveSpeed * norm;
 
@@ -1518,13 +1581,19 @@ public class InGameController {
                     idLower.contains("farm_rake") || idLower.contains("farm_hoe") || idLower.contains("farm_shovel") ||
                     idLower.contains("flower") || idLower.contains("pebble") || idLower.contains("broken_") ||
                     idLower.contains("wood_sticks") || idLower.contains("clay_pot") || idLower.contains("grass_patch") ||
-                    idLower.contains("windmill_blades")) continue;
+                    idLower.contains("windmill_blades") || idLower.contains("pool_lounger") || idLower.contains("pool_umbrella")) continue;
             }
 
             // Điều chỉnh hitbox chuẩn xác theo từng loại vật thể để không bị đi xuyên qua
             String idLow = objId != null ? objId.toLowerCase() : "";
             double hw, hh, cx, cy;
-            if (idLow.contains("house") || idLow.contains("barn") || idLow.contains("pet_shop") || idLow.contains("windmill")) {
+            if (idLow.contains("swimming_pool")) {
+                // Bể bơi: cho phép đi sát viền gạch trắng, chỉ chặn lòng hồ nước xanh bên trong
+                hw = Math.max(40, ow - 38.0);
+                hh = Math.max(30, oh - 38.0);
+                cx = ox + 19.0;
+                cy = oy + 19.0;
+            } else if (idLow.contains("house") || idLow.contains("barn") || idLow.contains("pet_shop") || idLow.contains("windmill") || idLow.contains("casino")) {
                 // Công trình lớn (Nhà, Nhà kho, Pet Shop, Cối xay gió): chặn toàn bộ phần thân & tường nhà
                 hw = ow * 0.88;
                 hh = oh * 0.62;
@@ -1617,7 +1686,7 @@ public class InGameController {
             luffyShadow.setVisible(!lockedOnBoat);
         }
         if (weaponView != null) {
-            weaponView.setVisible(!lockedOnBoat && weaponView.getImage() != null);
+            weaponView.setVisible(!lockedOnBoat && !isSunbathing && weaponView.getImage() != null);
         }
 
         // Xác định bộ sprite & hướng lật cho đủ 8 hướng chạy/đứng của Luffy
@@ -1930,11 +1999,18 @@ public class InGameController {
             }
         }
 
-        // Bỏ hiệu ứng nghiêng/nhún giả lập khi dùng sprite hành động gốc (giữ nét pixel sắc chuẩn)
+        // Bỏ hiệu ứng nghiêng/nhún giả lập khi dùng sprite hành động gốc (hoặc ngả lưng thư giãn khi tắm nắng!)
         if (luffyBodyRotate != null && luffySpriteView != null) {
-            luffyBodyRotate.setAngle(usingNativeActionTool ? 0.0 : bodyLeanAngle);
-            luffySpriteView.setScaleY(usingNativeActionTool ? 1.0 : bodyScaleY);
-            luffySpriteView.setTranslateY(usingNativeActionTool ? 0.0 : bodyCrouchY);
+            if (isSunbathing) {
+                luffyBodyRotate.setAngle(72.0);
+                luffySpriteView.setScaleY(1.0);
+                luffySpriteView.setTranslateY(-6.0);
+                if (luffyToolRig != null) luffyToolRig.setVisible(false);
+            } else {
+                luffyBodyRotate.setAngle(usingNativeActionTool ? 0.0 : bodyLeanAngle);
+                luffySpriteView.setScaleY(usingNativeActionTool ? 1.0 : bodyScaleY);
+                luffySpriteView.setTranslateY(usingNativeActionTool ? 0.0 : bodyCrouchY);
+            }
         }
         
         // ==========================================
@@ -2243,6 +2319,10 @@ public class InGameController {
                             objView.setUserData(-700.0); // Tufted dark-olive grass patches sit right on top of ground under everything
                         } else if (lowerName.contains("dirt_spot") || lowerName.contains("flower") || lowerName.contains("pebble")) {
                             objView.setUserData(-600.0); // Ground dirt patches, wildflowers, pebbles stay under everything
+                        } else if (lowerName.equals("swimming_pool")) {
+                            objView.setUserData(-490.0); // Hồ bơi sát mặt đất, viền gạch nằm dưới nhân vật & ghế
+                        } else if (lowerName.equals("pool_lounger")) {
+                            objView.setUserData(-460.0); // Ghế tắm nắng nằm dưới lưng nhân vật khi nằm thư giãn
                         } else if (lowerName.contains("construction") || lowerName.contains("farm_rake") || lowerName.contains("farm_hoe") || lowerName.contains("farm_shovel") || lowerName.contains("broken_")) {
                             objView.setUserData(-500.0); // Ground decals always stay underneath player/trees/buildings
                         } else if (lowerName.contains("garden_bed")) {
@@ -2351,6 +2431,7 @@ public class InGameController {
                     player.getInventory().addItem(model.game_item.FishItem.fromSpecies(species), 1);
                     player.addMoney(rewardMoney);
                 }
+                onQuestFishCaught();
                 if (particleSystem != null && fishingGame != null) {
                     particleSystem.spawnWaterSplash(fishingGame.getLastBobberX(), fishingGame.getLastBobberY());
                     particleSystem.spawnHarvestSparkles(fishingGame.getLastBobberX(), fishingGame.getLastBobberY() - 8.0);
@@ -2590,8 +2671,9 @@ public class InGameController {
             droppedItemSystem.collectAllImmediately();
         }
         elapsedTimeInDay = 0;
+        if (isSunbathing) stopSunbathing();
         clearFoodBuffs();
-        resetDailyHarvestQuest();
+        updateQuestTrackerUi();
         // Khi qua ngày mới (đi ngủ), đảm bảo chỉ số buổi sáng tối thiểu 60 và giữ no 4 tiếng đầu buổi sáng
         hungerGraceTimerSec = HUNGER_FULL_GRACE_SEC;
         recentLaborStreak = 0;
@@ -2798,6 +2880,13 @@ public class InGameController {
             closeFishingGuide();
             return;
         }
+        if (activeCasinoOverlay != null) {
+            activeCasinoOverlay.requestSafeClose();
+            return;
+        }
+        if (isSunbathing) {
+            stopSunbathing();
+        }
         if (router.hasOverlay()) {
             router.closeOverlay();
             Platform.runLater(rootPane::requestFocus);
@@ -2809,13 +2898,23 @@ public class InGameController {
 
     // ======================== ĐI NGỦ TẠI NHÀ & NẤU ĂN LỬA TRẠI ========================
 
-    /** Quét tự động vị trí cửa nhà (house_main / house_small / house_bottom) và đống lửa (campfire) từ map. */
+    /** Quét tự động vị trí cửa nhà, đống lửa, Khu Bể Bơi (Nami & Hancock), Sòng Bạc Casino và khởi tạo 4 Bot đi dạo. */
     private void setupHouseAndCampfireInteractions() {
         houseDoorPoints.clear();
         campfirePoints.clear();
         campfireGlows.clear();
+        casinoDoorPoints.clear();
+        poolSunbathePoints.clear();
+        poolWaveLines.clear();
+        poolSparkleDots.clear();
+        casinoMarqueeBulbs.clear();
+        isSunbathing = false;
 
         double[] mainHouseDoor = null;
+        double topLoungerX = 672.0;
+        double topLoungerY = 2476.0;
+        boolean foundFirstLounger = false;
+
         for (ImageView objView : sceneryObjects) {
             String id = objView.getId();
             if (id == null) continue;
@@ -2837,7 +2936,6 @@ public class InGameController {
                 double cy = oy + oh * 0.58;
                 campfirePoints.add(new double[] { cx, cy });
 
-                // Vòng ánh sáng cam ấm áp tỏa xung quanh đống lửa
                 if (entityPane != null) {
                     javafx.scene.paint.RadialGradient fireGrad = new javafx.scene.paint.RadialGradient(
                         0, 0, 0.5, 0.5, 0.5, true, javafx.scene.paint.CycleMethod.NO_CYCLE,
@@ -2856,13 +2954,104 @@ public class InGameController {
                     entityPane.getChildren().add(glow);
                     campfireGlows.add(glow);
                 }
+            } else if (idLow.equals("swimming_pool")) {
+                poolWaterX = ox + 26.0;
+                poolWaterY = oy + 26.0;
+                poolWaterW = Math.max(60.0, ow - 52.0);
+                poolWaterH = Math.max(40.0, oh - 52.0);
+
+                // Cho phép bấm [E] ngay sát mép phải & mép dưới bể bơi (< 75px)
+                poolSunbathePoints.add(new double[] { ox + ow + 6.0, oy + oh * 0.35 });
+                poolSunbathePoints.add(new double[] { ox + ow + 6.0, oy + oh * 0.72 });
+                poolSunbathePoints.add(new double[] { ox + ow * 0.50, oy + oh + 8.0 });
+
+                if (entityPane != null) {
+                    // Các dải gợn sóng xanh ngọc & ánh nắng lấp lánh trên mặt hồ bơi
+                    for (int wi = 0; wi < 5; wi++) {
+                        double lx = poolWaterX + 18.0 + (wi % 3) * (poolWaterW * 0.31);
+                        double ly = poolWaterY + 24.0 + (wi / 3) * (poolWaterH * 0.46) + (wi % 2) * 14.0;
+                        javafx.scene.shape.Line wave = new javafx.scene.shape.Line(0, 0, 46.0, 0);
+                        wave.setStroke(Color.rgb(210, 250, 255, 0.68));
+                        wave.setStrokeWidth(2.4);
+                        wave.setStrokeLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
+                        wave.setManaged(false);
+                        wave.setMouseTransparent(true);
+                        wave.setLayoutX(lx);
+                        wave.setLayoutY(ly);
+                        wave.setUserData(-485.0);
+                        entityPane.getChildren().add(wave);
+                        poolWaveLines.add(wave);
+                    }
+                    for (int si = 0; si < 8; si++) {
+                        javafx.scene.shape.Circle sp = new javafx.scene.shape.Circle(2.4, Color.rgb(255, 255, 255, 0.85));
+                        sp.setManaged(false);
+                        sp.setMouseTransparent(true);
+                        sp.setLayoutX(poolWaterX + 16.0 + ((si * 43) % (int) Math.max(30, poolWaterW - 32)));
+                        sp.setLayoutY(poolWaterY + 14.0 + ((si * 29) % (int) Math.max(24, poolWaterH - 28)));
+                        sp.setUserData(-484.0);
+                        entityPane.getChildren().add(sp);
+                        poolSparkleDots.add(sp);
+                    }
+                }
+            } else if (idLow.equals("pool_lounger")) {
+                double lxCenter = ox + ow * 0.50;
+                double lyCenter = oy + oh * 0.55;
+                poolSunbathePoints.add(new double[] { lxCenter, lyCenter });
+                if (!foundFirstLounger || oy < topLoungerY) {
+                    foundFirstLounger = true;
+                    topLoungerX = ox;
+                    topLoungerY = oy;
+                }
+                if (oy >= sunbatheLoungerY || sunbatheLoungerY <= 0) {
+                    sunbatheLoungerX = ox;
+                    sunbatheLoungerY = oy;
+                }
+            } else if (idLow.equals("casino_building")) {
+                double doorX = ox + ow * 0.50;
+                double doorY = oy + oh + 6.0;
+                casinoDoorPoints.add(new double[] { doorX, doorY });
+
+                // Dàn đèn led vàng & đỏ nhấp nháy rực rỡ quanh biển hiệu CASINO
+                if (entityPane != null) {
+                    double signLeft = ox + ow * 0.19;
+                    double signRight = ox + ow * 0.81;
+                    double signTopY = oy + oh * 0.055;
+                    double signBotY = oy + oh * 0.245;
+                    double sortTop = (objView.getUserData() instanceof Double) ? ((Double) objView.getUserData()) + 1.5 : (oy + oh + 1.5);
+                    for (int bi = 0; bi < 8; bi++) {
+                        double bx = signLeft + (signRight - signLeft) * (bi / 7.0);
+                        javafx.scene.shape.Circle topBulb = new javafx.scene.shape.Circle(3.2, (bi % 2 == 0) ? Color.web("#FFE066") : Color.web("#FF5252"));
+                        topBulb.setManaged(false);
+                        topBulb.setMouseTransparent(true);
+                        topBulb.setLayoutX(bx);
+                        topBulb.setLayoutY(signTopY);
+                        topBulb.setUserData(sortTop);
+
+                        javafx.scene.shape.Circle botBulb = new javafx.scene.shape.Circle(3.2, (bi % 2 == 1) ? Color.web("#FFE066") : Color.web("#FF5252"));
+                        botBulb.setManaged(false);
+                        botBulb.setMouseTransparent(true);
+                        botBulb.setLayoutX(bx);
+                        botBulb.setLayoutY(signBotY);
+                        botBulb.setUserData(sortTop);
+
+                        entityPane.getChildren().addAll(topBulb, botBulb);
+                        casinoMarqueeBulbs.add(topBulb);
+                        casinoMarqueeBulbs.add(botBulb);
+                    }
+                }
             }
         }
         if (mainHouseDoor != null) {
             houseDoorPoints.add(0, mainHouseDoor);
         }
 
-        // Dòng gợi ý nổi phía trên đầu nhân vật ([E] Đi ngủ / [E] Nấu ăn)
+        // Khởi tạo NpcManager: Nami & Hancock ở bể bơi + 4 Bot Zoro, Sanji, Chopper, Usopp đi dạo
+        if (entityPane != null && farmMap != null) {
+            npcManager = new view.npc.NpcManager(farmMap, this::isPointBlockedForBot);
+            npcManager.attachTo(entityPane, topLoungerX, topLoungerY);
+        }
+
+        // Dòng gợi ý nổi phía trên đầu nhân vật
         if (entityPane != null) {
             interactPromptLabel = new Label();
             interactPromptLabel.setStyle(
@@ -2883,7 +3072,6 @@ public class InGameController {
             interactPromptLabel.setUserData(9995.0);
             entityPane.getChildren().add(interactPromptLabel);
 
-            // Bong bóng cảnh báo nổi phía trên đầu nhân vật khi Đói hoặc Khát < 30%
             survivalWarningLabel = new Label();
             survivalWarningLabel.setStyle(
                 "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
@@ -2909,71 +3097,200 @@ public class InGameController {
         updateQuestTrackerUi();
     }
 
-    // ======================== BẢNG NHIỆM VỤ THU HOẠCH NGÀY (QUEST TRACKER) ========================
-
-    private void recordHarvestForQuest(String cropName) {
-        if (cropName == null) return;
-        String low = cropName.toLowerCase();
-        boolean changed = false;
-        if (low.contains("tomato")) {
-            questTomato = Math.min(QUEST_TARGET, questTomato + 1);
-            changed = true;
-        } else if (low.contains("potato")) {
-            questPotato = Math.min(QUEST_TARGET, questPotato + 1);
-            changed = true;
-        } else if (low.contains("corn")) {
-            questCorn = Math.min(QUEST_TARGET, questCorn + 1);
-            changed = true;
-        }
-        if (!changed) return;
-
-        updateQuestTrackerUi();
-        if (!questRewardClaimed
-                && questTomato >= QUEST_TARGET
-                && questPotato >= QUEST_TARGET
-                && questCorn >= QUEST_TARGET) {
-            questRewardClaimed = true;
-            if (player != null) {
-                player.addMoney(200);
+    /** Kiểm tra va chạm vật cản tĩnh trên bản đồ cho 4 Bot đi dạo (tránh nhà, hàng rào, bể bơi, cây, đá). */
+    private boolean isPointBlockedForBot(double footX, double footY) {
+        if (sceneryObjects == null) return false;
+        javafx.geometry.Rectangle2D botBox = new javafx.geometry.Rectangle2D(footX - 10.0, footY - 8.0, 24.0, 20.0);
+        for (ImageView objView : sceneryObjects) {
+            String id = objView.getId();
+            if (id == null) continue;
+            String low = id.toLowerCase();
+            if (low.isEmpty() || low.contains("grass_patch") || low.contains("dirt") || low.contains("flower") ||
+                low.contains("pebble") || low.contains("flag") || low.contains("windmill_blades") ||
+                low.contains("bridge") || low.contains("pool_lounger") || low.contains("pool_umbrella")) {
+                continue;
             }
-            updateQuestTrackerUi();
-            view.fx.SoundHook.playPickup();
-            spawnFloatingText("Hoàn thành nhiệm vụ! +200$", Color.rgb(255, 232, 92));
-            notify("Hoàn thành cả 3 mục tiêu thu hoạch ngày! Nhận thưởng +200$!");
+            double ox = objView.getLayoutX();
+            double oy = objView.getLayoutY();
+            double ow = objView.getFitWidth();
+            double oh = objView.getFitHeight();
+            if (ow <= 0 || oh <= 0) continue;
+
+            double hw = ow * 0.78;
+            double hh = low.contains("tree") ? (oh * 0.28) : (low.contains("swimming_pool") ? (oh * 0.92) : (oh * 0.62));
+            javafx.geometry.Rectangle2D sBox = new javafx.geometry.Rectangle2D(
+                ox + (ow - hw) * 0.5, oy + oh - hh, hw, hh
+            );
+            if (botBox.intersects(sBox)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Hoạt ảnh gợn sóng lấp lánh của hồ bơi & đèn biển hiệu Casino. */
+    private void updatePoolAndCasinoVisuals(double timeSec) {
+        for (int i = 0; i < poolWaveLines.size(); i++) {
+            javafx.scene.shape.Line w = poolWaveLines.get(i);
+            w.setTranslateX(Math.sin(timeSec * 2.2 + i * 1.3) * 8.5);
+            w.setOpacity(0.42 + 0.36 * Math.abs(Math.sin(timeSec * 2.8 + i)));
+        }
+        for (int i = 0; i < poolSparkleDots.size(); i++) {
+            javafx.scene.shape.Circle sp = poolSparkleDots.get(i);
+            double twinkle = Math.abs(Math.sin(timeSec * 4.5 + i * 1.1));
+            sp.setOpacity(0.20 + 0.80 * twinkle);
+            double sc = 0.65 + 0.65 * twinkle;
+            sp.setScaleX(sc);
+            sp.setScaleY(sc);
+        }
+        int tick = (int) (timeSec * 4.0);
+        for (int i = 0; i < casinoMarqueeBulbs.size(); i++) {
+            javafx.scene.shape.Circle bulb = casinoMarqueeBulbs.get(i);
+            boolean lit = ((i + tick) % 2 == 0);
+            bulb.setOpacity(lit ? 1.0 : 0.28);
+            bulb.setScaleX(lit ? 1.18 : 0.85);
+            bulb.setScaleY(lit ? 1.18 : 0.85);
         }
     }
 
-    private void resetDailyHarvestQuest() {
-        questTomato = 0;
-        questPotato = 0;
-        questCorn = 0;
-        questRewardClaimed = false;
+    // ======================== CHUỖI 1000 NHIỆM VỤ TỰ ĐỘNG (QUEST MANAGER) ========================
+
+    private void onQuestCropHarvested(String cropName) {
+        if (player != null && player.getQuestManager() != null && player.getQuestManager().onCropHarvested(cropName)) {
+            onQuestProgressUpdated();
+        }
+    }
+
+    private void onQuestFishCaught() {
+        if (player != null && player.getQuestManager() != null && player.getQuestManager().onFishCaught()) {
+            onQuestProgressUpdated();
+        }
+    }
+
+    private void onQuestFoodCooked() {
+        if (player != null && player.getQuestManager() != null && player.getQuestManager().onFoodCooked()) {
+            onQuestProgressUpdated();
+        }
+    }
+
+    private void onQuestAnimalHarvested() {
+        if (player != null && player.getQuestManager() != null && player.getQuestManager().onAnimalHarvested()) {
+            onQuestProgressUpdated();
+        }
+    }
+
+    private void onQuestMoneyEarned(int amount) {
+        if (player != null && player.getQuestManager() != null && player.getQuestManager().onMoneyEarned(amount)) {
+            onQuestProgressUpdated();
+        }
+    }
+
+    private void onQuestProgressUpdated() {
         updateQuestTrackerUi();
+        if (player != null && player.getQuestManager() != null && player.getQuestManager().isCurrentQuestReadyToClaim()) {
+            model.quest.Quest q = player.getQuestManager().getCurrentQuest();
+            if (q != null) {
+                view.fx.SoundHook.playPickup();
+                notify("✨ Đã đủ tiến độ " + q.getTitle() + "! Bấm [Nhận Thưởng] ở bảng bên phải để lĩnh +$" + q.getRewardMoney() + "!");
+            }
+        }
+    }
+
+    @FXML
+    private void onClaimQuestReward() {
+        if (player == null || player.getQuestManager() == null) return;
+        model.quest.QuestManager qm = player.getQuestManager();
+        model.quest.Quest completed = qm.claimAndAdvance();
+        if (completed == null) return;
+
+        int reward = completed.getRewardMoney();
+        suppressQuestMoneyTracking = true;
+        try {
+            player.addMoney(reward);
+        } finally {
+            suppressQuestMoneyTracking = false;
+        }
+
+        if (particleSystem != null) {
+            particleSystem.spawnHarvestSparkles(playerX + 22.0, playerY + 18.0);
+        }
+        view.fx.SoundHook.playHarvest();
+        spawnFloatingText("+$" + reward + " | Hoàn thành Nhiệm vụ #" + completed.getIndex() + "!", Color.rgb(255, 232, 92));
+
+        model.quest.Quest nextQ = qm.getCurrentQuest();
+        if (nextQ != null) {
+            notify("🏆 Hoàn thành Nhiệm vụ #" + completed.getIndex() + " (+$" + reward + ")! Mở tiếp " + nextQ.getTitle() + ": " + nextQ.getDescription());
+        } else {
+            notify("👑 Chúc mừng! Bạn đã chinh phục trọn vẹn toàn bộ 1000 Nhiệm vụ của Nông trại!");
+        }
+
+        updateQuestTrackerUi();
+        if (autosave != null) {
+            autosave.run();
+        }
+        Platform.runLater(rootPane::requestFocus);
     }
 
     private void updateQuestTrackerUi() {
-        updateQuestLine(questTomatoLabel, "Cà chua", questTomato);
-        updateQuestLine(questPotatoLabel, "Khoai tây", questPotato);
-        updateQuestLine(questCornLabel, "Ngô", questCorn);
-        if (questRewardLabel != null) {
-            if (questRewardClaimed) {
-                questRewardLabel.setText("✓ ĐÃ NHẬN +200$");
-                questRewardLabel.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 10.5px; -fx-font-weight: bold; -fx-text-fill: #1F7A2E;");
+        if (questTitleLabel == null || player == null || player.getQuestManager() == null) return;
+        model.quest.QuestManager qm = player.getQuestManager();
+        if (qm.isAllCompleted()) {
+            questTitleLabel.setText("👑 HOÀN TẤT 1000/1000");
+            questDescLabel.setText("Đã hoàn thành mọi nhiệm vụ!");
+            questProgressLabel.setText("Tiến độ: 1000 / 1000");
+            questRewardLabel.setText("Danh hiệu: Vua Nông Trại");
+            if (questClaimButton != null) {
+                questClaimButton.setVisible(false);
+                questClaimButton.setManaged(false);
+            }
+            return;
+        }
+
+        model.quest.Quest q = qm.getCurrentQuest();
+        int prog = qm.getCurrentQuestProgress();
+        int target = q.getTargetAmount();
+        boolean ready = (prog >= target);
+
+        questTitleLabel.setText(q.getTitle());
+        questTitleLabel.setStyle(
+            "-fx-font-family: 'Consolas', monospace; -fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: " +
+            (q.isSpecialMilestone() ? "#B02A0E;" : "#6B2A0C;")
+        );
+
+        questDescLabel.setText(q.getDescription());
+        questProgressLabel.setText((ready ? "✓ Đủ: " : "Tiến độ: ") + prog + " / " + target);
+        questProgressLabel.setStyle(
+            "-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: " +
+            (ready ? "#197A2F;" : "#3E210C;")
+        );
+
+        questRewardLabel.setText((q.isSpecialMilestone() ? "★ x3 Thưởng: +$" : "Thưởng: +$") + q.getRewardMoney());
+        questRewardLabel.setStyle(
+            "-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: " +
+            (q.isSpecialMilestone() ? "#C43C00;" : "#9A5212;")
+        );
+
+        if (questTrackerBox != null) {
+            if (ready) {
+                questTrackerBox.setStyle(
+                    "-fx-background-color: linear-gradient(to bottom, #FFF5CC 0%, #FFE48F 100%);" +
+                    "-fx-border-color: #FFA800; -fx-border-width: 3px;" +
+                    "-fx-background-radius: 9px; -fx-border-radius: 9px; -fx-padding: 8 9 9 9;" +
+                    "-fx-effect: dropshadow(gaussian, rgba(255, 196, 0, 0.55), 10, 0.3, 0, 0);"
+                );
             } else {
-                questRewardLabel.setText("Thưởng: +200$");
-                questRewardLabel.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 10.5px; -fx-font-weight: bold; -fx-text-fill: #9A5212;");
+                questTrackerBox.setStyle(
+                    "-fx-background-color: linear-gradient(to bottom, #F8E7C6 0%, #E8CE9F 100%);" +
+                    "-fx-border-color: " + (q.isSpecialMilestone() ? "#C44D18" : "#6B3C1A") + "; -fx-border-width: 2.5px;" +
+                    "-fx-background-radius: 9px; -fx-border-radius: 9px; -fx-padding: 8 9 9 9;"
+                );
             }
         }
-    }
 
-    private void updateQuestLine(Label lbl, String viName, int count) {
-        if (lbl == null) return;
-        boolean done = count >= QUEST_TARGET;
-        lbl.setText((done ? "✓ " : "• ") + viName + ": " + Math.min(count, QUEST_TARGET) + "/" + QUEST_TARGET);
-        lbl.setStyle(
-            "-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: " +
-            (done ? "#1F7A2E;" : "#3E210C;")
-        );
+        if (questClaimButton != null) {
+            questClaimButton.setVisible(ready);
+            questClaimButton.setManaged(ready);
+        }
     }
 
     /**
@@ -3131,23 +3448,65 @@ public class InGameController {
             if (survivalWarningLabel != null) survivalWarningLabel.setVisible(false);
             return;
         }
-        double px = playerX + 22.0;
-        double py = playerY + 52.0;
-        double[] nearDoor = findNearestPoint(houseDoorPoints, px, py, 75.0);
-        double[] nearFire = findNearestPoint(campfirePoints, px, py, 80.0);
-        boolean nearRiverDrink = isNearRiverBankForDrink();
 
         String promptText = null;
-        if (nearDoor != null && nearFire != null) {
-            double dDoor = Math.hypot(px - nearDoor[0], py - nearDoor[1]);
-            double dFire = Math.hypot(px - nearFire[0], py - nearFire[1]);
-            promptText = (dDoor <= dFire) ? "[E] Đi ngủ để qua ngày" : "[E] Nấu ăn tại đống lửa";
-        } else if (nearDoor != null) {
-            promptText = "[E] Đi ngủ để qua ngày";
-        } else if (nearFire != null) {
-            promptText = "[E] Nấu ăn tại đống lửa";
-        } else if (nearRiverDrink) {
-            promptText = "[R] Uống nước sông";
+        if (isSunbathing) {
+            promptText = "☀ Đang tắm nắng thư giãn... (Bấm phím di chuyển để đứng dậy)";
+        } else {
+            double px = playerX + 22.0;
+            double py = playerY + 52.0;
+            double bestDist = Double.MAX_VALUE;
+
+            double[] nearDoor = findNearestPoint(houseDoorPoints, px, py, 75.0);
+            if (nearDoor != null) {
+                double d = Math.hypot(px - nearDoor[0], py - nearDoor[1]);
+                if (d < bestDist) {
+                    bestDist = d;
+                    promptText = "[E] Đi ngủ để qua ngày";
+                }
+            }
+
+            double[] nearFire = findNearestPoint(campfirePoints, px, py, 80.0);
+            if (nearFire != null) {
+                double d = Math.hypot(px - nearFire[0], py - nearFire[1]);
+                if (d < bestDist) {
+                    bestDist = d;
+                    promptText = "[E] Nấu ăn tại đống lửa";
+                }
+            }
+
+            double[] nearPool = findNearestPoint(poolSunbathePoints, px, py, 75.0);
+            if (nearPool != null) {
+                double d = Math.hypot(px - nearPool[0], py - nearPool[1]);
+                if (d < bestDist) {
+                    bestDist = d;
+                    promptText = "[E] Nằm tắm nắng & thư giãn cùng Nami & Hancock";
+                }
+            }
+
+            double[] nearCasino = findNearestPoint(casinoDoorPoints, px, py, 85.0);
+            if (nearCasino != null) {
+                double d = Math.hypot(px - nearCasino[0], py - nearCasino[1]);
+                if (d < bestDist) {
+                    bestDist = d;
+                    promptText = "[E] Vào Sòng Bạc Đánh Bài";
+                }
+            }
+
+            if (npcManager != null) {
+                view.npc.NpcManager.BotActor nearBot = npcManager.findNearestBot(px, py, 80.0);
+                if (nearBot != null) {
+                    double d = Math.hypot(px - (nearBot.x + 22.0), py - (nearBot.y + 54.0));
+                    if (d < bestDist) {
+                        bestDist = d;
+                        promptText = "[E] Trò chuyện với " + nearBot.name;
+                    }
+                }
+            }
+
+            if (promptText == null && isNearRiverBankForDrink()) {
+                promptText = "[R] Uống nước sông";
+            }
         }
 
         boolean promptShown = false;
@@ -3156,7 +3515,7 @@ public class InGameController {
                 interactPromptLabel.setText(promptText);
                 interactPromptLabel.autosize();
             }
-            double w = interactPromptLabel.getWidth() > 0 ? interactPromptLabel.getWidth() : 196.0;
+            double w = interactPromptLabel.getWidth() > 10 ? interactPromptLabel.getWidth() : Math.max(196.0, promptText.length() * 6.8);
             interactPromptLabel.setLayoutX(playerX + 22.0 - w * 0.5);
             interactPromptLabel.setLayoutY(playerY - 48.0);
             interactPromptLabel.setVisible(true);
@@ -3192,7 +3551,10 @@ public class InGameController {
         }
     }
 
-    /** Xử lý phím [E] ưu tiên theo khoảng cách gần nhất giữa: Cửa nhà (ngủ), Đống lửa (nấu ăn), Thuyền (lên/xuống). */
+    /**
+     * Xử lý phím [E] ưu tiên theo khoảng cách gần nhất giữa:
+     * 1=Cửa nhà (ngủ), 2=Đống lửa (nấu ăn), 3=Thuyền, 4=Bể bơi tắm nắng, 5=Sòng bạc Casino, 6=Bot đi dạo.
+     */
     private void handleInteractKeyE() {
         if (activeCookingOverlay != null) {
             if (!activeCookingOverlay.isCookingInProgress()) {
@@ -3200,7 +3562,16 @@ public class InGameController {
             }
             return;
         }
+        if (activeCasinoOverlay != null) {
+            activeCasinoOverlay.requestSafeClose();
+            return;
+        }
         if (router.hasOverlay() || sleepTransitionRunning) return;
+
+        if (isSunbathing) {
+            stopSunbathing();
+            return;
+        }
 
         // Đang ngồi trên thuyền -> xuống thuyền ngay (chặn nếu đang chui ngay dưới gầm cầu)
         if (boatEntity != null && (isOnBoat || boatEntity.isPlayerAboard())) {
@@ -3217,8 +3588,9 @@ public class InGameController {
         double py = playerY + 52.0;
 
         double bestDist = Double.MAX_VALUE;
-        int bestAction = 0; // 1 = sleep, 2 = cook, 3 = boat
+        int bestAction = 0; // 1=sleep, 2=cook, 3=boat, 4=pool, 5=casino, 6=bot
         double[] bestPt = null;
+        view.npc.NpcManager.BotActor bestBot = null;
 
         double[] nearDoor = findNearestPoint(houseDoorPoints, px, py, 75.0);
         if (nearDoor != null) {
@@ -3248,15 +3620,121 @@ public class InGameController {
             }
         }
 
+        double[] nearPool = findNearestPoint(poolSunbathePoints, px, py, 75.0);
+        if (nearPool != null) {
+            double d = Math.hypot(px - nearPool[0], py - nearPool[1]);
+            if (d < bestDist) {
+                bestDist = d;
+                bestAction = 4;
+                bestPt = nearPool;
+            }
+        }
+
+        double[] nearCasino = findNearestPoint(casinoDoorPoints, px, py, 85.0);
+        if (nearCasino != null) {
+            double d = Math.hypot(px - nearCasino[0], py - nearCasino[1]);
+            if (d < bestDist) {
+                bestDist = d;
+                bestAction = 5;
+                bestPt = nearCasino;
+            }
+        }
+
+        if (npcManager != null) {
+            view.npc.NpcManager.BotActor nearBot = npcManager.findNearestBot(px, py, 80.0);
+            if (nearBot != null) {
+                double d = Math.hypot(px - (nearBot.x + 22.0), py - (nearBot.y + 54.0));
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestAction = 6;
+                    bestBot = nearBot;
+                }
+            }
+        }
+
         if (bestAction == 1 && bestPt != null) {
             openSleepDialog(bestPt[0], bestPt[1]);
         } else if (bestAction == 2 && bestPt != null) {
             openCookingOverlay(bestPt[0], bestPt[1]);
         } else if (bestAction == 3 && boatEntity != null) {
             boatEntity.startBoarding(playerX, playerY);
+        } else if (bestAction == 4) {
+            startSunbathing();
+        } else if (bestAction == 5) {
+            openCasinoOverlay();
+        } else if (bestAction == 6 && bestBot != null) {
+            int curDay = (gameManager != null) ? gameManager.getCurrentDay() : 1;
+            npcManager.interactWithBot(
+                bestBot,
+                px,
+                curDay,
+                player,
+                particleSystem,
+                txt -> spawnFloatingText(txt, Color.rgb(144, 255, 164)),
+                this::notify
+            );
         } else if (isNearRiverBankForDrink()) {
-            // Không ở gần thuyền/nhà/đống lửa -> cho phép bấm E uống nước sông tiện lợi ngoài phím riêng R
             tryDrinkRiverWater();
+        }
+    }
+
+    /** Nằm tắm nắng cạnh bể bơi cùng Nami & Hancock: hồi Đói/Khát + nhận Buff "Thư giãn +20% tốc độ chạy" trong 2 phút. */
+    private void startSunbathing() {
+        isSunbathing = true;
+        sunbatheSparkleTimer = 0.0;
+        activeKeys.clear();
+        playerX = sunbatheLoungerX + 20.0;
+        playerY = sunbatheLoungerY - 22.0;
+        facing = "LEFT";
+        luffyFacingLeft = true;
+        if (playerCharacter != null) {
+            playerCharacter.setTranslateX(playerX);
+            playerCharacter.setTranslateY(playerY);
+        }
+        poolRelaxSpeedBuffSec = 120.0;
+        lastRenderedRelaxSec = 120;
+        updateFoodBuffHud();
+        view.fx.SoundHook.playHeart();
+        if (particleSystem != null) {
+            particleSystem.spawnHeartBurst(playerX + 22.0, playerY + 6.0);
+        }
+        spawnFloatingText("☀ Thư giãn +20% tốc độ chạy (2 phút)!", Color.rgb(255, 224, 102));
+        notify("☀ Đang nằm tắm nắng cạnh Nami & Hancock! Hồi dần Đói/Khát & nhận Buff +20% tốc độ chạy (2 phút).");
+    }
+
+    private void stopSunbathing() {
+        if (!isSunbathing) return;
+        isSunbathing = false;
+        if (luffyBodyRotate != null) luffyBodyRotate.setAngle(0.0);
+        if (luffySpriteView != null) luffySpriteView.setTranslateY(0.0);
+        notify("Đã đứng dậy khỏi ghế tắm nắng! (Buff +20% tốc độ chạy còn " + (int) Math.ceil(poolRelaxSpeedBuffSec) + "s)");
+    }
+
+    /** Mở giao diện Sòng Bạc Đánh Bài (Xì Dách 21 & Đoán Bài Cao/Thấp). */
+    private void openCasinoOverlay() {
+        if (router == null || router.hasOverlay() || sleepTransitionRunning) return;
+        activeKeys.clear();
+        activeCasinoOverlay = new view.ui.CasinoOverlay(
+            player,
+            this::onQuestMoneyEarned,
+            this::notify,
+            this::closeCasinoOverlay
+        );
+        router.showOverlay(activeCasinoOverlay);
+        Platform.runLater(activeCasinoOverlay::requestFocus);
+    }
+
+    private void closeCasinoOverlay() {
+        if (activeCasinoOverlay != null) {
+            activeCasinoOverlay = null;
+            if (router != null && router.hasOverlay()) {
+                router.closeOverlay();
+            }
+            activeKeys.clear();
+            if (autosave != null) {
+                autosave.run();
+            }
+            Platform.runLater(rootPane::requestFocus);
         }
     }
 
@@ -3464,6 +3942,7 @@ public class InGameController {
                     particleSystem.spawnCookingBurst(fireX, fireY);
                 }
                 view.fx.SoundHook.playPickup();
+                onQuestFoodCooked();
             },
             this::applyCookedFoodBuff,
             this::notify,
@@ -3831,7 +4310,16 @@ public class InGameController {
     }
 
     private String getActiveBuffSummary() {
-        return foodRareFishBuff ? "Tăng tỉ lệ cá hiếm" : "";
+        StringBuilder sb = new StringBuilder();
+        if (poolRelaxSpeedBuffSec > 0.0) {
+            int rem = Math.max(1, (int) Math.ceil(poolRelaxSpeedBuffSec));
+            sb.append(String.format("Thư giãn +20%% tốc độ chạy (%d:%02d)", rem / 60, rem % 60));
+        }
+        if (foodRareFishBuff) {
+            if (sb.length() > 0) sb.append(" • ");
+            sb.append("Tăng tỉ lệ cá hiếm");
+        }
+        return sb.toString();
     }
 
     /** Hiển thị icon/huy hiệu Buff nhỏ trên HUD khi có hiệu lực trong ngày. */
@@ -3873,6 +4361,13 @@ public class InGameController {
         if (activeFishingGuide != null) {
             closeFishingGuide();
             return;
+        }
+        if (activeCasinoOverlay != null) {
+            activeCasinoOverlay.requestSafeClose();
+            return;
+        }
+        if (isSunbathing) {
+            stopSunbathing();
         }
         if (router == null || router.hasOverlay()) return;
 
