@@ -111,13 +111,13 @@
 
          </StackPane>
 
-         <!-- SỔ TAY CÂU CÁ (Phím G) -->
+         <!-- NÚT MỞ CUỐN SỔ QUẢN LÝ 5 TAB (Phím TAB) -->
 
-         <Button fx:id="fishingGuideButton" mnemonicParsing="false" onAction="#toggleFishingGuide" prefHeight="34" prefWidth="150" text="SỔ CÁ [G]" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-text-fill: #FFF4D2; -fx-background-color: linear-gradient(to bottom, #9A5E31 0%, #6D3E1C 100%); -fx-border-color: #3B1E0A; -fx-border-width: 2.5px; -fx-background-radius: 8px; -fx-border-radius: 8px; -fx-cursor: hand;" />
+         <Button fx:id="fishingGuideButton" mnemonicParsing="false" focusTraversable="false" minWidth="-Infinity" onAction="#openGameBookDefault" prefHeight="34" prefWidth="162" text="📖 SỔ QUẢN LÝ [TAB]" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: #FFF4D2; -fx-padding: 4 8 4 8; -fx-background-color: linear-gradient(to bottom, #9A5E31 0%, #6D3E1C 100%); -fx-border-color: #3B1E0A; -fx-border-width: 2.5px; -fx-background-radius: 8px; -fx-border-radius: 8px; -fx-cursor: hand;" />
 
-         <!-- BẢNG CHUỖI 1000 NHIỆM VỤ TỰ ĐỘNG (QUEST TRACKER) -->
+         <!-- BẢNG CHUỖI 1000 NHIỆM VỤ TỰ ĐỘNG (QUEST TRACKER - Bấm vào để mở Tab Nhiệm Vụ) -->
 
-         <VBox fx:id="questTrackerBox" alignment="TOP_LEFT" prefWidth="162" spacing="5" style="-fx-background-color: linear-gradient(to bottom, #F8E7C6 0%, #E8CE9F 100%); -fx-border-color: #6B3C1A; -fx-border-width: 2.5px; -fx-background-radius: 9px; -fx-border-radius: 9px; -fx-padding: 8 9 9 9;">
+         <VBox fx:id="questTrackerBox" onMouseClicked="#openBookQuests" alignment="TOP_LEFT" prefWidth="162" spacing="5" style="-fx-background-color: linear-gradient(to bottom, #F8E7C6 0%, #E8CE9F 100%); -fx-border-color: #6B3C1A; -fx-border-width: 2.5px; -fx-background-radius: 9px; -fx-border-radius: 9px; -fx-padding: 8 9 9 9; -fx-cursor: hand;">
 
             <Label fx:id="questTitleLabel" text="NHIỆM VỤ #1" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: #6B2A0C;" />
 
@@ -240,16 +240,19 @@
 
 
          <!-- ================================================== -->
-         <!-- ACTION BUTTONS -->
+         <!-- CỤM NÚT GỌN MỞ NHANH CUỐN SỔ & QUA NGÀY -->
          <!-- ================================================== -->
 
-         <VBox styleClass="action-panel" spacing="10">
+         <VBox styleClass="action-panel" alignment="CENTER" spacing="8">
 
-            <Button fx:id="storageButton" mnemonicParsing="false" onAction="#openStorageMenu" prefHeight="45" prefWidth="140" text="STORAGE" />
+            <HBox alignment="CENTER" spacing="6">
+               <Button fx:id="storageButton" focusTraversable="false" minWidth="-Infinity" mnemonicParsing="false" onAction="#openStorageMenu" prefHeight="36" text="Kho" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 4 10 4 10;" />
+               <Button fx:id="shopButton" focusTraversable="false" minWidth="-Infinity" mnemonicParsing="false" onAction="#openShop" prefHeight="36" text="Shop" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 4 10 4 10;" />
+               <Button focusTraversable="false" minWidth="-Infinity" mnemonicParsing="false" onAction="#toggleFishingGuide" prefHeight="36" text="Sổ Cá" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 4 10 4 10;" />
+               <Button focusTraversable="false" minWidth="-Infinity" mnemonicParsing="false" onAction="#openBookSettings" prefHeight="36" text="⚙" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 4 10 4 10;" />
+            </HBox>
 
-            <Button fx:id="shopButton" mnemonicParsing="false" onAction="#openShop" prefHeight="45" prefWidth="140" text="SHOP" />
-
-            <Button fx:id="nextDayButton" mnemonicParsing="false" onAction="#onNextDay" prefHeight="45" prefWidth="140" text="NEXT DAY" />
+            <Button fx:id="nextDayButton" focusTraversable="false" minWidth="-Infinity" mnemonicParsing="false" onAction="#onNextDay" prefHeight="38" prefWidth="216" text="☀ QUA NGÀY MỚI" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-padding: 4 12 4 12;" />
 
          </VBox>
 

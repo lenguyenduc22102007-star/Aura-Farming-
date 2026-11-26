@@ -84,6 +84,8 @@ public class InGameController {
     @FXML private Label cropLabel;
 
     private SceneRouter router;
+    private controller.shopmanager.ShopController shopController;
+    private PauseController pauseController;
 
     // injected domain
     private FarmMap farmMap;
@@ -126,6 +128,7 @@ public class InGameController {
     private final java.util.Map<model.game_item.FishSpecies, Integer> fishCaughtCounts = new java.util.EnumMap<>(model.game_item.FishSpecies.class);
     private final java.util.Map<model.game_item.FishSpecies, Double> fishMaxCm = new java.util.EnumMap<>(model.game_item.FishSpecies.class);
     private view.ui.FishingGuideOverlay activeFishingGuide = null;
+    private view.ui.GameBookOverlay activeGameBook = null;
     private view.ui.CampfireCookingOverlay activeCookingOverlay = null;
     private view.ui.CasinoOverlay activeCasinoOverlay = null;
     private view.npc.NpcManager npcManager = null;
@@ -329,6 +332,18 @@ public class InGameController {
         this.router = router;
     }
 
+    public void setShopAndPause(controller.shopmanager.ShopController shopController, PauseController pauseController) {
+        this.shopController = shopController;
+        this.pauseController = pauseController;
+    }
+
+    public void restoreGameFocus() {
+        activeKeys.clear();
+        if (rootPane != null) {
+            Platform.runLater(rootPane::requestFocus);
+        }
+    }
+
     private view.screen_util.TiledMap tmxMap;
     private java.util.List<ImageView> windmillBladeViews = new java.util.ArrayList<>();
     private javafx.scene.image.Image[] windmillBladeFrames = null;
@@ -411,6 +426,14 @@ public class InGameController {
         rainWeatherButton.setFocusTraversable(false);
         dryWeatherButton.setFocusTraversable(false);
         if (fishingGuideButton != null) fishingGuideButton.setFocusTraversable(false);
+
+        // Chặn phím TAB khỏi cơ chế chuyển focus mặc định của JavaFX để mở/đóng Cuốn Sổ Quản Lý 5 Tab mượt mà
+        rootPane.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, ev -> {
+            if (ev.getCode() == KeyCode.TAB && !sleepTransitionRunning) {
+                ev.consume();
+                toggleGameBook(view.ui.GameBookOverlay.TAB_STORAGE);
+            }
+        });
 
         rootPane.setOnKeyPressed(event -> {
             if (sleepTransitionRunning) {
@@ -1015,7 +1038,8 @@ public class InGameController {
                 int money = toHarvest.getSellPrice();
                 String name = toHarvest.getAnimalName();
                 player.addMoney(money);
-                onQuestAnimalHarvested();
+                String soldTypeKey = (toHarvest.type == 0) ? "Egg" : (toHarvest.type == 1 ? "Milk" : "Truffle");
+                onQuestAnimalHarvested(soldTypeKey);
                 if (particleSystem != null) {
                     particleSystem.spawnHarvestSparkles(toHarvest.x + 18, toHarvest.y + 8);
                     particleSystem.spawnHeartBurst(toHarvest.x + 18, toHarvest.y - 8);
@@ -1092,7 +1116,7 @@ public class InGameController {
                     } else {
                         player.getInventory().addItem(prod, 1);
                     }
-                    onQuestAnimalHarvested();
+                    onQuestAnimalHarvested(prod.getName());
                     notify("♥ Đã vuốt ve " + aName + " và thu được " + prod.getName() + "!");
                 } else {
                     notify("♥ " + aName + " rất vui! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays) + " ngày để bán)");
@@ -2431,7 +2455,7 @@ public class InGameController {
                     player.getInventory().addItem(model.game_item.FishItem.fromSpecies(species), 1);
                     player.addMoney(rewardMoney);
                 }
-                onQuestFishCaught();
+                onQuestFishCaught(species);
                 if (particleSystem != null && fishingGame != null) {
                     particleSystem.spawnWaterSplash(fishingGame.getLastBobberX(), fishingGame.getLastBobberY());
                     particleSystem.spawnHarvestSparkles(fishingGame.getLastBobberX(), fishingGame.getLastBobberY() - 8.0);
@@ -2645,15 +2669,96 @@ public class InGameController {
         }
     }
 
-    // ======================== actions (Giữ nguyên) ========================
+    // ======================== MỞ NHANH CÁC TAB TRONG CUỐN SỔ QUẢN LÝ (GAME BOOK) ========================
+    @FXML
+    private void openGameBookDefault() {
+        toggleGameBook(view.ui.GameBookOverlay.TAB_STORAGE);
+    }
+
     @FXML
     private void openShop() {
-        router.show(Screens.SHOP);
+        openGameBook(view.ui.GameBookOverlay.TAB_SHOP);
     }
 
     @FXML
     private void openStorageMenu() {
-        router.show(Screens.STORAGE);
+        openGameBook(view.ui.GameBookOverlay.TAB_STORAGE);
+    }
+
+    @FXML
+    private void openBookQuests(javafx.scene.input.MouseEvent ev) {
+        // Nếu bấm trực tiếp vào nút Nhận Thưởng thì để sự kiện nút xử lý riêng
+        if (ev != null && questClaimButton != null && questClaimButton.isVisible()) {
+            javafx.scene.Node target = (ev.getTarget() instanceof javafx.scene.Node) ? (javafx.scene.Node) ev.getTarget() : null;
+            while (target != null) {
+                if (target == questClaimButton) return;
+                target = target.getParent();
+            }
+        }
+        openGameBook(view.ui.GameBookOverlay.TAB_QUESTS);
+    }
+
+    @FXML
+    private void openBookSettings() {
+        openGameBook(view.ui.GameBookOverlay.TAB_SETTINGS);
+    }
+
+    public void toggleGameBook(int tabIdx) {
+        if (activeGameBook != null) {
+            if (activeGameBook.getActiveTabIndex() == tabIdx) {
+                closeGameBook();
+            } else {
+                activeGameBook.selectTab(tabIdx);
+            }
+            return;
+        }
+        openGameBook(tabIdx);
+    }
+
+    public void openGameBook(int tabIdx) {
+        if (sleepTransitionRunning || router == null) return;
+        if (activeGameBook != null) {
+            activeGameBook.selectTab(tabIdx);
+            Platform.runLater(activeGameBook::requestFocus);
+            return;
+        }
+        if (isSunbathing) {
+            stopSunbathing();
+        }
+        if (router.hasOverlay()) {
+            return;
+        }
+        activeKeys.clear();
+        activeGameBook = new view.ui.GameBookOverlay(
+            player,
+            shopController,
+            () -> (gameManager != null && gameManager.getCurrentWeather() != null)
+                    ? gameManager.getCurrentWeather().getType()
+                    : WeatherType.SUNNY,
+            this::getCurrentGameHour,
+            () -> clockText(Math.min(1.0, Math.max(0.0, elapsedTimeInDay / 135000.0))),
+            fishCaughtCounts,
+            fishMaxCm,
+            this::onClaimQuestReward,
+            this::closeGameBook,
+            tabIdx
+        );
+        router.showOverlay(activeGameBook);
+        Platform.runLater(activeGameBook::requestFocus);
+    }
+
+    private void closeGameBook() {
+        if (activeGameBook != null) {
+            activeGameBook = null;
+            if (router != null && router.hasOverlay()) {
+                router.closeOverlay();
+            }
+            activeKeys.clear();
+            if (autosave != null) {
+                autosave.run();
+            }
+            Platform.runLater(rootPane::requestFocus);
+        }
     }
 
     @FXML
@@ -2876,6 +2981,10 @@ public class InGameController {
             closeSleepDialog();
             return;
         }
+        if (activeGameBook != null) {
+            closeGameBook();
+            return;
+        }
         if (activeFishingGuide != null) {
             closeFishingGuide();
             return;
@@ -2892,7 +3001,12 @@ public class InGameController {
             Platform.runLater(rootPane::requestFocus);
         } else {
             activeKeys.clear();
-            router.showOverlay(router.getScreen(Screens.PAUSE));
+            if (pauseController != null) {
+                pauseController.resetFeedback();
+            }
+            javafx.scene.Parent pauseNode = router.getScreen(Screens.PAUSE);
+            router.showOverlay(pauseNode);
+            Platform.runLater(pauseNode::requestFocus);
         }
     }
 
@@ -3161,8 +3275,8 @@ public class InGameController {
         }
     }
 
-    private void onQuestFishCaught() {
-        if (player != null && player.getQuestManager() != null && player.getQuestManager().onFishCaught()) {
+    private void onQuestFishCaught(model.game_item.FishSpecies species) {
+        if (player != null && player.getQuestManager() != null && player.getQuestManager().onFishCaught(species)) {
             onQuestProgressUpdated();
         }
     }
@@ -3173,8 +3287,8 @@ public class InGameController {
         }
     }
 
-    private void onQuestAnimalHarvested() {
-        if (player != null && player.getQuestManager() != null && player.getQuestManager().onAnimalHarvested()) {
+    private void onQuestAnimalHarvested(String animalKey) {
+        if (player != null && player.getQuestManager() != null && player.getQuestManager().onAnimalHarvested(animalKey)) {
             onQuestProgressUpdated();
         }
     }
@@ -4355,33 +4469,10 @@ public class InGameController {
         foodBuffHudPill.toFront();
     }
 
-    /** Mở / đóng Sổ Tay & Hướng Dẫn Câu Cá (Nút SỔ CÁ hoặc phím G). */
+    /** Mở nhanh Tab 4: Sổ Cá trong Cuốn Sổ Quản Lý (phím G hoặc nút Sổ Cá). */
     @FXML
     private void toggleFishingGuide() {
-        if (activeFishingGuide != null) {
-            closeFishingGuide();
-            return;
-        }
-        if (activeCasinoOverlay != null) {
-            activeCasinoOverlay.requestSafeClose();
-            return;
-        }
-        if (isSunbathing) {
-            stopSunbathing();
-        }
-        if (router == null || router.hasOverlay()) return;
-
-        activeKeys.clear(); // Tạm dừng nhận phím di chuyển khi mở sổ
-        WeatherType weather = (gameManager != null && gameManager.getCurrentWeather() != null)
-                ? gameManager.getCurrentWeather().getType()
-                : WeatherType.SUNNY;
-        int curHour = getCurrentGameHour();
-        String clockStr = clockText(Math.min(1.0, Math.max(0.0, elapsedTimeInDay / 135000.0)));
-
-        activeFishingGuide = new view.ui.FishingGuideOverlay(
-                weather, curHour, clockStr, fishCaughtCounts, fishMaxCm, this::closeFishingGuide);
-        router.showOverlay(activeFishingGuide);
-        Platform.runLater(activeFishingGuide::requestFocus);
+        toggleGameBook(view.ui.GameBookOverlay.TAB_FISHING);
     }
 
     /**

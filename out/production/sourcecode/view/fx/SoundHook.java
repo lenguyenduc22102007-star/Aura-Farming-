@@ -15,6 +15,7 @@ public final class SoundHook {
     private static volatile boolean enabled = true;
     private static volatile boolean bgmEnabled = true;
     private static volatile boolean bgmRunning = false;
+    private static volatile double masterVolume = 0.80; // 0.0 .. 1.0 (80% mặc định)
     private static Thread bgmThread = null;
     private static final float SAMPLE_RATE = 22050f;
 
@@ -43,6 +44,15 @@ public final class SoundHook {
         if (!value) {
             stopMenuBgm();
         }
+    }
+
+    public static double getMasterVolume() {
+        return masterVolume;
+    }
+
+    public static void setMasterVolume(double value) {
+        if (Double.isNaN(value)) return;
+        masterVolume = Math.max(0.0, Math.min(1.0, value));
     }
 
     /** Tiếng pop pixel rất nhẹ khi di chuột qua nút gỗ trên menu. */
@@ -147,7 +157,7 @@ public final class SoundHook {
                 pB += 2.0 * Math.PI * bassHz / SAMPLE_RATE;
                 sig += Math.sin(pB) * 0.38;
             }
-            short val = (short) Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, sig * Short.MAX_VALUE * volume * env));
+            short val = (short) Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, sig * Short.MAX_VALUE * volume * masterVolume * env));
             buf[2 * i]     = (byte) (val & 0xFF);
             buf[2 * i + 1] = (byte) ((val >> 8) & 0xFF);
         }
@@ -245,7 +255,7 @@ public final class SoundHook {
             double env = 1.0;
             if (t < 0.12) env = t / 0.12;
             else if (t > 0.65) env = (1.0 - t) / 0.35;
-            short val = (short) (Math.sin(phase) * Short.MAX_VALUE * volume * env);
+            short val = (short) (Math.sin(phase) * Short.MAX_VALUE * volume * masterVolume * env);
             buf[2 * i]     = (byte) (val & 0xFF);
             buf[2 * i + 1] = (byte) ((val >> 8) & 0xFF);
         }

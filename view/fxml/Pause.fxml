@@ -1,17 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<StackPane alignment="CENTER" styleClass="overlay-scrim" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="view.screen_controller.PauseController">
+<StackPane fx:id="pauseRoot" alignment="CENTER" styleClass="overlay-scrim" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="view.screen_controller.PauseController">
     <children>
-        <VBox alignment="CENTER" maxHeight="320" maxWidth="320" spacing="14" styleClass="wood-panel">
+        <VBox alignment="CENTER" maxHeight="410" maxWidth="390" prefWidth="390" spacing="13" style="-fx-background-color: linear-gradient(to bottom, #7E4E2B 0%, #583318 100%); -fx-border-color: #2B1406; -fx-border-width: 4.5px; -fx-background-radius: 16px; -fx-border-radius: 14px; -fx-padding: 24 28 24 28; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.72), 22, 0.28, 0, 6);">
             <children>
-                <Label styleClass="pause-title" text="PAUSED" />
+                <Label text="⏸ TẠM DỪNG TRÒ CHƠI" minWidth="-Infinity" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #FFE699;" />
 
-                <Button fx:id="btnResume" onAction="#onResume" prefWidth="240" styleClass="btn-gold" text="RESUME" />
-                <Button fx:id="btnMainMenu" onAction="#onMainMenu" prefWidth="240" styleClass="btn-wood" text="MAIN MENU" />
-                <Button fx:id="btnQuitGame" onAction="#onQuit" prefWidth="240" styleClass="btn-wood" text="QUIT GAME" />
+                <Label fx:id="saveFeedbackLabel" text="Nhấn ESC để tiếp tục nhanh" minWidth="-Infinity" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #F5DEB3;" />
+
+                <Button fx:id="btnResume" onAction="#onResume" prefHeight="42" prefWidth="290" minWidth="-Infinity" styleClass="btn-gold" text="▶ Tiếp Tục" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 15px; -fx-font-weight: bold;" />
+
+                <Button fx:id="btnSaveGame" onAction="#onSaveGame" prefHeight="42" prefWidth="290" minWidth="-Infinity" styleClass="btn-wood" text="💾 Lưu Game" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 15px; -fx-font-weight: bold;" />
+
+                <Button fx:id="btnSettings" onAction="#onSettings" prefHeight="42" prefWidth="290" minWidth="-Infinity" styleClass="btn-wood" text="⚙ Cài Đặt" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 15px; -fx-font-weight: bold;" />
+
+                <Button fx:id="btnMainMenu" onAction="#onMainMenu" prefHeight="42" prefWidth="290" minWidth="-Infinity" styleClass="btn-wood" text="🏠 Về Màn Hình Chính" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 15px; -fx-font-weight: bold;" />
             </children>
         </VBox>
     </children>

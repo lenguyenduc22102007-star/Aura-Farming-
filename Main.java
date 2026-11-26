@@ -43,6 +43,7 @@ public class Main extends Application implements GameLauncher {
 
     private SceneRouter router;
     private MainMenuController menuController;
+    private PauseController pauseController;
     private Stage primaryStage;
     private String currentFarmName = "Nông Trại Vui Vẻ";
 
@@ -88,8 +89,8 @@ public class Main extends Application implements GameLauncher {
         help.setRouter(router);
 
         FXMLLoader pauseLoader = ScreensLoader.load(router, Screens.PAUSE, Screens.PAUSE_FXML);
-        PauseController pause = pauseLoader.getController();
-        pause.init(router, this);
+        pauseController = pauseLoader.getController();
+        pauseController.init(router, this);
 
         Scene scene = new Scene(router.getRoot(), 1280, 720);
         URL css = getClass().getResource(Screens.STYLESHEET);
@@ -183,6 +184,13 @@ public class Main extends Application implements GameLauncher {
         FXMLLoader ingameLoader = ScreensLoader.load(router, Screens.INGAME, Screens.INGAME_FXML);
         InGameController ingame = ingameLoader.getController();
         ingame.setRouter(router);
+        ingame.setShopAndPause(shopController, pauseController);
+        if (pauseController != null) {
+            pauseController.setSessionCallbacks(
+                () -> ingame.openGameBook(view.ui.GameBookOverlay.TAB_SETTINGS),
+                ingame::restoreGameFocus
+            );
+        }
         ingame.setFarmName(currentFarmName);
         ingame.setGame(farmMap, player, gameManager, playerController, demoController, tmxMap);
         ingame.setAutosave(this::saveGameAsync);

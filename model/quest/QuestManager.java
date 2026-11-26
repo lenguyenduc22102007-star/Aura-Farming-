@@ -1,24 +1,38 @@
 package model.quest;
 
+import model.game_item.FishSpecies;
 import model.quest.Quest.ObjectiveType;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /**
  * Quản lý chuỗi 1000 nhiệm vụ nối tiếp tự động (#1 -> #1000).
- * Nhiệm vụ được sinh tất định (deterministic) theo questIndex để luôn nhất quán khi lưu/tải game.
- * Các mốc chia hết cho 10 (#10, #20, ..., #1000) là Nhiệm vụ Đặc biệt thưởng x3 tiền!
+ * Dùng seed cố định theo questIndex để mỗi số thứ tự luôn sinh ra cùng 1 nhiệm vụ nhất quán.
+ * Các mốc chia hết cho 10 (#10, #20, #30 ... #1000) là Nhiệm vụ Đặc biệt (nhãn vàng, thưởng x3 tiền).
  */
 public class QuestManager {
 
     public static final int MAX_QUESTS = 1000;
 
     private static final String[] CROP_KEYS = {
-        "Tomato", "Potato", "Corn", "Sunflower", "Water Rice"
+        "Tomato", "Sunflower", "Potato", "Corn", "Water Rice"
     };
     private static final String[] CROP_VI_NAMES = {
-        "Cà chua", "Khoai tây", "Ngô", "Hướng dương", "Lúa nước"
+        "Cà chua", "Hướng dương", "Khoai tây", "Ngô", "Lúa nước"
+    };
+    private static final String[] ANIMAL_FILTERS = {
+        null, "Egg", "Truffle", "Milk"
+    };
+    private static final String[] ANIMAL_VI_DESC = {
+        "sản phẩm vật nuôi (Gà/Lợn/Bò)",
+        "sản phẩm từ Gà (Trứng / Gà lớn)",
+        "sản phẩm từ Lợn (Nấm Truffle / Lợn lớn)",
+        "sản phẩm từ Bò (Sữa tươi / Bò lớn)"
     };
 
-    private int currentQuestIndex = 1;     // 1 .. 1000 (1001 = đã hoàn thành trọn bộ 1000 nhiệm vụ)
+    private int currentQuestIndex = 1;     // 1 .. 1000 (1001 = đã hoàn tất trọn bộ 1000 nhiệm vụ)
     private int currentQuestProgress = 0;
     private Quest cachedQuest = null;
 
@@ -48,6 +62,18 @@ public class QuestManager {
         return cachedQuest;
     }
 
+    /** Xem trước count nhiệm vụ kế tiếp (#N+1, #N+2...) để hiển thị trong Cuốn Sổ Quản Lý. */
+    public List<Quest> peekUpcomingQuests(int count) {
+        List<Quest> list = new ArrayList<>();
+        for (int i = 1; i <= count; i++) {
+            int nextIdx = currentQuestIndex + i;
+            if (nextIdx <= MAX_QUESTS) {
+                list.add(generateQuest(nextIdx));
+            }
+        }
+        return list;
+    }
+
     public boolean isCurrentQuestReadyToClaim() {
         Quest q = getCurrentQuest();
         return q != null && currentQuestProgress >= q.getTargetAmount();
@@ -65,13 +91,13 @@ public class QuestManager {
         }
     }
 
-    /** Ghi nhận thu hoạch cây trồng. @return true nếu tiến độ nhiệm vụ thay đổi. */
+    /** Ghi nhận thu hoạch cây trồng. */
     public boolean onCropHarvested(String cropName) {
         Quest q = getCurrentQuest();
         if (q == null || q.getType() != ObjectiveType.HARVEST_CROP) return false;
         if (currentQuestProgress >= q.getTargetAmount()) return false;
 
-        String filter = q.getCropFilter();
+        String filter = q.getSubFilter();
         if (filter != null && !filter.isEmpty()) {
             if (cropName == null || !cropName.equalsIgnoreCase(filter)) {
                 return false;
@@ -81,9 +107,20 @@ public class QuestManager {
         return true;
     }
 
-    /** Ghi nhận câu được 1 con cá. */
+    /** Ghi nhận câu cá (hỗ trợ cả câu cá bất kỳ và câu cá hiếm). */
+    public boolean onFishCaught(FishSpecies species) {
+        Quest q = getCurrentQuest();
+        if (q == null || q.getType() != ObjectiveType.CATCH_FISH) return false;
+        if (currentQuestProgress >= q.getTargetAmount()) return false;
+        if (q.isRareFishOnly() && (species == null || !species.isRareOrHigher())) {
+            return false;
+        }
+        currentQuestProgress = Math.min(q.getTargetAmount(), currentQuestProgress + 1);
+        return true;
+    }
+
     public boolean onFishCaught() {
-        return incrementIfType(ObjectiveType.CATCH_FISH, 1);
+        return onFishCaught(null);
     }
 
     /** Ghi nhận nấu xong 1 món ăn tại đống lửa. */
@@ -91,12 +128,27 @@ public class QuestManager {
         return incrementIfType(ObjectiveType.COOK_FOOD, 1);
     }
 
-    /** Ghi nhận thu hoạch sản phẩm vật nuôi (trứng, sữa, nấm truffle) hoặc bán thú trưởng thành. */
-    public boolean onAnimalHarvested() {
-        return incrementIfType(ObjectiveType.ANIMAL_PRODUCT, 1);
+    /** Ghi nhận thu hoạch sản phẩm vật nuôi (typeKey: "Egg", "Truffle", "Milk" hoặc null). */
+    public boolean onAnimalHarvested(String animalKey) {
+        Quest q = getCurrentQuest();
+        if (q == null || q.getType() != ObjectiveType.ANIMAL_PRODUCT) return false;
+        if (currentQuestProgress >= q.getTargetAmount()) return false;
+
+        String filter = q.getSubFilter();
+        if (filter != null && !filter.isEmpty() && animalKey != null && !animalKey.isEmpty()) {
+            if (!animalKey.toLowerCase().contains(filter.toLowerCase())) {
+                return false;
+            }
+        }
+        currentQuestProgress = Math.min(q.getTargetAmount(), currentQuestProgress + 1);
+        return true;
     }
 
-    /** Ghi nhận người chơi kiếm thêm tiền ($). */
+    public boolean onAnimalHarvested() {
+        return onAnimalHarvested(null);
+    }
+
+    /** Ghi nhận kiếm tiền bán hàng / thu hoạch ($). */
     public boolean onMoneyEarned(int amount) {
         if (amount <= 0) return false;
         return incrementIfType(ObjectiveType.EARN_MONEY, amount);
@@ -110,10 +162,7 @@ public class QuestManager {
         return true;
     }
 
-    /**
-     * Nhận thưởng nhiệm vụ hiện tại và tự động chuyển sang nhiệm vụ #N+1.
-     * @return đối tượng Quest vừa hoàn thành (hoặc null nếu chưa đủ điều kiện).
-     */
+    /** Nhận thưởng nhiệm vụ hiện tại và tự động mở ngay Nhiệm vụ #N+1. */
     public Quest claimAndAdvance() {
         Quest completed = getCurrentQuest();
         if (completed == null || currentQuestProgress < completed.getTargetAmount()) {
@@ -126,96 +175,91 @@ public class QuestManager {
     }
 
     /**
-     * Sinh tự động nhiệm vụ nhất quán từ questIndex (1..1000).
-     * Xoay vòng 5 nhóm mục tiêu, độ khó và tiền thưởng tăng dần; mốc chia hết cho 10 thưởng x3 tiền!
+     * Thuật toán sinh nhiệm vụ tất định dùng seed cố định theo questIndex (1..1000).
+     * Xoay vòng đa dạng 5 loại mục tiêu, độ khó & thưởng tăng dần, mốc chia hết cho 10 thưởng x3 tiền!
      */
     public static Quest generateQuest(int idx) {
         int clamped = Math.max(1, Math.min(MAX_QUESTS, idx));
+        long fixedSeed = clamped * 6364136223846793005L + 1442695040888963407L;
+        Random rng = new Random(fixedSeed);
+
         boolean special = (clamped % 10 == 0);
         int tier = (clamped - 1) / 10; // 0 .. 99
 
-        ObjectiveType type;
-        if (special) {
-            // Mốc đặc biệt xoay vòng giữa các thử thách lớn hấp dẫn
-            int spMode = (clamped / 10) % 5;
-            switch (spMode) {
-                case 1:  type = ObjectiveType.HARVEST_CROP;   break;
-                case 2:  type = ObjectiveType.CATCH_FISH;     break;
-                case 3:  type = ObjectiveType.EARN_MONEY;     break;
-                case 4:  type = ObjectiveType.COOK_FOOD;      break;
-                default: type = ObjectiveType.ANIMAL_PRODUCT; break;
-            }
-        } else {
-            int rot = (clamped - 1) % 5;
-            switch (rot) {
-                case 0:  type = ObjectiveType.HARVEST_CROP;   break;
-                case 1:  type = ObjectiveType.CATCH_FISH;     break;
-                case 2:  type = ObjectiveType.COOK_FOOD;      break;
-                case 3:  type = ObjectiveType.ANIMAL_PRODUCT; break;
-                default: type = ObjectiveType.EARN_MONEY;     break;
-            }
-        }
+        // Xoay vòng 5 loại mục tiêu đa dạng, kết hợp biến thể ngẫu nhiên tất định theo seed
+        ObjectiveType[] allTypes = ObjectiveType.values();
+        int typeSlot = special ? ((clamped / 10 + rng.nextInt(2)) % allTypes.length) : ((clamped - 1) % allTypes.length);
+        ObjectiveType type = allTypes[typeSlot];
 
         String title = special ? ("★ ĐẶC BIỆT #" + clamped) : ("NHIỆM VỤ #" + clamped);
-        String cropFilter = null;
+        String subFilter = null;
         String desc;
         int target;
         int baseReward;
 
         switch (type) {
             case HARVEST_CROP: {
-                // Luân phiên giữa thu hoạch cây cụ thể và thu hoạch nông sản bất kỳ
-                boolean anyCrop = special || (clamped % 2 == 0);
-                int baseCount = 3 + Math.min(32, tier / 2);
-                if (special) baseCount = Math.max(6, (int) Math.round(baseCount * 1.4));
-                if (anyCrop) {
+                boolean specificCrop = !special && (clamped <= 3 || rng.nextBoolean());
+                int baseCount = 2 + Math.min(35, tier / 2) + rng.nextInt(2);
+                if (special) baseCount = Math.max(6, (int) Math.round(baseCount * 1.5));
+                if (specificCrop) {
+                    int cIdx = (clamped == 1) ? 0 : rng.nextInt(CROP_KEYS.length);
+                    subFilter = CROP_KEYS[cIdx];
                     target = baseCount;
-                    desc = "Thu hoạch " + target + " nông sản bất kỳ";
-                } else {
-                    int cIdx = ((clamped / 5) + tier) % CROP_KEYS.length;
-                    cropFilter = CROP_KEYS[cIdx];
-                    target = Math.max(2, baseCount - 1);
                     desc = "Thu hoạch " + target + " " + CROP_VI_NAMES[cIdx];
+                } else {
+                    target = baseCount + 1;
+                    desc = "Thu hoạch " + target + " nông sản bất kỳ";
                 }
-                baseReward = 90 + clamped * 14;
+                baseReward = 95 + clamped * 14 + target * 6;
                 break;
             }
             case CATCH_FISH: {
-                target = 2 + Math.min(18, tier / 4);
-                if (special) target += 2;
-                desc = "Câu " + target + " con cá trên sông";
-                baseReward = 110 + clamped * 15;
+                boolean rareOnly = (clamped >= 12) && (special || rng.nextInt(3) == 0);
+                if (rareOnly) {
+                    subFilter = "RARE";
+                    target = Math.max(1, 1 + Math.min(8, tier / 10));
+                    if (special) target += 1;
+                    desc = "Câu " + target + " con cá hiếm trên sông";
+                    baseReward = 140 + clamped * 16 + target * 25;
+                } else {
+                    target = 2 + Math.min(18, tier / 4) + rng.nextInt(2);
+                    if (special) target += 2;
+                    desc = "Câu " + target + " con cá bất kỳ";
+                    baseReward = 110 + clamped * 15 + target * 10;
+                }
                 break;
             }
             case COOK_FOOD: {
-                target = 1 + Math.min(10, tier / 8);
+                target = 1 + Math.min(10, tier / 8) + (tier >= 4 ? rng.nextInt(2) : 0);
                 if (special) target += 1;
                 desc = "Nấu " + target + " món ăn tại đống lửa";
-                baseReward = 120 + clamped * 16;
+                baseReward = 120 + clamped * 16 + target * 18;
                 break;
             }
             case ANIMAL_PRODUCT: {
-                target = 1 + Math.min(12, tier / 6);
+                int aChoice = (clamped < 15 || special) ? 0 : rng.nextInt(ANIMAL_FILTERS.length);
+                subFilter = ANIMAL_FILTERS[aChoice];
+                target = 1 + Math.min(12, tier / 6) + (aChoice == 0 && tier >= 3 ? 1 : 0);
                 if (special) target += 2;
-                desc = "Thu hoạch vật nuôi " + target + " lần";
-                baseReward = 125 + clamped * 16;
+                desc = "Thu hoạch " + target + " " + ANIMAL_VI_DESC[aChoice];
+                baseReward = 125 + clamped * 16 + target * 15;
                 break;
             }
             case EARN_MONEY:
             default: {
-                int step = 150 + tier * 85;
-                if (special) step = (int) Math.round(step * 1.5);
-                target = (step / 50) * 50;
-                desc = "Kiếm tổng cộng $" + target;
-                baseReward = 130 + clamped * 18;
+                int rawTarget = 150 + tier * 90 + rng.nextInt(3) * 50;
+                if (special) rawTarget = (int) Math.round(rawTarget * 1.6);
+                target = Math.max(100, (rawTarget / 50) * 50);
+                desc = "Kiếm tổng cộng $" + target + " tiền bán hàng";
+                baseReward = 135 + clamped * 18;
                 break;
             }
         }
 
         int finalReward = special ? (baseReward * 3) : baseReward;
-        // Làm tròn đẹp đến bội số của 5$
         finalReward = ((finalReward + 4) / 5) * 5;
 
-        return new Quest(clamped, type, cropFilter, title, desc, target, finalReward, special);
+        return new Quest(clamped, type, subFilter, title, desc, target, finalReward, special);
     }
 }

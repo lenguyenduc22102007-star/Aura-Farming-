@@ -6,16 +6,16 @@ package model.quest;
 public class Quest {
 
     public enum ObjectiveType {
-        HARVEST_CROP,    // Thu hoạch nông sản
-        CATCH_FISH,      // Câu cá trên sông
+        HARVEST_CROP,    // Thu hoạch nông sản (Tomato, Sunflower, Potato, Corn, Water Rice)
+        CATCH_FISH,      // Câu cá trên sông (bất kỳ X con cá hoặc cá hiếm)
         COOK_FOOD,       // Nấu ăn tại đống lửa
-        ANIMAL_PRODUCT,  // Thu hoạch vật nuôi (trứng/sữa/nấm hoặc bán thú lớn)
-        EARN_MONEY       // Kiếm tổng số tiền ($)
+        ANIMAL_PRODUCT,  // Thu hoạch sản phẩm vật nuôi (Gà, Lợn, Bò)
+        EARN_MONEY       // Kiếm tổng cộng X tiền bán hàng ($)
     }
 
     private final int index; // 1 .. 1000
     private final ObjectiveType type;
-    private final String cropFilter; // null = mọi nông sản, hoặc "Tomato", "Potato", "Corn", "Sunflower", "Water Rice"
+    private final String subFilter; // null = bất kỳ; hoặc tên cây ("Tomato"...), "RARE" cho cá hiếm, hoặc "Gà"/"Lợn"/"Bò"
     private final String title;
     private final String description;
     private final int targetAmount;
@@ -24,7 +24,7 @@ public class Quest {
 
     public Quest(int index,
                  ObjectiveType type,
-                 String cropFilter,
+                 String subFilter,
                  String title,
                  String description,
                  int targetAmount,
@@ -32,7 +32,7 @@ public class Quest {
                  boolean specialMilestone) {
         this.index = index;
         this.type = type;
-        this.cropFilter = cropFilter;
+        this.subFilter = subFilter;
         this.title = title;
         this.description = description;
         this.targetAmount = Math.max(1, targetAmount);
@@ -48,8 +48,16 @@ public class Quest {
         return type;
     }
 
+    public String getSubFilter() {
+        return subFilter;
+    }
+
     public String getCropFilter() {
-        return cropFilter;
+        return (type == ObjectiveType.HARVEST_CROP) ? subFilter : null;
+    }
+
+    public boolean isRareFishOnly() {
+        return type == ObjectiveType.CATCH_FISH && "RARE".equalsIgnoreCase(subFilter);
     }
 
     public String getTitle() {
