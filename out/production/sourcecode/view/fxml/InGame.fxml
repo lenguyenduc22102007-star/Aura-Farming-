@@ -63,10 +63,10 @@
 
    <right>
 
-      <VBox styleClass="right-panel" alignment="TOP_CENTER" prefWidth="180" spacing="20">
+      <VBox styleClass="right-panel" alignment="TOP_CENTER" prefWidth="184" spacing="10">
 
          <padding>
-            <Insets bottom="20" left="20" right="20" top="20" />
+            <Insets bottom="12" left="12" right="12" top="12" />
          </padding>
 
 
@@ -77,9 +77,9 @@
 
          <!-- WEATHER SELECT -->
 
-         <VBox alignment="CENTER" spacing="10">
+         <VBox alignment="CENTER" spacing="6">
 
-            <ToggleButton fx:id="sunWeatherButton" styleClass="weather-btn" mnemonicParsing="false" prefHeight="60" prefWidth="100" text="SUN">
+            <ToggleButton fx:id="sunWeatherButton" styleClass="weather-btn" mnemonicParsing="false" prefHeight="42" prefWidth="104" text="SUN">
 
                <toggleGroup>
                   <ToggleGroup fx:id="weatherGroup" />
@@ -88,10 +88,10 @@
             </ToggleButton>
 
 
-            <ToggleButton fx:id="rainWeatherButton" styleClass="weather-btn" mnemonicParsing="false" prefHeight="60" prefWidth="100" text="RAIN" toggleGroup="$weatherGroup" />
+            <ToggleButton fx:id="rainWeatherButton" styleClass="weather-btn" mnemonicParsing="false" prefHeight="42" prefWidth="104" text="RAIN" toggleGroup="$weatherGroup" />
 
 
-            <ToggleButton fx:id="dryWeatherButton" styleClass="weather-btn" mnemonicParsing="false" prefHeight="60" prefWidth="100" text="DRY" toggleGroup="$weatherGroup" />
+            <ToggleButton fx:id="dryWeatherButton" styleClass="weather-btn" mnemonicParsing="false" prefHeight="42" prefWidth="104" text="DRY" toggleGroup="$weatherGroup" />
 
          </VBox>
 
@@ -103,13 +103,33 @@
             <Label
                     fx:id="moneyField"
                     alignment="CENTER"
-                    prefHeight="80"
-                    prefWidth="120"
+                    prefHeight="52"
+                    prefWidth="126"
                     text="\$200"
                     styleClass="money-label"
             />
 
          </StackPane>
+
+         <!-- SỔ TAY CÂU CÁ (Phím G) -->
+
+         <Button fx:id="fishingGuideButton" mnemonicParsing="false" onAction="#toggleFishingGuide" prefHeight="34" prefWidth="150" text="SỔ CÁ [G]" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-text-fill: #FFF4D2; -fx-background-color: linear-gradient(to bottom, #9A5E31 0%, #6D3E1C 100%); -fx-border-color: #3B1E0A; -fx-border-width: 2.5px; -fx-background-radius: 8px; -fx-border-radius: 8px; -fx-cursor: hand;" />
+
+         <!-- BẢNG NHIỆM VỤ THU HOẠCH NGÀY (QUEST TRACKER) -->
+
+         <VBox fx:id="questTrackerBox" alignment="TOP_LEFT" prefWidth="156" spacing="4" style="-fx-background-color: linear-gradient(to bottom, #F8E7C6 0%, #E8CE9F 100%); -fx-border-color: #6B3C1A; -fx-border-width: 2.5px; -fx-background-radius: 9px; -fx-border-radius: 9px; -fx-padding: 7 9 8 9;">
+
+            <Label text="NHIỆM VỤ NGÀY" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: #6B2A0C;" />
+
+            <Label fx:id="questTomatoLabel" text="• Cà chua: 0/5" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #3E210C;" />
+
+            <Label fx:id="questPotatoLabel" text="• Khoai tây: 0/5" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #3E210C;" />
+
+            <Label fx:id="questCornLabel" text="• Ngô: 0/5" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #3E210C;" />
+
+            <Label fx:id="questRewardLabel" text="Thưởng: +200$" style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 10.5px; -fx-font-weight: bold; -fx-text-fill: #9A5212;" />
+
+         </VBox>
 
       </VBox>
 
@@ -133,7 +153,7 @@
          <!-- STATUS DASHBOARD -->
          <!-- ================================================== -->
 
-         <VBox styleClass="status-panel" prefHeight="100.0" prefWidth="320.0" spacing="8">
+         <VBox fx:id="soilStatusPanel" styleClass="status-panel" prefHeight="100.0" prefWidth="320.0" spacing="8" visible="false">
 
             <HBox spacing="15">
 

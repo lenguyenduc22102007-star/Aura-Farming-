@@ -92,6 +92,85 @@
 .transparent-scroll,
 .transparent-scroll .viewport { -fx-background-color: transparent; }
 
+/* ---------- Pixel Art Wood Main Menu (Farm Together Style) ---------- */
+.pixel-menu-board {
+    -fx-background-color: linear-gradient(to bottom, #C87B3A 0%, #985220 100%);
+    -fx-border-color: #4D240A;
+    -fx-border-width: 4px;
+    -fx-background-radius: 12px;
+    -fx-border-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.56), 16, 0.24, 0, 6);
+}
+
+.pixel-menu-inner {
+    -fx-background-color: linear-gradient(to bottom, #F8E6C6 0%, #EAD0A7 100%);
+    -fx-border-color: #B9864E;
+    -fx-border-width: 2.5px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+}
+
+.pixel-menu-btn-orange {
+    -fx-font-family: "Consolas", "Segoe UI", sans-serif;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FFFFFF;
+    -fx-background-color: linear-gradient(to bottom, #FA8B32 0%, #DB5E12 100%);
+    -fx-border-color: #6B2A06;
+    -fx-border-width: 2.5px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(one-pass-box, rgba(60, 22, 4, 0.45), 0, 0, 0, 3);
+}
+.pixel-menu-btn-orange:hover {
+    -fx-background-color: linear-gradient(to bottom, #FFA149 0%, #EE721F 100%);
+    -fx-border-color: #FFF0B8;
+    -fx-effect: dropshadow(gaussian, rgba(255, 166, 62, 0.65), 10, 0.28, 0, 2);
+}
+
+.pixel-menu-btn-blue {
+    -fx-font-family: "Consolas", "Segoe UI", sans-serif;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FFFFFF;
+    -fx-background-color: linear-gradient(to bottom, #54A6CE 0%, #3580A8 100%);
+    -fx-border-color: #1F4E6A;
+    -fx-border-width: 2.5px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(one-pass-box, rgba(14, 42, 60, 0.45), 0, 0, 0, 3);
+}
+.pixel-menu-btn-blue:hover {
+    -fx-background-color: linear-gradient(to bottom, #6ABCE3 0%, #4496BE 100%);
+    -fx-border-color: #D8F4FF;
+    -fx-effect: dropshadow(gaussian, rgba(92, 192, 240, 0.55), 10, 0.28, 0, 2);
+}
+
+.pixel-menu-btn-disabled {
+    -fx-font-family: "Consolas", "Segoe UI", sans-serif;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #D6D0C5;
+    -fx-background-color: linear-gradient(to bottom, #949FA5 0%, #737E84 100%);
+    -fx-border-color: #50585D;
+    -fx-border-width: 2.5px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+}
+
+.pixel-welcome-scroll,
+.pixel-welcome-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+.pixel-welcome-scroll .scroll-bar:vertical,
+.pixel-welcome-scroll .scroll-bar:horizontal {
+    -fx-opacity: 0;
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+}
+
 /* ---------- Shop cards ---------- */
 .shop-card {
     -fx-background-color: #9C6B3A, #FBF0D0;
@@ -762,3 +841,20 @@
 .shop-scroll-pane > .viewport {
     -fx-background-color: transparent;
 }
+
+/* ---------- NPC dialog ---------- */
+.npc-panel { -fx-padding: 22 26 22 26; }
+.npc-name {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2C2008;
+    -fx-background-color: #C2821E, #F0CC52;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 12, 10;
+    -fx-padding: 4 22 4 22;
+}
+.npc-text {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #3A2910;
+}

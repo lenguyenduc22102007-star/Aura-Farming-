@@ -1,25 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.*?>
-<?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.*?>
 
-<StackPane prefHeight="720.0" prefWidth="1280.0" style="-fx-background-color: #87CEEB;" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="view.screen_controller.MainMenuController">
+<StackPane fx:id="rootStack" prefHeight="720.0" prefWidth="1280.0"
+           style="-fx-background-color: #0E8AA8;"
+           xmlns="http://javafx.com/javafx/17.0.12"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="view.screen_controller.MainMenuController">
     <children>
-        <VBox alignment="CENTER" spacing="16">
-            <padding>
-                <Insets topRightBottomLeft="40" />
-            </padding>
-            <children>
-                <Label styleClass="plaque, title-xl" text="SMART  FARM" />
-                <Label styleClass="subtitle-chip" text="Pixel Farm Simulator — JavaFX Edition" />
-                <Region minHeight="18" />
+        <!-- 1. Toàn cảnh nông trại 2D Pixel Art động -->
+        <Pane fx:id="sceneryLayer" prefHeight="720.0" prefWidth="1280.0" />
 
-                <Button fx:id="btnContinue" onAction="#onContinue" styleClass="btn-menu" text="CONTINUE  CURRENT  FARM" />
-                <Button fx:id="btnStartNewGame" onAction="#onStartNew" styleClass="btn-menu" text="START  NEW  FARM" />
-                <Button fx:id="btnHelp" onAction="#onHelp" styleClass="btn-menu" text="HELP" />
-                <Button fx:id="btnQuit" onAction="#onQuit" styleClass="btn-menu" text="QUIT" />
-            </children>
-        </VBox>
+        <!-- 2. Giao diện Menu Chính (Bảng gỗ 7 nút trái + Hồ sơ & Bảng tin phải) -->
+        <AnchorPane fx:id="dashboardLayer" prefHeight="720.0" prefWidth="1280.0" visible="false" opacity="0.0" />
+
+        <!-- 3. Màn hình Tiêu đề mở đầu (Logo 3D SMART FARM + Nhấn Enter/Click) -->
+        <StackPane fx:id="splashLayer" prefHeight="720.0" prefWidth="1280.0" />
+
+        <!-- 4. Lớp hộp thoại phụ (Tạo tên nông trại / Tìm / Tùy chỉnh / Cài đặt / Thêm) -->
+        <StackPane fx:id="modalOverlayLayer" prefHeight="720.0" prefWidth="1280.0"
+                   style="-fx-background-color: rgba(14, 18, 22, 0.64);"
+                   visible="false" opacity="0.0" />
+
+        <!-- 5. Màn đen chuyển cảnh FadeOut 0.8s -->
+        <Rectangle fx:id="transitionCurtain" width="1280.0" height="720.0"
+                   fill="#06080C" mouseTransparent="true" visible="false" opacity="0.0" />
     </children>
 </StackPane>

@@ -43,6 +43,8 @@ public class Main extends Application implements GameLauncher {
 
     private SceneRouter router;
     private MainMenuController menuController;
+    private Stage primaryStage;
+    private String currentFarmName = "Nông Trại Vui Vẻ";
 
     // --- current session (null until the first new farm) ---
     private Player player;
@@ -71,6 +73,7 @@ public class Main extends Application implements GameLauncher {
             alert.showAndWait();
         });
 
+        this.primaryStage = stage;
         Assets.load();
         router = new SceneRouter();
 
@@ -78,7 +81,7 @@ public class Main extends Application implements GameLauncher {
         FXMLLoader menuLoader = ScreensLoader.load(router, Screens.MAIN_MENU, Screens.MAIN_MENU_FXML);
         menuController = menuLoader.getController();
         menuController.init(router, this);
-        menuController.setContinueEnabled(SaveManager.exists());
+        refreshMainMenuInfo(false);
 
         FXMLLoader helpLoader = ScreensLoader.load(router, Screens.HELP, Screens.HELP_FXML);
         HelpController help = helpLoader.getController();
@@ -107,11 +110,20 @@ public class Main extends Application implements GameLauncher {
     // ---------------- GameLauncher ----------------
     @Override
     public void startNewFarm() {
+        startNewFarm("Nông Trại Vui Vẻ");
+    }
+
+    @Override
+    public void startNewFarm(String farmName) {
+        String clean = (farmName == null) ? "" : farmName.trim();
+        this.currentFarmName = clean.isEmpty() ? "Nông Trại Vui Vẻ" : clean;
         buildSession(null);
+        saveGameAsync();
     }
 
     /** Build a session; when save != null the saved state is restored on top of the fresh farm. */
     private void buildSession(Properties save) {
+        view.fx.SoundHook.stopMenuBgm();
         gameManager = GameManager.getInstance();
         gameManager.reset();
 
@@ -146,12 +158,16 @@ public class Main extends Application implements GameLauncher {
                 Constant.GAME_OVER_GRACE_DAYS);
 
         if (save != null) {
+            this.currentFarmName = SaveManager.readFarmName(save);
             SaveManager.applyModel(save, gameManager, player, farmMap, shopController);
         } else {
             player.getInventory().addItem(new model.game_item.AnimalFeedItem(), 2);
             player.getInventory().addItem(new model.game_item.ChickenFeedItem(), 2);
             player.getInventory().addItem(new model.game_item.CowFeedItem(), 2);
             player.getInventory().addItem(new model.game_item.PigFeedItem(), 2);
+        }
+        if (primaryStage != null) {
+            primaryStage.setTitle("Smart Farm — " + currentFarmName);
         }
 
         FXMLLoader shopLoader = ScreensLoader.load(router, Screens.SHOP, Screens.SHOP_FXML);
@@ -167,8 +183,9 @@ public class Main extends Application implements GameLauncher {
         FXMLLoader ingameLoader = ScreensLoader.load(router, Screens.INGAME, Screens.INGAME_FXML);
         InGameController ingame = ingameLoader.getController();
         ingame.setRouter(router);
+        ingame.setFarmName(currentFarmName);
         ingame.setGame(farmMap, player, gameManager, playerController, demoController, tmxMap);
-        ingame.setAutosave(this::saveGame);
+        ingame.setAutosave(this::saveGameAsync);
         this.ingameView = ingame;
         if (save != null) {
             ingame.importViewState(save);
@@ -183,6 +200,7 @@ public class Main extends Application implements GameLauncher {
 
     @Override
     public void continueFarm() {
+        view.fx.SoundHook.stopMenuBgm();
         if (hasSession()) {
             router.show(Screens.INGAME);
             return;
@@ -207,9 +225,18 @@ public class Main extends Application implements GameLauncher {
     public void saveGame() {
         if (!hasSession() || ingameView == null) return;
         Properties p = new Properties();
-        SaveManager.captureModel(p, gameManager, player, farmMap);
+        SaveManager.captureModel(p, gameManager, player, farmMap, currentFarmName);
         ingameView.exportViewState(p);
         SaveManager.write(p);
+    }
+
+    /** Lưu nền không chặn JavaFX UI thread (dùng khi câu cá, chuyển ngày...) để giữ 60 FPS mượt mà. */
+    public void saveGameAsync() {
+        if (!hasSession() || ingameView == null) return;
+        Properties p = new Properties();
+        SaveManager.captureModel(p, gameManager, player, farmMap, currentFarmName);
+        ingameView.exportViewState(p);
+        SaveManager.writeAsync(p);
     }
 
     @Override
@@ -222,14 +249,38 @@ public class Main extends Application implements GameLauncher {
     @Override
     public void returnToMainMenu() {
         saveGame();
-        if (menuController != null) {
-            menuController.setContinueEnabled(hasSession() || SaveManager.exists());
-        }
+        refreshMainMenuInfo(true);
         router.show(Screens.MAIN_MENU);
+    }
+
+    private void refreshMainMenuInfo(boolean skipSplash) {
+        if (menuController == null) return;
+        boolean canContinue = hasSession() || SaveManager.exists();
+        String name = currentFarmName;
+        int day = 1;
+        int money = Constant.START_MONEY;
+        if (hasSession()) {
+            day = gameManager.getCurrentDay();
+            money = player.getMoney();
+        } else {
+            Properties saved = SaveManager.read();
+            if (saved != null) {
+                name = SaveManager.readFarmName(saved);
+                this.currentFarmName = name;
+                day = Integer.parseInt(saved.getProperty("day", "1"));
+                money = Integer.parseInt(saved.getProperty("money", Integer.toString(Constant.START_MONEY)));
+            }
+        }
+        menuController.setContinueEnabled(canContinue);
+        menuController.updateFarmPreview(canContinue, name, day, money);
+        if (skipSplash) {
+            menuController.showDashboardDirectly();
+        }
     }
 
     @Override
     public void quit() {
+        view.fx.SoundHook.stopMenuBgm();
         saveGame();
         Platform.exit();
         System.exit(0);

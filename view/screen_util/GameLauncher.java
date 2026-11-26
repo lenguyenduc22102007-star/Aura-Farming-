@@ -5,6 +5,11 @@ public interface GameLauncher {
     // Wipe any current session and build a fresh farm + controllers.
     void startNewFarm();
 
+    // Start a fresh farm with a custom player-chosen farm name.
+    default void startNewFarm(String farmName) {
+        startNewFarm();
+    }
+
     // Resume the current session, or start a new one if none exists yet.
     void continueFarm();
 

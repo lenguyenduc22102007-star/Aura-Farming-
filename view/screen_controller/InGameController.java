@@ -60,6 +60,11 @@ public class InGameController {
     @FXML private ToggleButton sunWeatherButton;
     @FXML private ToggleButton rainWeatherButton;
     @FXML private ToggleButton dryWeatherButton;
+    @FXML private javafx.scene.control.Button fishingGuideButton;
+    @FXML private Label questTomatoLabel;
+    @FXML private Label questPotatoLabel;
+    @FXML private Label questCornLabel;
+    @FXML private Label questRewardLabel;
 
     // --- layout + labels ---
     @FXML private BorderPane rootPane;
@@ -70,6 +75,7 @@ public class InGameController {
     @FXML private TextField notificationField;
     @FXML private TextField dayField;
     @FXML private Label moneyField;
+    @FXML private javafx.scene.layout.VBox soilStatusPanel;
     @FXML private Label cellLabel;
     @FXML private Label waterLabel;
     @FXML private Label nutrientLabel;
@@ -105,8 +111,97 @@ public class InGameController {
     private Pane entityPane;
     private javafx.scene.shape.Rectangle facingHighlight;
     private javafx.scene.Group playerCharacter;
+    private javafx.scene.shape.Ellipse luffyShadow;
+    private ImageView luffySpriteView;
+    private view.river.RiverFlow riverFlow;
+    private view.river.FishShadows fishShadows;
+    private view.river.BoatEntity boatEntity;
+    private view.river.FishingGame fishingGame;
+    private view.fx.ParticleSystem particleSystem;
+    private view.fx.DroppedItemSystem droppedItemSystem;
+    private boolean isOnBoat = false;
+    private long lastRiverUpdateMs = 0L;
+    private final java.util.Map<model.game_item.FishSpecies, Integer> fishCaughtCounts = new java.util.EnumMap<>(model.game_item.FishSpecies.class);
+    private final java.util.Map<model.game_item.FishSpecies, Double> fishMaxCm = new java.util.EnumMap<>(model.game_item.FishSpecies.class);
+    private view.ui.FishingGuideOverlay activeFishingGuide = null;
+    private view.ui.CampfireCookingOverlay activeCookingOverlay = null;
+    private javafx.scene.layout.StackPane activeSleepDialog = null;
+    private boolean sleepTransitionRunning = false;
+    private final java.util.List<double[]> houseDoorPoints = new java.util.ArrayList<>();
+    private final java.util.List<double[]> campfirePoints = new java.util.ArrayList<>();
+    private final java.util.List<javafx.scene.shape.Circle> campfireGlows = new java.util.ArrayList<>();
+    private double campfireEmberTimer = 0.0;
+    private Label interactPromptLabel = null;
+    private Label survivalWarningLabel = null;
+    private javafx.scene.layout.VBox survivalHudBox = null;
+    private Label hungerValueLabel = null;
+    private javafx.scene.shape.Rectangle hungerBarFill = null;
+    private Label thirstValueLabel = null;
+    private javafx.scene.shape.Rectangle thirstBarFill = null;
+    private int lastRenderedHungerInt = -1;
+    private int lastRenderedThirstInt = -1;
+    private boolean lastHungerLow = false;
+    private boolean lastThirstLow = false;
+    private double worldRiverTopY = 32.0 * Constant.CELL_SIZE;
+    private double worldRiverBotY = 37.0 * Constant.CELL_SIZE;
+    private double bridgeWoodLeftX = -1.0;
+    private double bridgeWoodRightX = -1.0;
+    private ImageView bridgeCanopyView = null;
+    private final javafx.scene.effect.ColorAdjust underBridgePlayerShade = new javafx.scene.effect.ColorAdjust();
+    private double lastPlayerBridgeShade = 0.0;
+    private long lastFishLaborMs = 0L;
+    private static final double HUNGER_FULL_GRACE_SEC = 135.0 * 4.0 / 16.0; // ~33.75s thực = đúng 4 tiếng trong game mới bắt đầu đói
+    private double hungerGraceTimerSec = HUNGER_FULL_GRACE_SEC;
+    private int recentLaborStreak = 0;
+    private double recentLaborDecaySec = 0.0;
+    private final java.util.Set<Tile> waterNeedTiles = new java.util.HashSet<>();
+    private final java.util.Set<Tile> ripeCropTiles = new java.util.HashSet<>();
+    private static final int QUEST_TARGET = 5;
+    private int questTomato = 0;
+    private int questPotato = 0;
+    private int questCorn = 0;
+    private boolean questRewardClaimed = false;
+
+    private String farmName = "Nông Trại Vui Vẻ";
+    private Label survivalHeaderTitle = null;
+
+    public void setFarmName(String farmName) {
+        if (farmName != null && !farmName.trim().isEmpty()) {
+            this.farmName = farmName.trim();
+        }
+        if (survivalHeaderTitle != null) {
+            survivalHeaderTitle.setText(this.farmName.toUpperCase());
+        }
+    }
+
+    private Label foodBuffHudPill = null;
+    private boolean foodRareFishBuff = false;
+    private Label boatHintBanner = null;
+    private boolean boatHintVisible = false;
+    private javafx.scene.layout.VBox fishCatchCard = null;
+    private javafx.animation.SequentialTransition fishCatchAnim = null;
+    private java.util.Map<String, Image[]> luffyIdleByDir;
+    private java.util.Map<String, Image[]> luffyRunByDir;
+    private long lastLuffyAnimTick = 0;
+    private int luffyAnimFrame = 0;
+    private boolean luffyWasWalking = false;
+    private String luffyLastDirKey = "down";
+    private boolean luffyFacingLeft = false;
     private javafx.scene.transform.Rotate leftArmSwing, rightArmSwing, leftLegSwing, rightLegSwing;
-    private ImageView weaponView; // Vũ khí cầm tay
+    private javafx.scene.Group luffyToolRig;            // Khung lật đối xứng quanh trục nhân vật (x=22)
+    private javafx.scene.transform.Scale luffyToolFlip;
+    private javafx.scene.Group armGroup;                // Cánh tay (áo đỏ + cẳng tay + bàn tay nắm) + công cụ xoay quanh khớp vai (0,0)
+    private javafx.scene.transform.Rotate armRotate;
+    private javafx.scene.transform.Rotate luffyBodyRotate; // Nghiêng nhẹ thân Luffy theo nhịp bổ cuốc / tưới cây
+    private ImageView weaponView; // Công cụ sắc nét (smooth=false) gắn vào bàn tay cuối armGroup
+    private javafx.scene.transform.Rotate toolRotate; // Nghiêng cổ tay (chuôi cầm) khi tưới nước / rắc hạt
+    private double toolActionTimer = -1.0;
+    private double toolActionDuration = 0.29;
+    private String toolActionKind = "NONE"; // HOE, WATER, SPRINKLE
+    private boolean toolImpactFired = false;
+    private double toolTargetWorldX = 0.0;
+    private double toolTargetWorldY = 0.0;
+    private double walkSwayTime = 0.0;
     private long lastMoveTime = 0;
     private boolean isWalking = false;
     private long actionTime = 0;
@@ -134,8 +229,28 @@ public class InGameController {
         });
     }
 
+    private javafx.scene.shape.Rectangle weatherTintRect;
+    private javafx.scene.shape.Rectangle dayFadeRect;
+    private javafx.animation.SequentialTransition dayFadeAnim;
+    private Color currentWeatherTint = Color.TRANSPARENT;
+    private Color targetWeatherTint = Color.TRANSPARENT;
+    private Color currentTimeTint = Color.TRANSPARENT;
+    private double rainIntensity = 0.0;
+    private double rainSpawnCarry = 0.0;
+
     private void setupTimeOverlay() {
         if (rootPane == null) return;
+        if (weatherTintRect == null) {
+            weatherTintRect = new javafx.scene.shape.Rectangle();
+            weatherTintRect.setMouseTransparent(true);
+            weatherTintRect.setManaged(false);
+            weatherTintRect.setX(0);
+            weatherTintRect.setY(0);
+            weatherTintRect.widthProperty().bind(rootPane.widthProperty());
+            weatherTintRect.heightProperty().bind(rootPane.heightProperty());
+            weatherTintRect.setFill(Color.TRANSPARENT);
+            rootPane.getChildren().add(weatherTintRect);
+        }
         if (timeOverlayRect == null) {
             timeOverlayRect = new javafx.scene.shape.Rectangle();
             timeOverlayRect.setMouseTransparent(true);
@@ -144,20 +259,59 @@ public class InGameController {
             timeOverlayRect.setY(0);
             timeOverlayRect.widthProperty().bind(rootPane.widthProperty());
             timeOverlayRect.heightProperty().bind(rootPane.heightProperty());
-            timeOverlayRect.setFill(getTimeOverlayColor(0.0));
+            currentTimeTint = getTimeOverlayColor(0.0);
+            timeOverlayRect.setFill(currentTimeTint);
             rootPane.getChildren().add(timeOverlayRect);
         } else {
             if (weatherOverlay != null) {
                 weatherOverlay.getChildren().remove(timeOverlayRect);
             }
+            if (!rootPane.getChildren().contains(weatherTintRect)) {
+                rootPane.getChildren().add(weatherTintRect);
+            }
             if (!rootPane.getChildren().contains(timeOverlayRect)) {
                 rootPane.getChildren().add(timeOverlayRect);
             }
+            weatherTintRect.toFront();
             timeOverlayRect.setManaged(false);
             timeOverlayRect.setX(0);
             timeOverlayRect.setY(0);
             timeOverlayRect.toFront();
         }
+        if (dayFadeRect == null) {
+            dayFadeRect = new javafx.scene.shape.Rectangle();
+            dayFadeRect.setMouseTransparent(true);
+            dayFadeRect.setManaged(false);
+            dayFadeRect.setX(0);
+            dayFadeRect.setY(0);
+            dayFadeRect.widthProperty().bind(rootPane.widthProperty());
+            dayFadeRect.heightProperty().bind(rootPane.heightProperty());
+            dayFadeRect.setFill(Color.rgb(22, 18, 36));
+            dayFadeRect.setOpacity(0.0);
+            rootPane.getChildren().add(dayFadeRect);
+        } else {
+            if (!rootPane.getChildren().contains(dayFadeRect)) {
+                rootPane.getChildren().add(dayFadeRect);
+            }
+            dayFadeRect.toFront();
+        }
+    }
+
+    /** Hiệu ứng chuyển ngày mượt mà (màn sương hoàng hôn -> bình minh dịu nhẹ, không khựng khung hình). */
+    private void playDayTransitionFade() {
+        if (dayFadeRect == null) return;
+        dayFadeRect.toFront();
+        if (dayFadeAnim != null) {
+            dayFadeAnim.stop();
+        }
+        javafx.animation.FadeTransition fadeIn = new javafx.animation.FadeTransition(javafx.util.Duration.millis(170), dayFadeRect);
+        fadeIn.setFromValue(dayFadeRect.getOpacity());
+        fadeIn.setToValue(0.42);
+        javafx.animation.FadeTransition fadeOut = new javafx.animation.FadeTransition(javafx.util.Duration.millis(380), dayFadeRect);
+        fadeOut.setFromValue(0.42);
+        fadeOut.setToValue(0.0);
+        dayFadeAnim = new javafx.animation.SequentialTransition(fadeIn, fadeOut);
+        dayFadeAnim.play();
     }
 
     public void setRouter(SceneRouter router) {
@@ -200,7 +354,8 @@ public class InGameController {
         // Thay thế hàm buildGrid bằng hàm xây bản đồ tự do
         buildFreeMap(); 
 
-        selectTool(hand, handTool);
+        // Mặc định cầm sẵn Cuốc (Hoe) khi bắt đầu game mới
+        selectTool(hoe, hoeTool);
         Platform.runLater(this::refreshAll);
         
         // Bắt đầu vòng lặp game
@@ -236,11 +391,20 @@ public class InGameController {
         sunWeatherButton.setFocusTraversable(false);
         rainWeatherButton.setFocusTraversable(false);
         dryWeatherButton.setFocusTraversable(false);
+        if (fishingGuideButton != null) fishingGuideButton.setFocusTraversable(false);
 
         rootPane.setOnKeyPressed(event -> {
-            activeKeys.add(event.getCode()); // Thêm phím vào danh sách để di chuyển
+            if (sleepTransitionRunning) {
+                event.consume();
+                return;
+            }
+            KeyCode code = event.getCode();
+            boolean isNewPress = activeKeys.add(code); // true chỉ khi nhấn phím mới (bỏ qua key-repeat khi giữ lì)
+            if (code == KeyCode.UP || code == KeyCode.DOWN || code == KeyCode.LEFT || code == KeyCode.RIGHT) {
+                event.consume(); // Ngăn phím mũi tên nhảy focus sang nút HUD
+            }
 
-            switch (event.getCode()) {
+            switch (code) {
                 case ESCAPE:  togglePause();   break;
                 case DIGIT1:  openSeedPicker(); break;
                 case DIGIT2:  selectTool(hoe, hoeTool);            break;
@@ -248,11 +412,40 @@ public class InGameController {
                 case DIGIT4:  selectTool(hand, handTool);          break;
                 case DIGIT5:  selectTool(fertilizerBag, fertilizerTool); break;
                 case DIGIT6:  openFeedBagPicker();                 break;
-                case J:       // Nút Action (Cuốc đất, trồng cây)
+                case E:
+                    if (isNewPress) {
+                        handleInteractKeyE();
+                    }
+                    break;
+                case R:
+                    if (isNewPress && !router.hasOverlay()) {
+                        tryDrinkRiverWater();
+                    }
+                    break;
+                case Q:
+                    if (isNewPress && !router.hasOverlay()) {
+                        tryQuickEatFood();
+                    }
+                    break;
+                case J:       // Nút Action (Cuốc đất, trồng cây / Spam kéo cá khi trên thuyền)
                 case SPACE:
-                    interactWithFacingCell();
+                    if (isOnBoat) {
+                        event.consume();
+                        if (isNewPress) {
+                            interactWithFacingCell();
+                        }
+                    } else {
+                        interactWithFacingCell();
+                    }
                     break;
                 case F:
+                    if (isOnBoat && fishingGame != null && !router.hasOverlay()) {
+                        event.consume();
+                        if (isNewPress) {
+                            fishingGame.onActionPressed();
+                        }
+                        break;
+                    }
                     demoController.fastForwardGrowthMap();
                     for (Animal a : animals) {
                         if (a.type != 2 && a.ageDays < 5) {
@@ -261,7 +454,11 @@ public class InGameController {
                         }
                     }
                     notify("Tua nhanh cây trồng & thú cưng (+1 ngày tuổi)");
-                    refreshAll();
+                    refreshDynamicTiles();
+                    break;
+                case G:
+                    event.consume();
+                    toggleFishingGuide();
                     break;
                 case I:
                     openStorageMenu();
@@ -295,10 +492,14 @@ public class InGameController {
         int row = (int) ((playerY + 50) / Constant.CELL_SIZE);
 
         switch(facing) {
-            case "UP":    row -= 1; break;
-            case "DOWN":  row += 1; break;
-            case "LEFT":  col -= 1; break;
-            case "RIGHT": col += 1; break;
+            case "UP":         row -= 1; break;
+            case "DOWN":       row += 1; break;
+            case "LEFT":       col -= 1; break;
+            case "RIGHT":      col += 1; break;
+            case "UP_LEFT":    row -= 1; col -= 1; break;
+            case "UP_RIGHT":   row -= 1; col += 1; break;
+            case "DOWN_LEFT":  row += 1; col -= 1; break;
+            case "DOWN_RIGHT": row += 1; col += 1; break;
         }
 
         return farmMap.getCell(row, col);
@@ -335,17 +536,48 @@ public class InGameController {
 
     private void interactWithFacingCell() {
         if (router.hasOverlay()) return;
+
+        // Tương tác lên thuyền & Câu cá từ trên thuyền (Space / J)
+        if (boatEntity != null) {
+            if (isOnBoat && boatEntity.isPlayerAboard()) {
+                if (fishingGame != null) {
+                    if (!fishingGame.isActive() && isBoatCenterUnderBridge()) {
+                        notify("Đang ở dưới gầm cầu — hãy chèo qua khoảng trống rồi câu cá!");
+                        return;
+                    }
+                    long nowMs = System.currentTimeMillis();
+                    if (nowMs - lastFishLaborMs >= 1500L) {
+                        lastFishLaborMs = nowMs;
+                        applyLaborSurvivalCost();
+                    }
+                    fishingGame.onActionPressed();
+                }
+                return;
+            }
+            if (boatEntity.isTransitioning()) {
+                return;
+            }
+            if (boatEntity.isPlayerInBoardingZone(playerX, playerY)) {
+                boatEntity.startBoarding(playerX, playerY);
+                return;
+            }
+        }
         
         actionTime = System.currentTimeMillis(); // Kích hoạt hiệu ứng vung vũ khí
 
         double targetX = playerX + 22;
         double targetY = playerY + 50;
         double reach = 40;
+        double diagReach = reach * 0.75;
         switch(facing) {
-            case "UP":    targetY -= reach; break;
-            case "DOWN":  targetY += reach; break;
-            case "LEFT":  targetX -= reach; break;
-            case "RIGHT": targetX += reach; break;
+            case "UP":         targetY -= reach; break;
+            case "DOWN":       targetY += reach; break;
+            case "LEFT":       targetX -= reach; break;
+            case "RIGHT":      targetX += reach; break;
+            case "UP_LEFT":    targetX -= diagReach; targetY -= diagReach; break;
+            case "UP_RIGHT":   targetX += diagReach; targetY -= diagReach; break;
+            case "DOWN_LEFT":  targetX -= diagReach; targetY += diagReach; break;
+            case "DOWN_RIGHT": targetX += diagReach; targetY += diagReach; break;
         }
         
         javafx.geometry.Rectangle2D hitBox = new javafx.geometry.Rectangle2D(targetX - 10, targetY - 10, 20, 20);
@@ -375,71 +607,33 @@ public class InGameController {
             }
         }
         
-        // Đập phá vật cản (Lúa dại ở FarmZone, Đá, Cây, Bụi cỏ, Khúc gỗ...) bằng Cuốc
-        if (playerController.getCurrentTool().getName().equals("Hoe")) {
-            // Ưu tiên dọn đúng ô lúa dại (wheat_patch) ở ô đang hướng tới để lộ mặt đất trồng cây
-            Cell facingForWheat = getFacingCell();
-            if (facingForWheat != null) {
-                double fcx = facingForWheat.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
-                double fcy = facingForWheat.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
-                ImageView wheatToClear = null;
-                for (ImageView objView : sceneryObjects) {
-                    String id = objView.getId();
-                    if (id != null && id.toLowerCase().contains("wheat")) {
-                        double wx = objView.getLayoutX() + objView.getFitWidth() / 2.0;
-                        double wy = objView.getLayoutY() + objView.getFitHeight() / 2.0;
-                        if (Math.abs(wx - fcx) < 22 && Math.abs(wy - fcy) < 22) {
-                            wheatToClear = objView;
-                            break;
-                        }
-                    }
-                }
-                if (wheatToClear != null) {
-                    clearedSceneryKeys.add(sceneryKey(wheatToClear));
-                    sceneryObjects.remove(wheatToClear);
-                    if (entityPane != null) {
-                        entityPane.getChildren().remove(wheatToClear);
-                    } else {
-                        mapPane.getChildren().remove(wheatToClear);
-                    }
-                    notify("Đã đào sạch bụi lúa! Giờ có thể cuốc đất trồng cây.");
-                    rootPane.requestFocus();
-                    return;
-                }
-            }
+        // Khóa cuốc đất & tưới nước khi kiệt sức (Đói <= 0 hoặc Khát <= 0)
+        ToolStrategy curToolCheck = playerController.getCurrentTool();
+        if (player != null && player.isExhausted() && (curToolCheck instanceof Hoe || curToolCheck instanceof WateringCan)) {
+            spawnFloatingText("Quá đói/khát! Hãy ăn uống trước!", Color.rgb(255, 86, 86));
+            notify("Quá đói/khát! Hãy ăn uống trước!");
+            rootPane.requestFocus();
+            return;
+        }
 
-            ImageView toDestroy = null;
-            for (ImageView objView : sceneryObjects) {
-                String id = objView.getId();
-                if (id != null) {
-                    String idLower = id.toLowerCase();
-                    // Không phá nhà, lều, lửa trại, cối xay gió, cầu, hàng rào, cờ, giếng, chuồng, đèn đường, biển chỉ dẫn, hoa/đất trang trí
-                    if (idLower.contains("house") || idLower.contains("tent") || idLower.contains("campfire") ||
-                        idLower.contains("windmill") || idLower.contains("streetlamp") || idLower.contains("lantern") ||
-                        idLower.contains("signpost") || idLower.contains("garden_bed") || idLower.contains("construction") ||
-                        idLower.contains("wheat") || idLower.contains("bridge") || idLower.contains("fence") ||
-                        idLower.contains("flag") || idLower.contains("well") || idLower.contains("barn") ||
-                        idLower.contains("dirt_spot") || idLower.contains("flower") || idLower.contains("pebble") ||
-                        idLower.contains("grass_patch")) {
-                        continue;
-                    }
-                }
-                javafx.geometry.Bounds b = objView.getBoundsInParent();
-                javafx.geometry.Rectangle2D bRect = new javafx.geometry.Rectangle2D(b.getMinX(), b.getMinY(), Math.max(1, b.getWidth()), Math.max(1, b.getHeight()));
-                if (hitBox.intersects(bRect)) {
-                    toDestroy = objView;
-                    break;
-                }
+        // Cuốc (Hoe) CHỈ hoạt động trên các luống đất 2x2 (TerrainType.DIRT) trong Farming Zone — giữ nguyên lối đi cỏ xanh!
+        if (curToolCheck instanceof Hoe) {
+            Cell hoeCell = getFacingCell();
+            if (!isCellInFarmZone(hoeCell)) {
+                notify("Chỉ có thể dùng cuốc trong khu trồng trọt (Farming Zone)!");
+                rootPane.requestFocus();
+                return;
             }
-            if (toDestroy != null) {
-                clearedSceneryKeys.add(sceneryKey(toDestroy));
-                sceneryObjects.remove(toDestroy);
-                if (entityPane != null) {
-                    entityPane.getChildren().remove(toDestroy);
-                } else {
-                    mapPane.getChildren().remove(toDestroy);
-                }
-                notify("Đã dọn dẹp vật cản!");
+            if (hoeCell != null && hoeCell.getTerrain() != TerrainType.DIRT) {
+                notify("Đây là lối đi cỏ xanh — hãy cuốc trên các luống đất 2x2!");
+                rootPane.requestFocus();
+                return;
+            }
+            if (tryClearWheatAtCell(hoeCell)) {
+                applyLaborSurvivalCost();
+                double hwx = hoeCell.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
+                double hwy = hoeCell.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
+                triggerToolAnimation("HOE", hwx, hwy);
                 rootPane.requestFocus();
                 return;
             }
@@ -491,8 +685,15 @@ public class InGameController {
                 }
             }
 
-            boolean ok = playerController.interactWithCell(targetCell);
-            notify(ok ? "Thao tác thành công!" : "Không thể làm điều này ở đây");
+            boolean ok = interactCellWithEffects(targetCell);
+            if (ok) {
+                notify("Thao tác thành công!");
+            } else if (playerController.getCurrentTool() instanceof SeedBag && targetCell.getCellState() != CellState.TILLED) {
+                notify("Hãy dùng Cuốc (Hoe) cuốc đất trước khi trồng cây!");
+                spawnFloatingText("Cần cuốc đất trước!", Color.rgb(255, 208, 92));
+            } else {
+                notify("Không thể làm điều này ở đây");
+            }
             revertSeedToolIfEmpty();
             
             // Tối ưu hóa: Chỉ cập nhật ô đất vừa thao tác, tránh gây giật khung hình
@@ -509,6 +710,79 @@ public class InGameController {
         
         // Luôn lấy lại focus cho rootPane để không bị liệt phím di chuyển
         rootPane.requestFocus();
+    }
+
+    /**
+     * Thực thi tương tác công cụ trên ô đất kèm đầy đủ hiệu ứng Phase 1 (Particle + Drop Bounce + Magnet Pickup).
+     */
+    private boolean interactCellWithEffects(Cell cell) {
+        if (cell == null) return false;
+        ToolStrategy curTool = playerController.getCurrentTool();
+        double wx = cell.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
+        double wy = cell.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
+
+        // 1. Thu hoạch cây trồng bằng Tay: spawn hiệu ứng lá/tia sáng & vật phẩm bật nảy tự hút
+        if (curTool instanceof Hand && cell.getPest() == null && cell.getCrop() != null && cell.getCrop().isHarvestable()) {
+            model.crop.Crop harvested = cell.harvestCrop();
+            if (harvested != null) {
+                model.game_item.HarvestedCropItem item = new model.game_item.HarvestedCropItem(
+                    harvested.getName(), harvested.getCropData().getValue()
+                );
+                if (particleSystem != null) {
+                    particleSystem.spawnHarvestSparkles(wx, wy);
+                }
+                view.fx.SoundHook.playHarvest();
+                if (droppedItemSystem != null) {
+                    droppedItemSystem.spawnDrop(item, Assets.getShopIcon(item), wx, wy, 1);
+                } else {
+                    player.getInventory().addItem(item, 1);
+                }
+                recordHarvestForQuest(harvested.getName());
+                return true;
+            }
+        }
+
+        // 2. Các công cụ khác (Tưới nước, Cuốc, Hạt giống, Phân bón, Bắt sâu)
+        boolean ok = playerController.interactWithCell(cell);
+        if (curTool instanceof Hoe || curTool instanceof WateringCan) {
+            applyLaborSurvivalCost();
+        }
+        if (ok) {
+            if (curTool instanceof Hoe) {
+                triggerToolAnimation("HOE", wx, wy);
+            } else if (curTool instanceof WateringCan) {
+                triggerToolAnimation("WATER", wx, wy);
+                if (particleSystem != null) {
+                    particleSystem.spawnWaterSplash(wx, wy);
+                }
+                view.fx.SoundHook.playWaterSplash();
+            } else if (curTool instanceof SeedBag || curTool instanceof FertilizerBag || curTool instanceof FeedBag) {
+                triggerToolAnimation("SPRINKLE", wx, wy);
+            }
+        } else if (curTool instanceof Hoe) {
+            // Vẫn vung cuốc tạo cảm giác tương tác ngay cả khi đất chưa cần cuốc thêm (không bắn đất nếu thất bại)
+            triggerToolAnimation("HOE", -1, -1);
+        } else if (curTool instanceof WateringCan) {
+            // Vẫn diễn hoạt ảnh tưới nước khi bấm Space cầm bình tưới
+            triggerToolAnimation("WATER", -1, -1);
+        }
+        return ok;
+    }
+
+    /** Kích hoạt hoạt ảnh vung công cụ 3 nhịp tương ứng từng loại dụng cụ. */
+    private void triggerToolAnimation(String kind, double targetWx, double targetWy) {
+        toolActionKind = kind;
+        toolActionTimer = 0.0;
+        toolImpactFired = (targetWx < 0); // Không bắn hạt nếu không có ô mục tiêu hợp lệ
+        toolTargetWorldX = targetWx;
+        toolTargetWorldY = targetWy;
+        if ("HOE".equals(kind)) {
+            toolActionDuration = 0.32;      // 4 frame cuốc đất (0.08s/frame): 0 -> 1 -> 2 -> 3 -> 0
+        } else if ("WATER".equals(kind)) {
+            toolActionDuration = 0.40;      // 4 bước tưới nước (0.10s/frame): 0 -> 1 -> 2 -> 1 -> 0
+        } else {
+            toolActionDuration = 0.28;      // Lắc qua lại (-18° <-> +18°) rắc hạt / rải phân
+        }
     }
 
     // ======================== ZORO DIALOG ========================
@@ -570,11 +844,21 @@ public class InGameController {
 
     /** Write everything the controller owns (position, clock, animals, cleared obstacles) into p. */
     public void exportViewState(java.util.Properties p) {
-        p.setProperty("view.playerX", Double.toString(playerX));
-        p.setProperty("view.playerY", Double.toString(playerY));
+        if (droppedItemSystem != null) {
+            droppedItemSystem.collectAllImmediately();
+        }
+        double saveX = (boatEntity != null && boatEntity.isLockedToBoat()) ? boatEntity.getDisembarkPlayerX() : playerX;
+        double saveY = (boatEntity != null && boatEntity.isLockedToBoat()) ? boatEntity.getDisembarkPlayerY() : playerY;
+        p.setProperty("view.playerX", Double.toString(saveX));
+        p.setProperty("view.playerY", Double.toString(saveY));
         p.setProperty("view.facing", facing);
         p.setProperty("view.elapsed", Long.toString(elapsedTimeInDay));
         p.setProperty("view.helperDays", Integer.toString(helperDaysLeft));
+        p.setProperty("view.foodRareFish", Boolean.toString(foodRareFishBuff));
+        p.setProperty("quest.tomato", Integer.toString(questTomato));
+        p.setProperty("quest.potato", Integer.toString(questPotato));
+        p.setProperty("quest.corn", Integer.toString(questCorn));
+        p.setProperty("quest.claimed", Boolean.toString(questRewardClaimed));
 
         p.setProperty("cleared.count", Integer.toString(clearedSceneryKeys.size()));
         int ci = 0;
@@ -601,6 +885,15 @@ public class InGameController {
             facing = p.getProperty("view.facing", facing);
             elapsedTimeInDay = Long.parseLong(p.getProperty("view.elapsed", "0"));
             helperDaysLeft = Integer.parseInt(p.getProperty("view.helperDays", "0"));
+            foodRareFishBuff = Boolean.parseBoolean(p.getProperty("view.foodRareFish", "false"));
+            questTomato = Integer.parseInt(p.getProperty("quest.tomato", "0"));
+            questPotato = Integer.parseInt(p.getProperty("quest.potato", "0"));
+            questCorn = Integer.parseInt(p.getProperty("quest.corn", "0"));
+            questRewardClaimed = Boolean.parseBoolean(p.getProperty("quest.claimed", "false"));
+            if (fishShadows != null) fishShadows.setRareFishBuff(foodRareFishBuff);
+            updateFoodBuffHud();
+            updateSurvivalHud(animTimeSec);
+            updateQuestTrackerUi();
             lastFrameTime = System.currentTimeMillis();
             resetFeedingSchedule(elapsedTimeInDay / 135000.0);
             int tc = Integer.parseInt(p.getProperty("trough.count", "0"));
@@ -696,13 +989,21 @@ public class InGameController {
                 int money = toHarvest.getSellPrice();
                 String name = toHarvest.getAnimalName();
                 player.addMoney(money);
+                if (particleSystem != null) {
+                    particleSystem.spawnHarvestSparkles(toHarvest.x + 18, toHarvest.y + 8);
+                    particleSystem.spawnHeartBurst(toHarvest.x + 18, toHarvest.y - 8);
+                }
+                if (droppedItemSystem != null) {
+                    droppedItemSystem.spawnFloatingText("+$" + money, toHarvest.x + 18, toHarvest.y - 10, Color.rgb(255, 232, 92));
+                }
+                view.fx.SoundHook.playHarvest();
                 notify("💰 Đã bán " + name + " trưởng thành thành công: +" + money + "$!");
                 rootPane.requestFocus();
                 return true;
             }
         }
 
-        // 2. Kiểm tra cho thú ăn nếu chưa trưởng thành (ageDays < 5)
+        // 2. Kiểm tra cho thú ăn hoặc vuốt ve thu sản phẩm nếu chưa trưởng thành (ageDays < 5)
         Animal toFeed = null;
         for (Animal a : animals) {
             if (a.ageDays < 5 && a.type != 2) {
@@ -716,16 +1017,16 @@ public class InGameController {
         if (toFeed != null) {
             String aName = toFeed.getAnimalName();
             model.game_item.Item feedItem = findAvailableFeedItem(toFeed.type);
-            if (feedItem != null && player.getInventory().getItemCount(feedItem) >= 1) {
-                if (!toFeed.isFed) {
-                    player.getInventory().removeItem(feedItem, 1);
-                    toFeed.feed();
-                    revertBagToolIfEmpty();
-                    notify("Đã cho " + aName + " ăn " + feedItem.getName() + "! (Tiến độ: Ngày " + toFeed.ageDays + "/5 - Mai sẽ lớn thêm)");
-                } else {
-                    notify(aName + " đã no hôm nay! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays) + " ngày để bán)");
+            if (!toFeed.isFed && feedItem != null && player.getInventory().getItemCount(feedItem) >= 1) {
+                player.getInventory().removeItem(feedItem, 1);
+                toFeed.feed();
+                revertBagToolIfEmpty();
+                if (particleSystem != null) {
+                    particleSystem.spawnHeartBurst(toFeed.x + 18, toFeed.y - 6);
                 }
-            } else {
+                view.fx.SoundHook.playHeart();
+                notify("Đã cho " + aName + " ăn " + feedItem.getName() + "! (Tiến độ: Ngày " + toFeed.ageDays + "/5 - Mai sẽ lớn thêm)");
+            } else if (!toFeed.isFed) {
                 model.game_item.Item rawCrop = null;
                 for (model.game_item.Item item : player.getInventory().getItems().keySet()) {
                     if (item instanceof model.game_item.HarvestedCropItem && player.getInventory().getItemCount(item) > 0) {
@@ -734,20 +1035,39 @@ public class InGameController {
                     }
                 }
                 if (rawCrop != null) {
-                    if (!toFeed.isFed) {
-                        player.getInventory().removeItem(rawCrop, 1);
-                        toFeed.feed();
-                        revertBagToolIfEmpty();
-                        notify("Đã cho " + aName + " ăn bằng " + rawCrop.getName() + "! (Tiến độ: Ngày " + toFeed.ageDays + "/5)");
-                    } else {
-                        notify(aName + " đã no hôm nay! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays) + " ngày để bán)");
+                    player.getInventory().removeItem(rawCrop, 1);
+                    toFeed.feed();
+                    revertBagToolIfEmpty();
+                    if (particleSystem != null) {
+                        particleSystem.spawnHeartBurst(toFeed.x + 18, toFeed.y - 6);
                     }
+                    view.fx.SoundHook.playHeart();
+                    notify("Đã cho " + aName + " ăn bằng " + rawCrop.getName() + "! (Tiến độ: Ngày " + toFeed.ageDays + "/5)");
                 } else {
-                    if (toFeed.isFed) {
-                        notify(aName + " đã no hôm nay! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays) + " ngày để bán)");
-                    } else {
-                        notify(aName + " đang đói! Bấm vào Cặp (Bag - phím 6) hoặc vào Shop mua thức ăn nhé!");
+                    // Vuốt ve thú khi không có thức ăn -> vẫn bật tim thân thiện
+                    if (curTool instanceof Hand && particleSystem != null) {
+                        particleSystem.spawnHeartBurst(toFeed.x + 18, toFeed.y - 6);
+                        view.fx.SoundHook.playHeart();
                     }
+                    notify(aName + " đang đói! Bấm vào Cặp (Bag - phím 6) hoặc vào Shop mua thức ăn nhé!");
+                }
+            } else {
+                // Thú đã no: vuốt ve bật icon trái tim + rơi sản phẩm vật nuôi (1 lần/ngày) bật nảy & tự hút!
+                if (particleSystem != null) {
+                    particleSystem.spawnHeartBurst(toFeed.x + 18, toFeed.y - 6);
+                }
+                view.fx.SoundHook.playHeart();
+                if (curTool instanceof Hand && !toFeed.producedToday) {
+                    toFeed.producedToday = true;
+                    model.game_item.AnimalProductItem prod = model.game_item.AnimalProductItem.forAnimalType(toFeed.type);
+                    if (droppedItemSystem != null) {
+                        droppedItemSystem.spawnDrop(prod, Assets.getShopIcon(prod), toFeed.x + 18, toFeed.y + 12, 1);
+                    } else {
+                        player.getInventory().addItem(prod, 1);
+                    }
+                    notify("♥ Đã vuốt ve " + aName + " và thu được " + prod.getName() + "!");
+                } else {
+                    notify("♥ " + aName + " rất vui! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays) + " ngày để bán)");
                 }
             }
             rootPane.requestFocus();
@@ -758,6 +1078,8 @@ public class InGameController {
     }
 
     private long lastFrameTime = 0;
+    private long lastAnimNanos = 0L;
+    private double animTimeSec = 0.0;
     private long elapsedTimeInDay = 0;
 
     private Color getTimeOverlayColor(double progress) {
@@ -790,6 +1112,7 @@ public class InGameController {
 
     private void startGameLoop() {
         lastFrameTime = System.currentTimeMillis();
+        lastAnimNanos = 0L;
         elapsedTimeInDay = 0;
         Platform.runLater(() -> rootPane.requestFocus());
         
@@ -797,27 +1120,44 @@ public class InGameController {
             @Override
             public void handle(long now) {
                 try {
-                    long currentMillis = System.currentTimeMillis();
-                    long delta = currentMillis - lastFrameTime;
-                    lastFrameTime = currentMillis;
+                    // Dùng mốc nanosecond của AnimationTimer (khử hoàn toàn giật 15.6ms của currentTimeMillis trên Windows)
+                    double dtSec = (lastAnimNanos == 0L)
+                            ? 0.016
+                            : Math.min(0.05, Math.max(0.001, (now - lastAnimNanos) / 1_000_000_000.0));
+                    lastAnimNanos = now;
+                    animTimeSec += dtSec;
+                    long delta = (long) Math.round(dtSec * 1000.0);
+                    lastFrameTime = System.currentTimeMillis();
 
                     if (rootPane.getParent() == null) {
-                        // Don't stop the timer, just pause updates.
                         return;
                     }
-                    if (!router.hasOverlay()) {
-                        updatePlayerPosition();
-                        updateRainEffect();
+                    if (!router.hasOverlay() && !sleepTransitionRunning) {
+                        updatePlayerPosition(dtSec, animTimeSec);
+                        updateRainEffect(dtSec);
+
+                        // Chuyển màu nền thời tiết mượt mà bằng nội suy GPU (không chạm CSS rootPane gây khựng)
+                        if (weatherTintRect != null && !currentWeatherTint.equals(targetWeatherTint)) {
+                            double blend = Math.min(1.0, dtSec * 4.5);
+                            currentWeatherTint = currentWeatherTint.interpolate(targetWeatherTint, blend);
+                            if (Math.abs(currentWeatherTint.getOpacity() - targetWeatherTint.getOpacity()) < 0.002
+                                    && Math.abs(currentWeatherTint.getRed() - targetWeatherTint.getRed()) < 0.004) {
+                                currentWeatherTint = targetWeatherTint;
+                            }
+                            weatherTintRect.setFill(currentWeatherTint);
+                        }
                         
                         // Tự động qua ngày sau mỗi 135 giây (135000 ms)
                         elapsedTimeInDay += delta;
                         if (elapsedTimeInDay >= 135000) {
-                            onNextDay(); // onNextDay tự động reset elapsedTimeInDay về 0 và cập nhật sky/clock
+                            onNextDay();
                         } else {
-                            // Cập nhật hiệu ứng thời gian trong ngày (Sáng, Trưa, Tối) mượt mà
+                            // Nội suy mượt màu sáng/trưa/chiều/tối mỗi frame
                             if (timeOverlayRect != null) {
                                 double progress = elapsedTimeInDay / 135000.0;
-                                timeOverlayRect.setFill(getTimeOverlayColor(progress));
+                                Color targetTime = getTimeOverlayColor(progress);
+                                currentTimeTint = currentTimeTint.interpolate(targetTime, Math.min(1.0, dtSec * 5.0));
+                                timeOverlayRect.setFill(currentTimeTint);
                             }
                             updateTimeDisplay();
                             updateFeedingSchedule();
@@ -865,86 +1205,259 @@ public class InGameController {
         }
     }
 
-    private void updateRainEffect() {
+    private void updateRainEffect(double dtSec) {
         if (weatherOverlay == null) return;
         
         model.weather.WeatherType cur = gameManager.getCurrentWeather() != null
                 ? gameManager.getCurrentWeather().getType() : null;
-        
-        if (cur == model.weather.WeatherType.RAINY) {
+        boolean raining = (cur == model.weather.WeatherType.RAINY);
+
+        // Chuyển cường độ mưa mượt mà (tăng dần khi bật mưa, tan dần khi tạnh mưa)
+        double targetIntensity = raining ? 1.0 : 0.0;
+        rainIntensity += (targetIntensity - rainIntensity) * Math.min(1.0, dtSec * 3.8);
+        if (Math.abs(rainIntensity - targetIntensity) < 0.01) rainIntensity = targetIntensity;
+
+        if (raining && rainIntensity > 0.05) {
             double w = Math.max(1200, rootPane.getWidth());
-            // Spawn 2-3 new raindrops every frame
-            for (int i = 0; i < 3; i++) {
-                javafx.scene.shape.Line drop = new javafx.scene.shape.Line(0, 0, 0, 15);
-                drop.setStroke(javafx.scene.paint.Color.rgb(180, 220, 255, 0.8));
-                drop.setStrokeWidth(2.5);
-                
-                // Vì mưa bay xiên từ phải sang trái, ta cần mở rộng vùng spawn bên phải
-                drop.setLayoutX(Math.random() * (w + 400));
-                drop.setLayoutY(-20);
-                drop.setUserData(18 + Math.random() * 12); // Tốc độ rơi khá nhanh
+            rainSpawnCarry += (2.8 * rainIntensity) * (dtSec * 60.0);
+            int toSpawn = Math.min(5, (int) rainSpawnCarry);
+            rainSpawnCarry -= toSpawn;
+            for (int i = 0; i < toSpawn; i++) {
+                javafx.scene.shape.Line drop = new javafx.scene.shape.Line(0, 0, -4, 15);
+                drop.setStroke(javafx.scene.paint.Color.rgb(188, 226, 255, 0.78));
+                drop.setStrokeWidth(2.2);
+                drop.setOpacity(rainIntensity);
+                drop.setTranslateX(Math.random() * (w + 360));
+                drop.setTranslateY(-24);
+                drop.setUserData(16.0 + Math.random() * 11.0);
                 weatherOverlay.getChildren().add(drop);
             }
         }
         
-        // Move drops and remove off-screen ones
+        if (weatherOverlay.getChildren().isEmpty()) return;
+
         double h = Math.max(800, rootPane.getHeight());
-        java.util.List<javafx.scene.Node> toRemove = new java.util.ArrayList<>();
+        double stepScale = dtSec * 60.0;
+        java.util.List<javafx.scene.Node> toRemove = null;
         for (javafx.scene.Node node : weatherOverlay.getChildren()) {
             if (node instanceof javafx.scene.shape.Line) {
                 javafx.scene.shape.Line drop = (javafx.scene.shape.Line) node;
                 double speed = (double) drop.getUserData();
-                drop.setLayoutY(drop.getLayoutY() + speed);
-                drop.setLayoutX(drop.getLayoutX() - speed * 0.3); // Mưa bay xiên do gió
-                if (drop.getLayoutY() > h + 50) {
+                drop.setTranslateY(drop.getTranslateY() + speed * stepScale);
+                drop.setTranslateX(drop.getTranslateX() - speed * 0.28 * stepScale);
+                if (!raining) {
+                    drop.setOpacity(Math.max(0.0, drop.getOpacity() - dtSec * 2.8));
+                }
+                if (drop.getTranslateY() > h + 50 || drop.getOpacity() <= 0.02) {
+                    if (toRemove == null) toRemove = new java.util.ArrayList<>();
                     toRemove.add(drop);
                 }
             }
         }
-        weatherOverlay.getChildren().removeAll(toRemove);
+        if (toRemove != null) {
+            weatherOverlay.getChildren().removeAll(toRemove);
+        }
     }
 
-    private void updatePlayerPosition() {
+    private void updatePlayerPosition(double deltaRiverSec, double timeSec) {
+        double mapW = farmMap.getWidth() * Constant.CELL_SIZE;
+        double mapH = farmMap.getHeight() * Constant.CELL_SIZE;
+
         double dx = 0;
         double dy = 0;
         isWalking = false;
 
-        if (activeKeys.contains(KeyCode.W)) { dy -= speed; facing = "UP"; isWalking = true; }
-        if (activeKeys.contains(KeyCode.S)) { dy += speed; facing = "DOWN"; isWalking = true; }
-        if (activeKeys.contains(KeyCode.A)) { dx -= speed; facing = "LEFT"; isWalking = true; }
-        if (activeKeys.contains(KeyCode.D)) { dx += speed; facing = "RIGHT"; isWalking = true; }
+        // Đọc phím điều hướng NGAY TỪ ĐẦU trước mọi logic khóa đất liền để chèo thuyền A/D luôn mượt mà
+        int dirX = 0;
+        int dirY = 0;
+        if (activeKeys.contains(KeyCode.W) || activeKeys.contains(KeyCode.UP))    dirY -= 1;
+        if (activeKeys.contains(KeyCode.S) || activeKeys.contains(KeyCode.DOWN))  dirY += 1;
+        if (activeKeys.contains(KeyCode.A) || activeKeys.contains(KeyCode.LEFT))  dirX -= 1;
+        if (activeKeys.contains(KeyCode.D) || activeKeys.contains(KeyCode.RIGHT)) dirX += 1;
 
-        double nextX = playerX + dx;
-        double nextY = playerY + dy;
+        // Chèo thuyền dọc sông (bỏ qua hoàn toàn va chạm tile nước & khóa đất liền khi đang trên thuyền và không câu)
+        boolean activelyFishing = (fishingGame != null && fishingGame.isActive());
+        if (boatEntity != null && boatEntity.isPlayerAboard() && !boatEntity.isTransitioning() && !activelyFishing) {
+            if (dirX != 0) {
+                boatEntity.rowHorizontal(dirX, deltaRiverSec, mapW);
+            }
+        }
 
-        // Giới hạn không cho nhân vật đi ra ngoài rìa bản đồ
-        double mapW = farmMap.getWidth() * Constant.CELL_SIZE;
-        double mapH = farmMap.getHeight() * Constant.CELL_SIZE;
-        
-        if (nextX < 0) nextX = 0;
-        if (nextY < 0) nextY = 0;
-        if (nextX > mapW - 40) nextX = mapW - 40;
-        if (nextY > mapH - 40) nextY = mapH - 40;
+        // Cập nhật hệ thống con sông & Game Feel dùng dtSec nanosecond chuẩn 60 FPS
+        if (riverFlow != null) {
+            riverFlow.update(deltaRiverSec, timeSec);
+        }
+        if (fishShadows != null) {
+            fishShadows.update(deltaRiverSec, timeSec);
+        }
+        if (boatEntity != null) {
+            boatEntity.setSuppressPrompt(activelyFishing);
+            boatEntity.update(timeSec, playerX, playerY);
+            updateBoatHintBanner(boatEntity.isPlayerAboard() || boatEntity.canInteractFromShore(playerX, playerY));
+        }
+        if (fishingGame != null) {
+            fishingGame.update(deltaRiverSec, timeSec);
+        }
+        if (particleSystem != null) {
+            // Đống lửa trại sinh động: ánh sáng cam nhấp nháy & tàn lửa/khói pixel bay lên
+            if (!campfirePoints.isEmpty()) {
+                campfireEmberTimer += deltaRiverSec;
+                if (campfireEmberTimer >= 0.16) {
+                    campfireEmberTimer = 0.0;
+                    for (double[] cp : campfirePoints) {
+                        particleSystem.spawnCampfireEmber(cp[0], cp[1]);
+                    }
+                }
+                for (int i = 0; i < campfireGlows.size(); i++) {
+                    javafx.scene.shape.Circle glow = campfireGlows.get(i);
+                    double pulse = 0.88 + 0.14 * Math.sin(timeSec * 6.8 + i * 1.3);
+                    glow.setScaleX(pulse);
+                    glow.setScaleY(pulse * 0.82);
+                    glow.setOpacity(0.72 + 0.18 * Math.sin(timeSec * 9.2 + i));
+                }
+            }
+            particleSystem.update(deltaRiverSec);
+        }
+        if (droppedItemSystem != null) {
+            droppedItemSystem.update(deltaRiverSec, timeSec, playerX + 22.0, playerY + 38.0);
+        }
+        // Nhấp nhô nhẹ icon bình tưới nước xanh trên các ô cây trồng đang thiếu nước (O(số ô thiếu nước))
+        if (!waterNeedTiles.isEmpty()) {
+            for (Tile wt : waterNeedTiles) {
+                wt.waterNeedIcon.setTranslateY(-8.0 + Math.sin(timeSec * 4.0 + wt.bobPhase) * 3.0);
+            }
+        }
+        // Nhấp nháy nhẹ thanh vàng kim (#FFD700) & chấm sao vàng trên các ô cây chín 100% sẵn sàng thu hoạch
+        if (!ripeCropTiles.isEmpty()) {
+            for (Tile rt : ripeCropTiles) {
+                double pulse = 0.62 + 0.38 * Math.abs(Math.sin(timeSec * 4.6 + rt.bobPhase));
+                rt.growthBarFill.setOpacity(pulse);
+                rt.ripeStar.setOpacity(0.55 + 0.45 * Math.abs(Math.sin(timeSec * 6.0 + rt.bobPhase)));
+                double sc = 0.88 + 0.24 * Math.abs(Math.sin(timeSec * 5.0 + rt.bobPhase));
+                rt.ripeStar.setScaleX(sc);
+                rt.ripeStar.setScaleY(sc);
+            }
+        }
 
-        int colX = (int) ((nextX + 20) / Constant.CELL_SIZE);
-        int rowX = (int) ((playerY + 20) / Constant.CELL_SIZE);
-        boolean waterX = farmMap.getCell(rowX, colX) != null && farmMap.getCell(rowX, colX).getTerrain() == TerrainType.WATER;
-        
-        int colY = (int) ((playerX + 20) / Constant.CELL_SIZE);
-        int rowY = (int) ((nextY + 20) / Constant.CELL_SIZE);
-        boolean waterY = farmMap.getCell(rowY, colY) != null && farmMap.getCell(rowY, colY).getTerrain() == TerrainType.WATER;
+        boolean lockedOnBoat = false;
+        if (boatEntity != null && boatEntity.isTransitioning()) {
+            // Đang bước mượt lên hoặc rời thuyền
+            boolean steppingOntoBoat = !boatEntity.isPlayerAboard();
+            double[] pos = boatEntity.stepTransition();
+            playerX = pos[0];
+            playerY = pos[1];
+            isWalking = true;
+            facing = steppingOntoBoat ? "DOWN" : "UP";
+            lockedOnBoat = true;
+            isOnBoat = boatEntity.isPlayerAboard();
+        } else if (boatEntity != null && boatEntity.isPlayerAboard()) {
+            // Nhân vật đang đứng trên thuyền: đồng bộ 100% tọa độ X (theo chiều chèo) & Y (nhịp dập dềnh) + Camera tự bám theo
+            isOnBoat = true;
+            if (!activelyFishing && dirX == 0 && dirY < 0 && boatEntity.canToggleNow()) {
+                if (isBoatCenterUnderBridge()) {
+                    notify("Đang ở dưới gầm cầu — hãy chèo qua hẳn bên kia rồi lên bờ!");
+                } else {
+                    // Nhấn W / UP khi đang dừng thuyền để bước lên bờ bắc
+                    boatEntity.startDisembarking();
+                }
+            } else {
+                playerX = boatEntity.getBoardedPlayerX();
+                playerY = boatEntity.getSyncedPlayerY();
+                if (activelyFishing) facing = "DOWN";
+                else if (dirX < 0)   facing = "DOWN_LEFT";
+                else if (dirX > 0)   facing = "DOWN_RIGHT";
+                else                 facing = "DOWN";
+            }
+            isWalking = false;
+            lockedOnBoat = true;
+        } else {
+            isOnBoat = false;
+            if (boatEntity != null && dirY > 0 && boatEntity.isAtDockEdgeForWalkBoard(playerX, playerY) && boatEntity.canToggleNow()) {
+                // Đi thẳng xuống cuối cầu tàu -> tự động bước lên sàn sau của thuyền
+                boatEntity.startBoarding(playerX, playerY);
+                facing = "DOWN";
+                isWalking = true;
+                lockedOnBoat = true;
+            }
+        }
 
-        // TMX Object Collision
-        javafx.geometry.Rectangle2D oldBox = new javafx.geometry.Rectangle2D(playerX + 10, playerY + 20, 20, 20);
-        javafx.geometry.Rectangle2D playerBoxX = new javafx.geometry.Rectangle2D(nextX + 10, playerY + 20, 20, 20);
-        javafx.geometry.Rectangle2D playerBoxY = new javafx.geometry.Rectangle2D(playerX + 10, nextY + 20, 20, 20);
-        
-        boolean colX_obj = false;
-        boolean colY_obj = false;
-        boolean onBridgeX = false;
-        boolean onBridgeY = false;
-        
-        for (ImageView objView : sceneryObjects) {
+        // Tụt chỉ số Đói & Khát tự nhiên rất nhẹ: giữ no ~4 tiếng trong game mới bắt đầu tụt Đói, Khát chỉ tụt nhanh khi làm việc nhiều
+        if (player != null) {
+            if (recentLaborDecaySec > 0.0) {
+                recentLaborDecaySec = Math.max(0.0, recentLaborDecaySec - deltaRiverSec);
+                if (recentLaborDecaySec <= 0.0) {
+                    recentLaborStreak = 0;
+                }
+            }
+            if (hungerGraceTimerSec > 0.0) {
+                hungerGraceTimerSec = Math.max(0.0, hungerGraceTimerSec - deltaRiverSec);
+            } else {
+                player.addHunger(-0.12 * deltaRiverSec);
+            }
+            WeatherType wType = (gameManager != null && gameManager.getCurrentWeather() != null)
+                    ? gameManager.getCurrentWeather().getType()
+                    : WeatherType.SUNNY;
+            double thirstDrainRate = (wType == WeatherType.DROUGHT) ? 0.18 : (wType == WeatherType.RAINY ? 0.04 : 0.10);
+            player.addThirst(-thirstDrainRate * deltaRiverSec);
+            updateSurvivalHud(timeSec);
+        }
+
+        if (!lockedOnBoat) {
+            if (dirX != 0 || dirY != 0) {
+                isWalking = true;
+                // Chuẩn hóa tốc độ chạy chéo (8 hướng mượt mà) + Phạt kiệt sức (55% tốc độ khi Đói/Khát <= 0)
+                double norm = (dirX != 0 && dirY != 0) ? 0.70710678 : 1.0;
+                double exhaustionFactor = (player != null && player.isExhausted()) ? 0.55 : 1.0;
+                double effectiveSpeed = speed * exhaustionFactor;
+                dx = dirX * effectiveSpeed * norm;
+                dy = dirY * effectiveSpeed * norm;
+
+                if (dirY < 0 && dirX < 0)      facing = "UP_LEFT";
+                else if (dirY < 0 && dirX > 0) facing = "UP_RIGHT";
+                else if (dirY > 0 && dirX < 0) facing = "DOWN_LEFT";
+                else if (dirY > 0 && dirX > 0) facing = "DOWN_RIGHT";
+                else if (dirY < 0)             facing = "UP";
+                else if (dirY > 0)             facing = "DOWN";
+                else if (dirX < 0)             facing = "LEFT";
+                else                           facing = "RIGHT";
+            }
+
+            double nextX = playerX + dx;
+            double nextY = playerY + dy;
+
+            // Giới hạn không cho nhân vật đi ra ngoài rìa bản đồ
+            if (nextX < 0) nextX = 0;
+            if (nextY < 0) nextY = 0;
+            if (nextX > mapW - 42) nextX = mapW - 42;
+            if (nextY > mapH - 68) nextY = mapH - 68;
+
+            // Kiểm tra địa hình nước theo đúng vị trí bàn chân nhân vật (y + 54)
+            int colX = (int) ((nextX + 22) / Constant.CELL_SIZE);
+            int rowX = (int) ((playerY + 54) / Constant.CELL_SIZE);
+            boolean waterX = farmMap.getCell(rowX, colX) != null && farmMap.getCell(rowX, colX).getTerrain() == TerrainType.WATER;
+
+            int colY = (int) ((playerX + 22) / Constant.CELL_SIZE);
+            int rowY = (int) ((nextY + 54) / Constant.CELL_SIZE);
+            boolean waterY = farmMap.getCell(rowY, colY) != null && farmMap.getCell(rowY, colY).getTerrain() == TerrainType.WATER;
+
+            // TMX Object Collision — khớp chính xác vùng chân nhân vật (x+12..32, y+42..64)
+            javafx.geometry.Rectangle2D oldBox = new javafx.geometry.Rectangle2D(playerX + 12, playerY + 42, 20, 22);
+            javafx.geometry.Rectangle2D playerBoxX = new javafx.geometry.Rectangle2D(nextX + 12, playerY + 42, 20, 22);
+            javafx.geometry.Rectangle2D playerBoxY = new javafx.geometry.Rectangle2D(playerX + 12, nextY + 42, 20, 22);
+
+            boolean colX_obj = false;
+            boolean colY_obj = false;
+            boolean onBridgeX = false;
+            boolean onBridgeY = false;
+            boolean onDockX = (boatEntity != null && boatEntity.isOnWalkableDock(playerBoxX));
+            boolean onDockY = (boatEntity != null && boatEntity.isOnWalkableDock(playerBoxY));
+
+            if (boatEntity != null) {
+                if (boatEntity.collidesWithHull(playerBoxX) && !boatEntity.collidesWithHull(oldBox)) colX_obj = true;
+                if (boatEntity.collidesWithHull(playerBoxY) && !boatEntity.collidesWithHull(oldBox)) colY_obj = true;
+            }
+
+            for (ImageView objView : sceneryObjects) {
             String objId = objView.getId();
             
             // Tính toán vị trí trực tiếp để tránh lag (KHÔNG dùng getBoundsInParent vì quá nặng khi gọi liên tục)
@@ -958,21 +1471,45 @@ public class InGameController {
             if (objId != null) {
                 String idLower = objId.toLowerCase();
                 if (idLower.contains("bridge")) {
-                    double railingWidth = 30;
-                    javafx.geometry.Rectangle2D leftRailing = new javafx.geometry.Rectangle2D(ox, oy + 12, railingWidth, Math.max(10, oh - 24));
-                    javafx.geometry.Rectangle2D rightRailing = new javafx.geometry.Rectangle2D(ox + ow - railingWidth, oy + 12, railingWidth, Math.max(10, oh - 24));
-                    // Mở rộng sàn cầu lên/xuống thêm 30px để bước lên/xuống hai đầu cầu mượt mà, không bị kẹt mép nước
-                    javafx.geometry.Rectangle2D walkableDeck = new javafx.geometry.Rectangle2D(ox + railingWidth, oy - 30, ow - 2 * railingWidth, oh + 60);
+                    // Chi tiết hóa Collision THÀNH CẦU khớp từng pixel của bridge.png (200x190):
+                    // - Hai mép ngoài (0..16% và 85.7..100%) là mặt nước/bờ ngoài cầu, KHÔNG đi xuyên qua thành gỗ
+                    // - Thành cầu trái (16%..24.2%) & thành cầu phải (77.5%..85.7%) + 6 trụ gỗ đầu/giữa/cuối cầu
+                    // - 2 lan can cánh sát bờ dưới (y=83%..100%) hai bên đầu cầu nam
+                    // - Chỉ phần mặt ván gỗ bên trong (24.4%..77.2%) mới cho phép đi băng qua sông
+                    double leftRailX  = ox + ow * 0.160;
+                    double leftRailW  = ow * 0.082;
+                    double rightRailX = ox + ow * 0.775;
+                    double rightRailW = ow * 0.082;
+
+                    javafx.geometry.Rectangle2D[] bridgeBlockers = new javafx.geometry.Rectangle2D[] {
+                        // 1. Dầm lan can trái & phải chạy dọc toàn thân cầu
+                        new javafx.geometry.Rectangle2D(leftRailX,  oy + oh * 0.02, leftRailW,  oh * 0.96),
+                        new javafx.geometry.Rectangle2D(rightRailX, oy + oh * 0.02, rightRailW, oh * 0.96),
+                        // 2. Ba trụ gỗ nhô rộng trên thành cầu trái (đầu cầu bắc, giữa cầu, đầu cầu nam)
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.150, oy,             ow * 0.100, oh * 0.13),
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.150, oy + oh * 0.45, ow * 0.100, oh * 0.17),
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.150, oy + oh * 0.80, ow * 0.100, oh * 0.20),
+                        // 3. Ba trụ gỗ nhô rộng trên thành cầu phải (đầu cầu bắc, giữa cầu, đầu cầu nam)
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.768, oy,             ow * 0.100, oh * 0.13),
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.768, oy + oh * 0.45, ow * 0.100, oh * 0.17),
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.768, oy + oh * 0.80, ow * 0.100, oh * 0.20),
+                        // 4. Hai thanh lan can cánh nối ngang dọc bờ nam hai bên chân cầu
+                        new javafx.geometry.Rectangle2D(ox,              oy + oh * 0.83, ow * 0.165, oh * 0.17),
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.855, oy + oh * 0.83, ow * 0.145, oh * 0.17)
+                    };
+
+                    // Sàn ván gỗ đi được (chỉ nằm lọt lòng giữa 2 thành cầu, mở rộng 28px hai đầu bắc/nam để bước lên mượt)
+                    double deckLeft = ox + ow * 0.244;
+                    double deckWidth = ow * 0.528;
+                    javafx.geometry.Rectangle2D walkableDeck = new javafx.geometry.Rectangle2D(deckLeft, oy - 28, deckWidth, oh + 56);
 
                     if (playerBoxX.intersects(walkableDeck)) onBridgeX = true;
                     if (playerBoxY.intersects(walkableDeck)) onBridgeY = true;
 
-                    if (playerBoxX.intersects(leftRailing) && !oldBox.intersects(leftRailing)) colX_obj = true;
-                    if (playerBoxY.intersects(leftRailing) && !oldBox.intersects(leftRailing)) colY_obj = true;
-
-                    if (playerBoxX.intersects(rightRailing) && !oldBox.intersects(rightRailing)) colX_obj = true;
-                    if (playerBoxY.intersects(rightRailing) && !oldBox.intersects(rightRailing)) colY_obj = true;
-                    
+                    for (javafx.geometry.Rectangle2D blocker : bridgeBlockers) {
+                        if (playerBoxX.intersects(blocker) && !oldBox.intersects(blocker)) colX_obj = true;
+                        if (playerBoxY.intersects(blocker) && !oldBox.intersects(blocker)) colY_obj = true;
+                    }
                     continue;
                 }
                 if (idLower.isEmpty() || idLower.contains("flag") || idLower.contains("crop") || idLower.contains("bush") ||
@@ -984,32 +1521,77 @@ public class InGameController {
                     idLower.contains("windmill_blades")) continue;
             }
 
-            // Tự động điều chỉnh hitbox siêu khít (Tight hitbox) để xóa "block tàng hình"
+            // Điều chỉnh hitbox chuẩn xác theo từng loại vật thể để không bị đi xuyên qua
+            String idLow = objId != null ? objId.toLowerCase() : "";
             double hw, hh, cx, cy;
-            if (objId != null && (objId.toLowerCase().contains("house") || objId.toLowerCase().contains("barn") || objId.toLowerCase().contains("windmill"))) {
-                // Những công trình lớn: hitbox thu gọn xuống phần móng (đáy 25%)
-                hw = ow * 0.8;
-                hh = oh * 0.25;
+            if (idLow.contains("house") || idLow.contains("barn") || idLow.contains("pet_shop") || idLow.contains("windmill")) {
+                // Công trình lớn (Nhà, Nhà kho, Pet Shop, Cối xay gió): chặn toàn bộ phần thân & tường nhà
+                hw = ow * 0.88;
+                hh = oh * 0.62;
                 cx = ox + (ow - hw) / 2;
-                cy = oy + oh - hh - 5;
-            } else if (objId != null && objId.toLowerCase().contains("tent")) {
-                // Lều trại: hitbox bao phủ phần thân lều để chặn nhân vật đi xuyên qua
+                cy = oy + oh - hh - 2;
+            } else if (idLow.contains("tent")) {
+                // Lều trại: chặn toàn bộ phần thân lều
                 hw = ow * 0.85;
                 hh = oh * 0.72;
                 cx = ox + (ow - hw) / 2;
                 cy = oy + oh - hh - 2;
-            } else if (objId != null && objId.toLowerCase().contains("campfire")) {
-                // Lửa trại: hitbox bao phủ vòng đá lửa trại
-                hw = ow * 0.8;
-                hh = oh * 0.65;
+            } else if (idLow.contains("campfire")) {
+                // Lửa trại: chặn vòng đá lửa trại
+                hw = ow * 0.80;
+                hh = oh * 0.68;
+                cx = ox + (ow - hw) / 2;
+                cy = oy + oh - hh - 2;
+            } else if (idLow.contains("fence_v") || idLow.contains("wire_fence_v")) {
+                // Hàng rào dọc: chặn dọc toàn bộ chiều dài hàng rào
+                hw = Math.max(14, ow * 0.85);
+                hh = oh * 0.92;
+                cx = ox + (ow - hw) / 2;
+                cy = oy + (oh - hh) / 2;
+            } else if (idLow.contains("fence")) {
+                // Hàng rào ngang / xiên / rào dây ngang: chặn hết bề ngang
+                hw = ow * 0.95;
+                hh = Math.max(16, oh * 0.75);
+                cx = ox + (ow - hw) / 2;
+                cy = oy + oh - hh;
+            } else if (idLow.contains("garden_bed")) {
+                // Luống gỗ trồng bí ngô: chặn toàn bộ khung gỗ
+                hw = ow * 0.92;
+                hh = oh * 0.88;
+                cx = ox + (ow - hw) / 2;
+                cy = oy + oh - hh;
+            } else if (idLow.contains("tree")) {
+                // Cây sồi: chặn phần thân & rễ cây (tán cây phía trên vẫn cho hiệu ứng 2.5D đi sau tán)
+                hw = ow * 0.42;
+                hh = oh * 0.28;
+                cx = ox + (ow - hw) / 2;
+                cy = oy + oh - hh - 2;
+            } else if (idLow.contains("rock") || idLow.contains("stump") || idLow.contains("crate") ||
+                       idLow.contains("well") || idLow.contains("water_trough") || idLow.contains("wood_plank") ||
+                       idLow.contains("log")) {
+                // Đá, gốc cây, thùng gỗ, giếng, máng nước, khúc gỗ: chặn chắc chắn phần thân
+                hw = ow * 0.82;
+                hh = oh * 0.68;
+                cx = ox + (ow - hw) / 2;
+                cy = oy + oh - hh - 2;
+            } else if (idLow.contains("npc")) {
+                // NPC (Zoro): chặn phần chân nhân vật, vẫn đứng sát đối thoại được
+                hw = ow * 0.55;
+                hh = oh * 0.42;
+                cx = ox + (ow - hw) / 2;
+                cy = oy + oh - hh - 2;
+            } else if (idLow.contains("streetlamp") || idLow.contains("lantern") || idLow.contains("signpost")) {
+                // Cột đèn, biển chỉ dẫn: chặn phần chân cột
+                hw = Math.max(14, ow * 0.45);
+                hh = oh * 0.28;
                 cx = ox + (ow - hw) / 2;
                 cy = oy + oh - hh - 2;
             } else {
-                // Các vật thể nhỏ (cây, đá, bụi rậm, gốc cây): hitbox siêu nhỏ ở chính giữa gốc
-                hw = Math.min(30, ow * 0.4);
-                hh = Math.min(20, oh * 0.2);
+                // Vật thể khác
+                hw = Math.min(40, ow * 0.65);
+                hh = Math.min(30, oh * 0.45);
                 cx = ox + (ow - hw) / 2;
-                cy = oy + oh - hh - 5;
+                cy = oy + oh - hh - 2;
             }
             
             javafx.geometry.Rectangle2D objBox = new javafx.geometry.Rectangle2D(cx, cy, hw, hh);
@@ -1020,83 +1602,339 @@ public class InGameController {
             if (colX_obj && colY_obj) break;
         }
         
-        if (waterX && !onBridgeX) nextX = playerX;
-        if (waterY && !onBridgeY) nextY = playerY;
-        
-        if (colX_obj) nextX = playerX;
-        if (colY_obj) nextY = playerY;
+            if (waterX && !onBridgeX && !onDockX) nextX = playerX;
+            if (waterY && !onBridgeY && !onDockY) nextY = playerY;
+            
+            if (colX_obj) nextX = playerX;
+            if (colY_obj) nextY = playerY;
 
-        playerX = nextX;
-        playerY = nextY;
-
-        // Xử lý Flip (Quay mặt)
-        if (facing.equals("LEFT")) {
-            playerCharacter.setScaleX(-1);
-            if (weaponView != null) weaponView.setScaleX(-1);
-        } else if (facing.equals("RIGHT")) {
-            playerCharacter.setScaleX(1);
-            if (weaponView != null) weaponView.setScaleX(1);
+            playerX = nextX;
+            playerY = nextY;
         }
 
-        // Wobble Animation (nhún nhảy khi đi)
+        // Ẩn bóng chân mặt đất & dụng cụ đất liền khi đang ở trong khoang thuyền
+        if (luffyShadow != null) {
+            luffyShadow.setVisible(!lockedOnBoat);
+        }
+        if (weaponView != null) {
+            weaponView.setVisible(!lockedOnBoat && weaponView.getImage() != null);
+        }
+
+        // Xác định bộ sprite & hướng lật cho đủ 8 hướng chạy/đứng của Luffy
+        String dirKey;
+        switch (facing) {
+            case "UP":         dirKey = "up";         luffyFacingLeft = false; break;
+            case "DOWN":       dirKey = "down";       luffyFacingLeft = false; break;
+            case "LEFT":       dirKey = "side";       luffyFacingLeft = true;  break;
+            case "RIGHT":      dirKey = "side";       luffyFacingLeft = false; break;
+            case "UP_LEFT":    dirKey = "up_right";   luffyFacingLeft = true;  break;
+            case "UP_RIGHT":   dirKey = "up_right";   luffyFacingLeft = false; break;
+            case "DOWN_LEFT":  dirKey = "down_right"; luffyFacingLeft = true;  break;
+            case "DOWN_RIGHT": dirKey = "down_right"; luffyFacingLeft = false; break;
+            default:           dirKey = "down";       luffyFacingLeft = false; break;
+        }
+        playerCharacter.setScaleX(luffyFacingLeft ? -1 : 1);
+        if (luffyToolFlip != null) {
+            luffyToolFlip.setX(luffyFacingLeft ? -1.0 : 1.0);
+        }
+
+        // Sprite Animation đầy đủ (Đứng yên + Chạy bộ + Làm việc) cho Cuốc (Hoe) và Bình tưới (WateringCan)
+        ToolStrategy activeTool = (playerController != null) ? playerController.getCurrentTool() : null;
+        boolean hasHoeFrames = (Assets.LUFFY_HOE_FRAMES != null && Assets.LUFFY_HOE_FRAMES.length == 4 && Assets.LUFFY_HOE_FRAMES[0] != null);
+        boolean hasHoeRunFrames = (Assets.LUFFY_HOE_RUN_FRAMES != null && Assets.LUFFY_HOE_RUN_FRAMES.length == 4 && Assets.LUFFY_HOE_RUN_FRAMES[0] != null);
+        boolean hasWaterFrames = (Assets.LUFFY_WATER_FRAMES != null && Assets.LUFFY_WATER_FRAMES.length == 3 && Assets.LUFFY_WATER_FRAMES[0] != null);
+        boolean hasWaterRunFrames = (Assets.LUFFY_WATER_RUN_FRAMES != null && Assets.LUFFY_WATER_RUN_FRAMES.length == 4 && Assets.LUFFY_WATER_RUN_FRAMES[0] != null);
+        boolean usingNativeHoe = !lockedOnBoat && (activeTool instanceof Hoe) && hasHoeFrames;
+        boolean usingNativeWater = !lockedOnBoat && (activeTool instanceof WateringCan) && hasWaterFrames;
+        boolean usingNativeActionTool = usingNativeHoe || usingNativeWater;
+
+        // Cập nhật timer hành động công cụ (khóa đổi frame chạy trong suốt thời gian vung cuốc / tưới nước)
+        boolean nativeActionPlaying = false;
+        if (usingNativeActionTool && toolActionTimer >= 0.0) {
+            toolActionTimer += deltaRiverSec;
+            if (toolActionTimer >= toolActionDuration) {
+                toolActionTimer = -1.0;
+            } else {
+                nativeActionPlaying = true;
+            }
+        }
+
         double bobbing = 0;
-        if (isWalking) {
+        if (luffySpriteView != null) {
+            luffySpriteView.setSmooth(false);
+            if (usingNativeActionTool) {
+                boolean isSideSheet = nativeActionPlaying || "side".equals(dirKey);
+                if (isSideSheet) {
+                    // Sheet 72x72 (ngang & bổ cuốc / tưới nước): scale 120x120 cho chiều cao cơ thể 90px khớp sprite 8 hướng
+                    if (luffySpriteView.getFitWidth() != 120.0) {
+                        luffySpriteView.setFitWidth(120.0);
+                        luffySpriteView.setFitHeight(120.0);
+                        luffySpriteView.setX(-38.0);
+                        luffySpriteView.setY(-50.0);
+                    }
+                } else {
+                    // Sprite 8 hướng cầm công cụ (down / up / down_right / up_right): đúng kích thước 108x108 đồng bộ tuyệt đối
+                    if (luffySpriteView.getFitWidth() != 108.0) {
+                        luffySpriteView.setFitWidth(108.0);
+                        luffySpriteView.setFitHeight(108.0);
+                        luffySpriteView.setX(-32.0);
+                        luffySpriteView.setY(-38.0);
+                    }
+                }
+
+                if (usingNativeHoe) {
+                    if (nativeActionPlaying && "HOE".equals(toolActionKind)) {
+                        // Bấm Space đào đất: chạy tuần tự 0 -> 1 -> 2 -> 3 (0.08s/frame, tổng 0.32s), bắn hạt đất tại frame 2
+                        int fIdx = Math.min(3, (int) (toolActionTimer / 0.08));
+                        if (!toolImpactFired && fIdx >= 2) {
+                            toolImpactFired = true;
+                            if (particleSystem != null && toolTargetWorldX >= 0) {
+                                particleSystem.spawnDirtClods(toolTargetWorldX, toolTargetWorldY);
+                            }
+                        }
+                        luffySpriteView.setImage(Assets.LUFFY_HOE_FRAMES[fIdx]);
+                    } else if (isWalking && hasHoeRunFrames) {
+                        // Chạy đủ 8 hướng cầm cuốc (W/A/S/D + kết hợp chéo): vòng lặp 4 frame (0.10s/frame)
+                        walkSwayTime += deltaRiverSec;
+                        int runIdx = ((int) (walkSwayTime / 0.10)) % 4;
+                        Image[] dirRun = (Assets.LUFFY_HOE_RUN_BY_DIR != null)
+                                ? Assets.LUFFY_HOE_RUN_BY_DIR.getOrDefault(dirKey, Assets.LUFFY_HOE_RUN_FRAMES)
+                                : Assets.LUFFY_HOE_RUN_FRAMES;
+                        Image chosen = (dirRun != null && dirRun[runIdx] != null) ? dirRun[runIdx] : Assets.LUFFY_HOE_RUN_FRAMES[runIdx];
+                        luffySpriteView.setImage(chosen);
+                    } else {
+                        // Đứng yên cầm cuốc đúng hướng vừa quay (đủ 8 hướng)
+                        walkSwayTime = 0.0;
+                        Image dirIdle = (Assets.LUFFY_HOE_IDLE_BY_DIR != null)
+                                ? Assets.LUFFY_HOE_IDLE_BY_DIR.getOrDefault(dirKey, Assets.LUFFY_HOE_FRAMES[0])
+                                : Assets.LUFFY_HOE_FRAMES[0];
+                        luffySpriteView.setImage(dirIdle != null ? dirIdle : Assets.LUFFY_HOE_FRAMES[0]);
+                    }
+                } else {
+                    if (nativeActionPlaying && "WATER".equals(toolActionKind)) {
+                        // Bấm Space tưới nước: chạy tuần tự 0 -> 1 -> 2 -> 1 (0.10s/frame, tổng 0.40s) rồi về 0
+                        int step = Math.min(3, (int) (toolActionTimer / 0.10));
+                        int fIdx = (step == 0) ? 0 : (step == 1 ? 1 : (step == 2 ? 2 : 1));
+                        if (!toolImpactFired && fIdx >= 1) {
+                            toolImpactFired = true;
+                            if (particleSystem != null) {
+                                double spoutX = playerX + 22.0 + (luffyFacingLeft ? -36.0 : 36.0);
+                                double spoutY = playerY + 42.0;
+                                particleSystem.spawnWaterSplash(spoutX, spoutY);
+                            }
+                        }
+                        luffySpriteView.setImage(Assets.LUFFY_WATER_FRAMES[fIdx]);
+                    } else if (isWalking && hasWaterRunFrames) {
+                        // Chạy đủ 8 hướng cầm bình tưới (W/A/S/D + kết hợp chéo): vòng lặp 4 frame (0.10s/frame)
+                        walkSwayTime += deltaRiverSec;
+                        int runIdx = ((int) (walkSwayTime / 0.10)) % 4;
+                        Image[] dirRun = (Assets.LUFFY_WATER_RUN_BY_DIR != null)
+                                ? Assets.LUFFY_WATER_RUN_BY_DIR.getOrDefault(dirKey, Assets.LUFFY_WATER_RUN_FRAMES)
+                                : Assets.LUFFY_WATER_RUN_FRAMES;
+                        Image chosen = (dirRun != null && dirRun[runIdx] != null) ? dirRun[runIdx] : Assets.LUFFY_WATER_RUN_FRAMES[runIdx];
+                        luffySpriteView.setImage(chosen);
+                    } else {
+                        // Đứng yên cầm bình tưới đúng hướng vừa quay (đủ 8 hướng)
+                        walkSwayTime = 0.0;
+                        Image dirIdle = (Assets.LUFFY_WATER_IDLE_BY_DIR != null)
+                                ? Assets.LUFFY_WATER_IDLE_BY_DIR.getOrDefault(dirKey, Assets.LUFFY_WATER_FRAMES[0])
+                                : Assets.LUFFY_WATER_FRAMES[0];
+                        luffySpriteView.setImage(dirIdle != null ? dirIdle : Assets.LUFFY_WATER_FRAMES[0]);
+                    }
+                }
+            } else if (luffyRunByDir != null && luffyIdleByDir != null) {
+                // Công cụ khác (Hand, SeedBag, FertilizerBag, FeedBag) hoặc khi đang trên thuyền: giữ hoạt ảnh 8 hướng như cũ
+                if (luffySpriteView.getFitWidth() != 108.0) {
+                    luffySpriteView.setFitWidth(108.0);
+                    luffySpriteView.setFitHeight(108.0);
+                    luffySpriteView.setX(-32.0);
+                    luffySpriteView.setY(-38.0);
+                }
+                Image[] arr = isWalking
+                    ? luffyRunByDir.getOrDefault(dirKey, luffyRunByDir.get("side"))
+                    : luffyIdleByDir.getOrDefault(dirKey, luffyIdleByDir.get("side"));
+                long nowAnim = System.currentTimeMillis();
+                if (isWalking != luffyWasWalking || !dirKey.equals(luffyLastDirKey)
+                        || (luffySpriteView.getImage() != arr[luffyAnimFrame % arr.length] && !isWalking)) {
+                    luffyWasWalking = isWalking;
+                    luffyLastDirKey = dirKey;
+                    luffyAnimFrame = 0;
+                    lastLuffyAnimTick = nowAnim;
+                    if (arr != null && arr[0] != null) luffySpriteView.setImage(arr[0]);
+                } else if (arr != null && arr.length > 0) {
+                    long interval = isWalking ? 95L : 380L;
+                    if (nowAnim - lastLuffyAnimTick >= interval) {
+                        lastLuffyAnimTick = nowAnim;
+                        luffyAnimFrame = (luffyAnimFrame + 1) % arr.length;
+                        if (arr[luffyAnimFrame] != null) {
+                            luffySpriteView.setImage(arr[luffyAnimFrame]);
+                        }
+                    }
+                }
+            }
+        } else if (isWalking) {
             lastMoveTime++;
-            bobbing = Math.sin(lastMoveTime * 0.4) * 4.0; // Nhún lên xuống 4 pixel
-            
-            // Xoay tay chân (Swing)
-            double swingAngle = Math.sin(lastMoveTime * 0.6) * 30; // Góc xoay tối đa 30 độ
-            if (leftArmSwing != null) {
-                leftArmSwing.setAngle(swingAngle);
-                rightArmSwing.setAngle(-swingAngle);
-                leftLegSwing.setAngle(-swingAngle);
-                rightLegSwing.setAngle(swingAngle);
-            }
-        } else {
-            if (leftArmSwing != null) {
-                leftArmSwing.setAngle(0);
-                rightArmSwing.setAngle(0);
-                leftLegSwing.setAngle(0);
-                rightLegSwing.setAngle(0);
-            }
+            bobbing = Math.sin(lastMoveTime * 0.4) * 4.0;
         }
 
         // Cập nhật vị trí nhân vật trên bản đồ (Dùng setTranslate để tối ưu FPS, không làm lag 600 ô đất)
         playerCharacter.setTranslateX(playerX);
         playerCharacter.setTranslateY(playerY + bobbing);
+        updateNearbyInteractPrompt(lockedOnBoat);
 
-        // Weapon Position & Animation
-        if (weaponView != null) {
-            double weaponBaseX = facing.equals("LEFT") ? playerX - 10 : playerX + 30;
-            double weaponBaseY = playerY + 25 + bobbing; // Cầm ở ngang tay
-            
-            // Swing Animation (Cuốc đất)
-            double weaponRotation = 0;
-            if (System.currentTimeMillis() - actionTime < 250) {
-                // Đang vung vũ khí (kéo dài 250ms)
-                double progress = (System.currentTimeMillis() - actionTime) / 250.0;
-                
-                // Hiệu ứng chém: Giơ lên (-60 độ) rồi bổ mạnh xuống (90 độ)
-                double angle;
-                if (progress < 0.3) {
-                    angle = -60 * (progress / 0.3); // Giơ cuốc lên
-                } else {
-                    angle = -60 + 150 * ((progress - 0.3) / 0.7); // Bổ xuống
-                }
-                
-                weaponRotation = facing.equals("LEFT") ? -angle : angle;
-                // Hơi nhích vũ khí tới trước một chút khi bổ
-                weaponBaseX += (facing.equals("LEFT") ? -10 : 10) * Math.sin(progress * Math.PI);
-            } else {
-                // Bình thường giữ vũ khí chếch lên
-                weaponRotation = facing.equals("LEFT") ? -20 : 20;
+        // Khi chọn Cuốc hoặc Bình tưới (đã có trọn bộ sprite Đứng + Chạy + Làm việc): ẨN HOÀN TOÀN weaponView / armGroup dán đè cũ!
+        double bodyLeanAngle = 0.0;
+        double bodyScaleY = 1.0;
+        double bodyCrouchY = 0.0;
+
+        if (luffyToolRig != null && armGroup != null && armRotate != null && weaponView != null && toolRotate != null) {
+            boolean showArmTool = !lockedOnBoat && !usingNativeActionTool && weaponView.getImage() != null;
+            luffyToolRig.setVisible(showArmTool);
+            for (javafx.scene.Node child : armGroup.getChildren()) {
+                child.setVisible(showArmTool);
             }
 
-            weaponView.setTranslateX(weaponBaseX);
-            weaponView.setTranslateY(weaponBaseY);
-            
-            // Dùng hàm xoay mặc định (tâm ở giữa vũ khí) vì Transform phức tạp hơn
-            weaponView.setRotate(weaponRotation);
+            if (showArmTool) {
+                if (isWalking) {
+                    walkSwayTime += deltaRiverSec;
+                }
+
+                ToolStrategy curTool = (playerController != null) ? playerController.getCurrentTool() : null;
+                // Vị trí bàn tay nắm ở cuối cẳng tay bên trong armGroup (so với khớp vai (0, 0))
+                double fistLocalX = 11.0;
+                double fistLocalY = 18.0;
+                double pivotX, pivotY;
+                double restToolAngle;
+
+                if (curTool instanceof Hoe) {
+                    pivotX = 8.0;
+                    pivotY = 31.0;
+                    restToolAngle = -6.0;
+                } else if (curTool instanceof WateringCan) {
+                    pivotX = 10.0;
+                    pivotY = 25.0;
+                    restToolAngle = 0.0;
+                } else {
+                    pivotX = 19.0;
+                    pivotY = 31.0;
+                    restToolAngle = 0.0;
+                }
+
+                // Gắn chặt chuôi công cụ / quai bình nước vào đúng tâm bàn tay nắm
+                weaponView.setLayoutX(fistLocalX - pivotX);
+                weaponView.setLayoutY(fistLocalY - pivotY);
+                toolRotate.setPivotX(pivotX);
+                toolRotate.setPivotY(pivotY);
+
+                double shoulderAngle = 0.0;
+                double wristAngle = restToolAngle;
+                double breatheY = 0.0;
+
+                if (toolActionTimer >= 0.0) {
+                    toolActionTimer += deltaRiverSec;
+                    double t = toolActionTimer;
+
+                    if ("HOE".equals(toolActionKind)) {
+                        // Đào đất (0.07s + 0.10s + 0.12s): Giơ -65° sau vai -> Bổ mạnh +55° bắn hạt đất -> Thu mượt về
+                        if (t < 0.07) {
+                            double p = t / 0.07;
+                            double ease = 1.0 - (1.0 - p) * (1.0 - p);
+                            shoulderAngle = -65.0 * ease;
+                            wristAngle = restToolAngle - 18.0 * ease;
+                            bodyLeanAngle = -6.0 * ease;
+                            bodyScaleY = 1.0 + 0.025 * ease;
+                        } else if (t < 0.17) {
+                            double p = (t - 0.07) / 0.10;
+                            double ease = p * p;
+                            shoulderAngle = -65.0 + (55.0 - (-65.0)) * ease;
+                            wristAngle = (restToolAngle - 18.0) + 42.0 * ease;
+                            bodyLeanAngle = -6.0 + 16.0 * ease;
+                            bodyScaleY = 1.025 - 0.08 * ease;
+                            bodyCrouchY = 3.0 * ease;
+                            if (!toolImpactFired && p >= 0.78) {
+                                toolImpactFired = true;
+                                if (particleSystem != null && toolTargetWorldX >= 0) {
+                                    particleSystem.spawnDirtClods(toolTargetWorldX, toolTargetWorldY);
+                                }
+                            }
+                        } else if (t < toolActionDuration) {
+                            double p = (t - 0.17) / (toolActionDuration - 0.17);
+                            double ease = 1.0 - (1.0 - p) * (1.0 - p);
+                            shoulderAngle = 55.0 * (1.0 - ease);
+                            wristAngle = (restToolAngle + 24.0) + (restToolAngle - (restToolAngle + 24.0)) * ease;
+                            bodyLeanAngle = 10.0 * (1.0 - ease);
+                            bodyScaleY = 0.945 + 0.055 * ease;
+                            bodyCrouchY = 3.0 * (1.0 - ease);
+                        } else {
+                            toolActionTimer = -1.0;
+                        }
+                    } else if ("WATER".equals(toolActionKind)) {
+                        // Tưới nước (0.30s): Đưa cánh tay nâng bình ra trước + nghiêng cổ tay +35° + phun giọt nước từ đúng đầu vòi
+                        double p = Math.min(1.0, t / toolActionDuration);
+                        double curve = Math.sin(p * Math.PI);
+                        shoulderAngle = -24.0 * curve;
+                        wristAngle = restToolAngle + 35.0 * curve;
+                        bodyLeanAngle = 5.0 * curve;
+                        bodyCrouchY = 1.5 * curve;
+                        if (!toolImpactFired && p >= 0.32) {
+                            toolImpactFired = true;
+                            if (particleSystem != null) {
+                                // Tính đúng vị trí thế giới của đầu vòi bình nước khi đang nâng và nghiêng
+                                double rad = Math.toRadians(shoulderAngle);
+                                double rotFistX = fistLocalX * Math.cos(rad) - fistLocalY * Math.sin(rad);
+                                double rotFistY = fistLocalX * Math.sin(rad) + fistLocalY * Math.cos(rad);
+                                double localSpoutX = 29.0 + rotFistX + 22.0;
+                                double localSpoutY = 9.0 + rotFistY + 2.0;
+                                double worldSpoutX = playerX + (luffyFacingLeft ? (44.0 - localSpoutX) : localSpoutX);
+                                double worldSpoutY = playerY + localSpoutY + bobbing;
+                                particleSystem.spawnWaterSplash(worldSpoutX, worldSpoutY);
+                            }
+                        }
+                        if (t >= toolActionDuration) {
+                            toolActionTimer = -1.0;
+                        }
+                    } else {
+                        // Túi hạt giống / phân bón: đưa tay ra trước lắc rắc hạt (-18° <-> +18°)
+                        double p = Math.min(1.0, t / toolActionDuration);
+                        double env = Math.sin(p * Math.PI);
+                        shoulderAngle = -16.0 * env + Math.sin(p * Math.PI * 3.0) * 8.0;
+                        wristAngle = restToolAngle + Math.sin(p * Math.PI * 3.0) * 18.0;
+                        bodyLeanAngle = 4.0 * env;
+                        if (t >= toolActionDuration) {
+                            toolActionTimer = -1.0;
+                        }
+                    }
+                } else {
+                    // Đứng yên / đi bộ: cả armGroup (cánh tay + dụng cụ) đung đưa nhẹ theo nhịp bước chân!
+                    if (isWalking) {
+                        shoulderAngle = Math.sin(walkSwayTime * 10.0) * 6.0;
+                        wristAngle = restToolAngle + Math.sin(walkSwayTime * 10.0) * 3.0;
+                        breatheY = Math.abs(Math.sin(walkSwayTime * 10.0)) * 1.8;
+                    } else {
+                        shoulderAngle = Math.sin(timeSec * 3.0) * 1.5;
+                        wristAngle = restToolAngle + Math.sin(timeSec * 3.0) * 1.0;
+                        breatheY = Math.sin(timeSec * 3.0) * 1.5;
+                    }
+                }
+
+                armRotate.setAngle(shoulderAngle);
+                toolRotate.setAngle(wristAngle);
+
+                // Đồng bộ vị trí khớp vai khi thân Luffy hơi cúi/ngả lúc làm việc
+                double shoulderShiftX = Math.sin(Math.toRadians(bodyLeanAngle)) * 16.0;
+                armGroup.setLayoutX(29.0 + shoulderShiftX);
+                armGroup.setLayoutY(9.0 + bodyCrouchY + breatheY);
+
+                luffyToolRig.setTranslateX(playerX);
+                luffyToolRig.setTranslateY(playerY + bobbing);
+            }
+        }
+
+        // Bỏ hiệu ứng nghiêng/nhún giả lập khi dùng sprite hành động gốc (giữ nét pixel sắc chuẩn)
+        if (luffyBodyRotate != null && luffySpriteView != null) {
+            luffyBodyRotate.setAngle(usingNativeActionTool ? 0.0 : bodyLeanAngle);
+            luffySpriteView.setScaleY(usingNativeActionTool ? 1.0 : bodyScaleY);
+            luffySpriteView.setTranslateY(usingNativeActionTool ? 0.0 : bodyCrouchY);
         }
         
         // ==========================================
@@ -1131,15 +1969,20 @@ public class InGameController {
             entityPane.setTranslateY(-camY);
         }
         
-        // Cập nhật vị trí ô đang hướng tới (Highlight) để dễ thao tác
+        // Cập nhật vị trí ô đang hướng tới (Highlight) để dễ thao tác (ẩn khi đang đứng trên thuyền)
         Cell fCell = getFacingCell();
-        if (fCell != null && facingHighlight != null && !isCellBlockedByStructure(fCell)) {
+        boolean hoeBlockedOutsideFarm = (playerController != null && playerController.getCurrentTool() instanceof Hoe
+                && (!isCellInFarmZone(fCell) || fCell == null || fCell.getTerrain() != TerrainType.DIRT));
+        if (!lockedOnBoat && fCell != null && facingHighlight != null && !isCellBlockedByStructure(fCell) && !hoeBlockedOutsideFarm) {
             facingHighlight.setVisible(true);
             facingHighlight.setTranslateX(fCell.getX() * Constant.CELL_SIZE);
             facingHighlight.setTranslateY(fCell.getY() * Constant.CELL_SIZE);
         } else if (facingHighlight != null) {
             facingHighlight.setVisible(false);
         }
+
+        // Chỉ hiện bảng thông số đất (CELL, WATER, NUTR, CROP) khi nhân vật đứng bên trong Farming Zone
+        updateSoilStatusPanelVisibility(lockedOnBoat, fCell);
         
         for (Animal animal : animals) {
             animal.update();
@@ -1161,18 +2004,44 @@ public class InGameController {
         }
         
         // Cập nhật Y-coordinate (chiều sâu 2.5D) cho nhân vật và vũ khí
-        playerCharacter.setUserData(playerY + 50.0);
-        if (weaponView != null) {
-            weaponView.setUserData(playerY + 51.0);
+        // Khi trên thuyền (hoặc đang bước lên/xuống): đặt Z-order nằm GIỮA boatBackLayer và boatFrontLayer
+        if (lockedOnBoat && boatEntity != null) {
+            playerCharacter.setUserData(boatEntity.getBoardedPlayerSortY());
+            if (luffyToolRig != null) {
+                luffyToolRig.setUserData(boatEntity.getBoardedPlayerSortY() + 0.5);
+            }
+        } else {
+            playerCharacter.setUserData(playerY + 50.0);
+            if (luffyToolRig != null) {
+                // Khi quay lưng (UP): đặt dụng cụ ra phía sau lưng; các hướng khác đặt ngay trên thân nhân vật
+                luffyToolRig.setUserData("UP".equals(facing) ? (playerY + 49.0) : (playerY + 51.0));
+            }
         }
+
+        // Hiệu ứng thuyền & nhân vật chui lọt BÊN DƯỚI gầm cầu (mặt ván cầu che phía trên + bóng râm mượt)
+        updateBoatUnderBridgeEffect(lockedOnBoat);
         
-        // Sắp xếp động toàn bộ vật thể (Depth Sorting)
+        // Sắp xếp động chiều sâu 2.5D — CHỈ sort khi thực sự có node đổi thứ tự (tránh phát event scene-graph mỗi frame)
         if (entityPane != null) {
-            javafx.collections.FXCollections.sort(entityPane.getChildren(), (n1, n2) -> {
-                double y1 = n1.getUserData() instanceof Double ? (Double)n1.getUserData() : 0.0;
-                double y2 = n2.getUserData() instanceof Double ? (Double)n2.getUserData() : 0.0;
-                return Double.compare(y1, y2);
-            });
+            javafx.collections.ObservableList<javafx.scene.Node> children = entityPane.getChildren();
+            boolean alreadySorted = true;
+            double prevY = Double.NEGATIVE_INFINITY;
+            for (int i = 0, sz = children.size(); i < sz; i++) {
+                Object ud = children.get(i).getUserData();
+                double curY = (ud instanceof Double) ? (Double) ud : 0.0;
+                if (curY < prevY) {
+                    alreadySorted = false;
+                    break;
+                }
+                prevY = curY;
+            }
+            if (!alreadySorted) {
+                javafx.collections.FXCollections.sort(children, (n1, n2) -> {
+                    double y1 = n1.getUserData() instanceof Double ? (Double) n1.getUserData() : 0.0;
+                    double y2 = n2.getUserData() instanceof Double ? (Double) n2.getUserData() : 0.0;
+                    return Double.compare(y1, y2);
+                });
+            }
         }
     }
 
@@ -1254,20 +2123,25 @@ public class InGameController {
             }
         }
         
-        // Xác định AnimalZone trước để mọi con vật tạo ra đều nằm gọn bên trong hàng rào AnimalZone
+        // Xác định AnimalZone và FarmZone trước từ TMX
+        farmZone = null;
+        animalZone = null;
         if (tmxMap != null && tmxMap.objects != null) {
             double zs = (tmxMap.tileWidth > 0) ? (double) Constant.CELL_SIZE / tmxMap.tileWidth : 1.0;
             for (view.screen_util.TiledMap.TiledObject obj : tmxMap.objects) {
                 String objName = obj.name != null ? obj.name.toLowerCase() : "";
                 String type = obj.type != null ? obj.type.toLowerCase() : "";
-                if (("zone".equals(type) || objName.endsWith("zone")) && objName.equals("animalzone")) {
-                    // Giới hạn chặt vào bên trong hàng rào chuồng thú (bên phải rào dọc x=985, dưới rào ngang y=948, trên bờ sông y=1253)
-                    double zx = Math.max(obj.x, 985) * zs;
-                    double zy = Math.max(obj.y, 948) * zs;
-                    double maxZx = Math.min(obj.x + obj.width, 1540) * zs;
-                    double maxZy = Math.min(obj.y + obj.height, 1253) * zs;
-                    animalZone = new javafx.geometry.Rectangle2D(zx, zy, Math.max(200, maxZx - zx), Math.max(180, maxZy - zy));
-                    break;
+                if ("zone".equals(type) || objName.endsWith("zone")) {
+                    if (objName.equals("animalzone")) {
+                        // Giới hạn chặt vào bên trong hàng rào chuồng thú (bên phải rào dọc x=985, dưới rào ngang y=948, trên bờ sông y=1253)
+                        double zx = Math.max(obj.x, 985) * zs;
+                        double zy = Math.max(obj.y, 948) * zs;
+                        double maxZx = Math.min(obj.x + obj.width, 1540) * zs;
+                        double maxZy = Math.min(obj.y + obj.height, 1253) * zs;
+                        animalZone = new javafx.geometry.Rectangle2D(zx, zy, Math.max(200, maxZx - zx), Math.max(180, maxZy - zy));
+                    } else if (objName.equals("farmzone")) {
+                        farmZone = new javafx.geometry.Rectangle2D(obj.x * zs, obj.y * zs, obj.width * zs, obj.height * zs);
+                    }
                 }
             }
         }
@@ -1412,7 +2286,128 @@ public class InGameController {
         if (entityPane != null) {
             entityPane.getChildren().addAll(sceneryObjects);
         }
+        setupHouseAndCampfireInteractions();
         buildTroughs();
+
+        // Tự động xác định đúng tọa độ thế giới (CELL_SIZE = 64) của con sông từ các ô WATER trong FarmMap
+        int firstWaterRow = -1;
+        int lastWaterRow = -1;
+        for (int r = 0; r < rows; r++) {
+            int waterCount = 0;
+            for (int c = 0; c < cols; c++) {
+                if (farmMap.getCell(r, c).getTerrain() == TerrainType.WATER) waterCount++;
+            }
+            if (waterCount >= cols / 2) {
+                if (firstWaterRow == -1) firstWaterRow = r;
+                lastWaterRow = r;
+            }
+        }
+        double worldMapW = cols * (double) Constant.CELL_SIZE;
+        double riverTopY = (firstWaterRow >= 0 ? firstWaterRow : 32) * (double) Constant.CELL_SIZE;
+        double riverBotY = ((lastWaterRow >= 0 ? lastWaterRow : 36) + 1) * (double) Constant.CELL_SIZE;
+        this.worldRiverTopY = riverTopY;
+        this.worldRiverBotY = riverBotY;
+
+        // Xác định mép trái cây cầu trên tọa độ thế giới để đặt thuyền & cầu tàu gọn bên trái cầu, đồng thời dựng lớp Mái Cầu che phía trên khi thuyền chui gầm cầu
+        double bridgeLeftX = worldMapW * 0.41;
+        bridgeWoodLeftX = -1.0;
+        bridgeWoodRightX = -1.0;
+        bridgeCanopyView = null;
+        for (ImageView objView : sceneryObjects) {
+            if (objView.getId() != null && objView.getId().toLowerCase().contains("bridge")) {
+                bridgeLeftX = objView.getLayoutX();
+                setupBridgeUnderpassVisuals(objView, riverTopY, riverBotY);
+                break;
+            }
+        }
+        double boatWorldX = Math.max(120.0, bridgeLeftX - view.river.BoatEntity.BOAT_WIDTH - 105.0);
+        double boatWorldY = riverTopY - 16.0;
+        double dockWorldX = boatWorldX + 12.0;
+        double dockWorldY = riverTopY - 26.0;
+
+        // Gắn đầy đủ 4 module khu vực con sông đúng vị trí mặt nước (hàng WATER thực tế)
+        isOnBoat = false;
+        lastRiverUpdateMs = System.currentTimeMillis();
+        riverFlow = new view.river.RiverFlow(worldMapW, riverTopY, riverBotY);
+        riverFlow.attachTo(entityPane);
+
+        fishShadows = new view.river.FishShadows(worldMapW, riverTopY, riverBotY, boatWorldX);
+        fishShadows.attachTo(entityPane);
+
+        boatEntity = new view.river.BoatEntity(boatWorldX, boatWorldY, dockWorldX, dockWorldY);
+        boatEntity.attachTo(entityPane);
+
+        fishingGame = new view.river.FishingGame(boatEntity, fishShadows, riverFlow, new view.river.FishingGame.FishingCallbacks() {
+            @Override
+            public void onFishCaught(model.game_item.FishSpecies species, double sizeCm, boolean isCrown, int rewardMoney, int shadowSize) {
+                fishCaughtCounts.merge(species, 1, Integer::sum);
+                double prevMax = fishMaxCm.getOrDefault(species, 0.0);
+                boolean isNewRecord = (sizeCm > prevMax);
+                if (isNewRecord) {
+                    fishMaxCm.put(species, sizeCm);
+                }
+
+                if (player != null) {
+                    player.getInventory().addItem(model.game_item.FishItem.fromSpecies(species), 1);
+                    player.addMoney(rewardMoney);
+                }
+                if (particleSystem != null && fishingGame != null) {
+                    particleSystem.spawnWaterSplash(fishingGame.getLastBobberX(), fishingGame.getLastBobberY());
+                    particleSystem.spawnHarvestSparkles(fishingGame.getLastBobberX(), fishingGame.getLastBobberY() - 8.0);
+                    if (isCrown) {
+                        particleSystem.spawnHeartBurst(boatEntity.getBoardedPlayerX() + 22.0, boatEntity.getBoatY() - 10.0);
+                    }
+                }
+                view.fx.SoundHook.playPickup();
+                showFishCatchCard(species, sizeCm, isCrown, isNewRecord, rewardMoney);
+
+                String msg = String.format("Bắt được %s (%.1f cm%s): +%d$",
+                        species.getDisplayName(), sizeCm, isCrown ? " 👑 VƯƠNG MIỆN" : "", rewardMoney);
+                InGameController.this.notify(msg);
+
+                if (autosave != null) {
+                    javafx.animation.PauseTransition delaySave = new javafx.animation.PauseTransition(javafx.util.Duration.millis(720));
+                    delaySave.setOnFinished(ev -> autosave.run());
+                    delaySave.play();
+                }
+            }
+
+            @Override
+            public void onFishEscaped(String message) {
+                InGameController.this.notify(message);
+            }
+
+            @Override
+            public void onWaterSplash(double worldX, double worldY) {
+                if (particleSystem != null) {
+                    particleSystem.spawnWaterSplash(worldX, worldY);
+                }
+            }
+
+            @Override
+            public model.weather.WeatherType getCurrentWeather() {
+                return (gameManager != null && gameManager.getCurrentWeather() != null)
+                        ? gameManager.getCurrentWeather().getType()
+                        : model.weather.WeatherType.SUNNY;
+            }
+
+            @Override
+            public int getCurrentHour() {
+                return getCurrentGameHour();
+            }
+        }, riverTopY, riverBotY, worldMapW);
+        fishingGame.attachTo(entityPane);
+
+        // Gắn hệ thống Game Feel Phase 1: Particle, Vật phẩm bật nảy & Tự hút, Rung lắc cây trồng
+        particleSystem = new view.fx.ParticleSystem();
+        particleSystem.attachTo(entityPane);
+
+        droppedItemSystem = new view.fx.DroppedItemSystem((item, qty, wx, wy) -> {
+            if (player != null && item != null && qty > 0) {
+                player.getInventory().addItem(item, qty);
+            }
+        }, particleSystem);
+        droppedItemSystem.attachTo(entityPane);
 
         // 3. LỚP TRÊN CÙNG: Đặt nhân vật vào game
         if (playerCharacter == null) {
@@ -1442,100 +2437,130 @@ public class InGameController {
             }
 
             playerCharacter = new javafx.scene.Group();
-            // --- Đầu và Mũ rơm ---
-            javafx.scene.Group headGroup = new javafx.scene.Group();
-            javafx.scene.shape.Rectangle face = new javafx.scene.shape.Rectangle(20, 20, Color.PEACHPUFF);
-            face.setX(12); face.setY(2);
-            javafx.scene.shape.Rectangle eyeL = new javafx.scene.shape.Rectangle(3, 4, Color.BLACK);
-            eyeL.setX(15); eyeL.setY(10);
-            javafx.scene.shape.Rectangle eyeR = new javafx.scene.shape.Rectangle(3, 4, Color.BLACK);
-            eyeR.setX(26); eyeR.setY(10);
-            javafx.scene.shape.Rectangle hair = new javafx.scene.shape.Rectangle(22, 8, Color.rgb(30, 30, 30));
-            hair.setX(11); hair.setY(0);
-            javafx.scene.shape.Rectangle hatBrim = new javafx.scene.shape.Rectangle(34, 4, Color.GOLDENROD);
-            hatBrim.setX(5); hatBrim.setY(-2);
-            javafx.scene.shape.Rectangle hatBand = new javafx.scene.shape.Rectangle(20, 4, Color.CRIMSON);
-            hatBand.setX(12); hatBand.setY(-6);
-            javafx.scene.shape.Rectangle hatTop = new javafx.scene.shape.Rectangle(18, 6, Color.GOLDENROD);
-            hatTop.setX(13); hatTop.setY(-12);
-            headGroup.getChildren().addAll(face, hair, eyeL, eyeR, hatTop, hatBand, hatBrim);
 
-            // --- Thân (Ngực trần + Áo khoác đỏ + Thắt lưng vàng) ---
-            javafx.scene.Group bodyGroup = new javafx.scene.Group();
-            javafx.scene.shape.Rectangle chest = new javafx.scene.shape.Rectangle(24, 24, Color.PEACHPUFF);
-            chest.setX(10); chest.setY(20);
-            javafx.scene.shape.Line scar1 = new javafx.scene.shape.Line(16, 26, 28, 38);
-            scar1.setStroke(Color.SADDLEBROWN); scar1.setStrokeWidth(2);
-            javafx.scene.shape.Line scar2 = new javafx.scene.shape.Line(28, 26, 16, 38);
-            scar2.setStroke(Color.SADDLEBROWN); scar2.setStrokeWidth(2);
-            javafx.scene.shape.Rectangle jacketL = new javafx.scene.shape.Rectangle(6, 22, Color.CRIMSON);
-            jacketL.setX(10); jacketL.setY(20);
-            javafx.scene.shape.Rectangle jacketR = new javafx.scene.shape.Rectangle(6, 22, Color.CRIMSON);
-            jacketR.setX(28); jacketR.setY(20);
-            javafx.scene.shape.Rectangle sash = new javafx.scene.shape.Rectangle(26, 6, Color.GOLD);
-            sash.setX(9); sash.setY(40);
-            bodyGroup.getChildren().addAll(chest, scar1, scar2, jacketL, jacketR, sash);
+            // Load đủ bộ sprite pixel-art Luffy 8 hướng (side, down, up, down_right, up_right — kích thước lớn 108x108)
+            if (luffyIdleByDir == null || luffyRunByDir == null) {
+                luffyIdleByDir = new java.util.HashMap<>();
+                luffyRunByDir  = new java.util.HashMap<>();
+                String[] dirs = { "side", "down", "up", "down_right", "up_right" };
+                for (String dk : dirs) {
+                    Image[] idles = new Image[2];
+                    for (int i = 0; i < 2; i++) {
+                        try {
+                            java.io.InputStream is = getClass().getResourceAsStream("/view/assets/player/luffy_idle_" + dk + "_" + i + ".png");
+                            if (is != null) idles[i] = new Image(is);
+                        } catch (Exception ignored) {}
+                    }
+                    luffyIdleByDir.put(dk, idles);
 
-            // --- Tay (Tay áo đỏ, bàn tay màu da) ---
-            javafx.scene.Group leftArmGroup = new javafx.scene.Group();
-            javafx.scene.shape.Rectangle lSleeve = new javafx.scene.shape.Rectangle(8, 10, Color.CRIMSON);
-            lSleeve.setX(2); lSleeve.setY(22);
-            javafx.scene.shape.Rectangle lHand = new javafx.scene.shape.Rectangle(6, 8, Color.PEACHPUFF);
-            lHand.setX(3); lHand.setY(32);
-            leftArmGroup.getChildren().addAll(lSleeve, lHand);
-            leftArmSwing = new javafx.scene.transform.Rotate(0, 6, 22);
-            leftArmGroup.getTransforms().add(leftArmSwing);
+                    Image[] runs = new Image[4];
+                    for (int i = 0; i < 4; i++) {
+                        try {
+                            java.io.InputStream is = getClass().getResourceAsStream("/view/assets/player/luffy_run_" + dk + "_" + i + ".png");
+                            if (is != null) runs[i] = new Image(is);
+                        } catch (Exception ignored) {}
+                    }
+                    luffyRunByDir.put(dk, runs);
+                }
+            }
 
-            javafx.scene.Group rightArmGroup = new javafx.scene.Group();
-            javafx.scene.shape.Rectangle rSleeve = new javafx.scene.shape.Rectangle(8, 10, Color.CRIMSON);
-            rSleeve.setX(34); rSleeve.setY(22);
-            javafx.scene.shape.Rectangle rHand = new javafx.scene.shape.Rectangle(6, 8, Color.PEACHPUFF);
-            rHand.setX(35); rHand.setY(32);
-            rightArmGroup.getChildren().addAll(rSleeve, rHand);
-            rightArmSwing = new javafx.scene.transform.Rotate(0, 38, 22);
-            rightArmGroup.getTransforms().add(rightArmSwing);
+            // Bóng mờ dưới chân Luffy (tỷ lệ lớn 108x108)
+            luffyShadow = new javafx.scene.shape.Ellipse(22, 66, 22, 7);
+            luffyShadow.setFill(Color.rgb(20, 26, 36, 0.30));
 
-            // --- Chân (Quần short xanh dương, ống cuộn trắng, chân màu da, dép đen) ---
-            javafx.scene.Group leftLegGroup = new javafx.scene.Group();
-            javafx.scene.shape.Rectangle lShorts = new javafx.scene.shape.Rectangle(10, 10, Color.ROYALBLUE);
-            lShorts.setX(10); lShorts.setY(46);
-            javafx.scene.shape.Rectangle lCuff = new javafx.scene.shape.Rectangle(12, 4, Color.WHITE);
-            lCuff.setX(9); lCuff.setY(54);
-            javafx.scene.shape.Rectangle lCalf = new javafx.scene.shape.Rectangle(6, 8, Color.PEACHPUFF);
-            lCalf.setX(12); lCalf.setY(58);
-            javafx.scene.shape.Rectangle lSandal = new javafx.scene.shape.Rectangle(8, 2, Color.BLACK);
-            lSandal.setX(11); lSandal.setY(66);
-            leftLegGroup.getChildren().addAll(lShorts, lCuff, lCalf, lSandal);
-            leftLegSwing = new javafx.scene.transform.Rotate(0, 15, 46);
-            leftLegGroup.getTransforms().add(leftLegSwing);
+            Image startImg = luffyIdleByDir.get("down") != null ? luffyIdleByDir.get("down")[0] : null;
+            luffySpriteView = new ImageView(startImg);
+            luffySpriteView.setFitWidth(108);
+            luffySpriteView.setFitHeight(108);
+            luffySpriteView.setSmooth(false);
+            // Căn tâm ngang x = 22 (-32 + 54 = 22) và dép khớp đúng y = 68 (-38 + 106 = 68)
+            luffySpriteView.setX(-32);
+            luffySpriteView.setY(-38);
+            luffyBodyRotate = new javafx.scene.transform.Rotate(0.0, 22.0, 66.0);
+            luffySpriteView.getTransforms().add(luffyBodyRotate);
 
-            javafx.scene.Group rightLegGroup = new javafx.scene.Group();
-            javafx.scene.shape.Rectangle rShorts = new javafx.scene.shape.Rectangle(10, 10, Color.ROYALBLUE);
-            rShorts.setX(24); rShorts.setY(46);
-            javafx.scene.shape.Rectangle rCuff = new javafx.scene.shape.Rectangle(12, 4, Color.WHITE);
-            rCuff.setX(23); rCuff.setY(54);
-            javafx.scene.shape.Rectangle rCalf = new javafx.scene.shape.Rectangle(6, 8, Color.PEACHPUFF);
-            rCalf.setX(26); rCalf.setY(58);
-            javafx.scene.shape.Rectangle rSandal = new javafx.scene.shape.Rectangle(8, 2, Color.BLACK);
-            rSandal.setX(25); rSandal.setY(66);
-            rightLegGroup.getChildren().addAll(rShorts, rCuff, rCalf, rSandal);
-            rightLegSwing = new javafx.scene.transform.Rotate(0, 29, 46);
-            rightLegGroup.getTransforms().add(rightLegSwing);
-
-            playerCharacter.getChildren().addAll(leftArmGroup, leftLegGroup, rightLegGroup, bodyGroup, headGroup, rightArmGroup);
+            playerCharacter.getChildren().addAll(luffyShadow, luffySpriteView);
             playerCharacter.setManaged(false);
             if (entityPane != null) entityPane.getChildren().add(playerCharacter);
+        } else if (entityPane != null && !entityPane.getChildren().contains(playerCharacter)) {
+            entityPane.getChildren().add(playerCharacter);
         }
         playerCharacter.setTranslateX(playerX);
         playerCharacter.setTranslateY(playerY);
 
-        if (weaponView == null) {
+        if (luffyToolRig == null) {
+            // Tạo nhóm Cánh Tay + Công Cụ thống nhất (armGroup) xoay quanh khớp vai (0, 0) của Luffy
             weaponView = new ImageView();
-            weaponView.setFitWidth(30);
-            weaponView.setFitHeight(30);
+            weaponView.setFitWidth(38);
+            weaponView.setFitHeight(38);
             weaponView.setPreserveRatio(true);
+            weaponView.setSmooth(false); // Giữ nét pixel sắc, không làm mờ
             weaponView.setManaged(false);
-            if (entityPane != null) entityPane.getChildren().add(weaponView);
+            toolRotate = new javafx.scene.transform.Rotate(0.0, 8.0, 31.0);
+            weaponView.getTransforms().add(toolRotate);
+
+            // 1. Tay áo đỏ (#C82828 viền đen) gắn tại khớp vai (0, 0)
+            javafx.scene.shape.Rectangle sleeve = new javafx.scene.shape.Rectangle(-3.0, -2.0, 9.0, 12.0);
+            sleeve.setArcWidth(2.0);
+            sleeve.setArcHeight(2.0);
+            sleeve.setRotate(-22.0);
+            sleeve.setFill(Color.web("#C82828"));
+            sleeve.setStroke(Color.rgb(28, 12, 14));
+            sleeve.setStrokeWidth(1.8);
+
+            // Cổ tay áo đỏ đậm tạo độ nổi pixel
+            javafx.scene.shape.Rectangle sleeveCuff = new javafx.scene.shape.Rectangle(1.0, 8.0, 10.0, 3.2);
+            sleeveCuff.setRotate(-22.0);
+            sleeveCuff.setFill(Color.web("#8E1A1A"));
+            sleeveCuff.setStroke(Color.rgb(28, 12, 14));
+            sleeveCuff.setStrokeWidth(1.3);
+
+            // 2. Cẳng tay màu da (#F2B880 viền đen) nối từ cổ tay áo tới bàn tay nắm
+            javafx.scene.shape.Rectangle forearm = new javafx.scene.shape.Rectangle(4.5, 9.0, 7.0, 10.5);
+            forearm.setArcWidth(2.0);
+            forearm.setArcHeight(2.0);
+            forearm.setRotate(-22.0);
+            forearm.setFill(Color.web("#F2B880"));
+            forearm.setStroke(Color.rgb(28, 12, 14));
+            forearm.setStrokeWidth(1.6);
+
+            // 3. Bàn tay nắm màu da (#F2B880 viền đen) bọc trực tiếp lên chuôi công cụ tại (11, 18)
+            javafx.scene.shape.Rectangle handFist = new javafx.scene.shape.Rectangle(7.0, 14.5, 8.5, 7.5);
+            handFist.setArcWidth(3.0);
+            handFist.setArcHeight(3.0);
+            handFist.setFill(Color.web("#F2B880"));
+            handFist.setStroke(Color.rgb(28, 12, 14));
+            handFist.setStrokeWidth(1.6);
+
+            javafx.scene.shape.Line knuckle = new javafx.scene.shape.Line(11.0, 15.5, 11.0, 21.0);
+            knuckle.setStroke(Color.rgb(186, 116, 72));
+            knuckle.setStrokeWidth(1.2);
+
+            // Thứ tự lớp trong armGroup: cẳng tay -> tay áo -> công cụ -> bàn tay nắm (bọc chuôi cầm)
+            armGroup = new javafx.scene.Group(forearm, sleeve, sleeveCuff, weaponView, handFist, knuckle);
+            armGroup.setLayoutX(29.0);
+            armGroup.setLayoutY(9.0);
+            armRotate = new javafx.scene.transform.Rotate(0.0, 0.0, 0.0);
+            armGroup.getTransforms().add(armRotate);
+
+            luffyToolRig = new javafx.scene.Group(armGroup);
+            luffyToolRig.setManaged(false);
+            luffyToolFlip = new javafx.scene.transform.Scale(1.0, 1.0, 22.0, 0.0);
+            luffyToolRig.getTransforms().add(luffyToolFlip);
+
+            if (entityPane != null) entityPane.getChildren().add(luffyToolRig);
+        } else if (entityPane != null && !entityPane.getChildren().contains(luffyToolRig)) {
+            entityPane.getChildren().add(luffyToolRig);
+        }
+        // Đồng bộ icon công cụ ngay khi khởi tạo map để nhân vật cầm ngay công cụ đang chọn
+        if (playerController != null && playerController.getCurrentTool() != null) {
+            ToolStrategy initTool = playerController.getCurrentTool();
+            if (initTool instanceof Hoe) weaponView.setImage(Assets.HOE_ICON);
+            else if (initTool instanceof WateringCan) weaponView.setImage(Assets.WATER_ICON);
+            else if (initTool instanceof SeedBag) weaponView.setImage(Assets.SEED_ICON);
+            else if (initTool instanceof FertilizerBag) weaponView.setImage(Assets.FERTILIZER_ICON);
+            else if (initTool instanceof FeedBag) weaponView.setImage(Assets.BAG_ICON);
+            else weaponView.setImage(null);
         }
     }
 
@@ -1552,14 +2577,39 @@ public class InGameController {
 
     @FXML
     private void onNextDay() {
+        advanceDayCore(true);
+    }
+
+    /**
+     * Logic chuyển ngày dùng chung cho cả nút NEXT DAY và tính năng Đi ngủ tại nhà.
+     * @param useQuickFade true nếu chạy fade nhanh mặc định, false nếu đã có màn hình đen Sleep Transition bao bọc.
+     */
+    private void advanceDayCore(boolean useQuickFade) {
         // Reset thời gian ngày về ban đầu (0ms - Sáng sớm 06:00)
+        if (droppedItemSystem != null) {
+            droppedItemSystem.collectAllImmediately();
+        }
         elapsedTimeInDay = 0;
+        clearFoodBuffs();
+        resetDailyHarvestQuest();
+        // Khi qua ngày mới (đi ngủ), đảm bảo chỉ số buổi sáng tối thiểu 60 và giữ no 4 tiếng đầu buổi sáng
+        hungerGraceTimerSec = HUNGER_FULL_GRACE_SEC;
+        recentLaborStreak = 0;
+        recentLaborDecaySec = 0.0;
+        if (player != null) {
+            if (player.getHunger() < 60.0) player.setHunger(60.0);
+            if (player.getThirst() < 60.0) player.setThirst(60.0);
+            updateSurvivalHud(animTimeSec);
+        }
         resetFeedingSchedule(0.0);
         lastFrameTime = System.currentTimeMillis();
         lastDisplayedMinute = -1;
-        for (Animal a : animals) a.eatTrough = null;
-        if (timeOverlayRect != null) {
-            timeOverlayRect.setFill(getTimeOverlayColor(0.0));
+        for (Animal a : animals) {
+            a.eatTrough = null;
+            a.producedToday = false;
+        }
+        if (useQuickFade) {
+            playDayTransitionFade();
         }
 
         gameManager.advanceDay();
@@ -1612,7 +2662,7 @@ public class InGameController {
             growthMsg = " (" + grewCount + " thú cưng đã lớn thêm!)";
         }
         notify("Day " + gameManager.getCurrentDay() + "   " + weatherName() + growthMsg);
-        refreshAll();
+        refreshDynamicTiles();
         if (autosave != null && gameManager.getStatus() == controller.lifecyclemanager.GameStatus.RUNNING) {
             autosave.run();
         }
@@ -1633,7 +2683,7 @@ public class InGameController {
         if (weaponView != null) {
             if (cur instanceof Hoe) weaponView.setImage(Assets.HOE_ICON);
             else if (cur instanceof WateringCan) weaponView.setImage(Assets.WATER_ICON);
-            else if (cur instanceof Hand) weaponView.setImage(Assets.HAND_ICON);
+            else if (cur instanceof Hand) weaponView.setImage(null); // Tay không: hiển thị trọn vẹn dáng chạy của Luffy
             else if (cur instanceof SeedBag) weaponView.setImage(Assets.SEED_ICON);
             else if (cur instanceof FertilizerBag) weaponView.setImage(Assets.FERTILIZER_ICON);
             else if (cur instanceof FeedBag) {
@@ -1651,7 +2701,7 @@ public class InGameController {
     private void forceWeather(WeatherType type) {
         demoController.forceWeather(type);
         notify("Weather forced: " + type);
-        refreshAll();
+        refreshHudOnly();
     }
 
     private void onCellClick(Cell cell) {
@@ -1673,8 +2723,33 @@ public class InGameController {
             }
         }
 
-        boolean ok = playerController.interactWithCell(cell);
-        notify(ok ? "" : "Can't use this tool here");
+        if (curTool instanceof Hoe) {
+            if (!isCellInFarmZone(cell)) {
+                notify("Chỉ có thể dùng cuốc trong khu trồng trọt (Farming Zone)!");
+                rootPane.requestFocus();
+                return;
+            }
+            if (cell != null && cell.getTerrain() != TerrainType.DIRT) {
+                notify("Đây là lối đi cỏ xanh — hãy cuốc trên các luống đất 2x2!");
+                rootPane.requestFocus();
+                return;
+            }
+            if (tryClearWheatAtCell(cell)) {
+                double hwx = cell.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
+                double hwy = cell.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
+                triggerToolAnimation("HOE", hwx, hwy);
+                rootPane.requestFocus();
+                return;
+            }
+        }
+
+        boolean ok = interactCellWithEffects(cell);
+        if (!ok && curTool instanceof SeedBag && cell.getCellState() != CellState.TILLED) {
+            notify("Hãy dùng Cuốc (Hoe) cuốc đất trước khi trồng cây!");
+            spawnFloatingText("Cần cuốc đất trước!", Color.rgb(255, 208, 92));
+        } else {
+            notify(ok ? "" : "Can't use this tool here");
+        }
         revertSeedToolIfEmpty();
         revertBagToolIfEmpty();
         
@@ -1708,10 +2783,1244 @@ public class InGameController {
     }
 
     private void togglePause() {
+        if (sleepTransitionRunning) return;
+        if (activeCookingOverlay != null) {
+            if (!activeCookingOverlay.isCookingInProgress()) {
+                closeCookingOverlay();
+            }
+            return;
+        }
+        if (activeSleepDialog != null) {
+            closeSleepDialog();
+            return;
+        }
+        if (activeFishingGuide != null) {
+            closeFishingGuide();
+            return;
+        }
         if (router.hasOverlay()) {
             router.closeOverlay();
+            Platform.runLater(rootPane::requestFocus);
         } else {
+            activeKeys.clear();
             router.showOverlay(router.getScreen(Screens.PAUSE));
+        }
+    }
+
+    // ======================== ĐI NGỦ TẠI NHÀ & NẤU ĂN LỬA TRẠI ========================
+
+    /** Quét tự động vị trí cửa nhà (house_main / house_small / house_bottom) và đống lửa (campfire) từ map. */
+    private void setupHouseAndCampfireInteractions() {
+        houseDoorPoints.clear();
+        campfirePoints.clear();
+        campfireGlows.clear();
+
+        double[] mainHouseDoor = null;
+        for (ImageView objView : sceneryObjects) {
+            String id = objView.getId();
+            if (id == null) continue;
+            String idLow = id.toLowerCase();
+            double ox = objView.getLayoutX();
+            double oy = objView.getLayoutY();
+            double ow = objView.getFitWidth();
+            double oh = objView.getFitHeight();
+
+            if (idLow.contains("house_main") || idLow.contains("house_small") || idLow.contains("house_bottom")) {
+                double[] door = new double[] { ox + ow * 0.50, oy + oh + 10.0 };
+                if (idLow.contains("house_main")) {
+                    mainHouseDoor = door;
+                } else {
+                    houseDoorPoints.add(door);
+                }
+            } else if (idLow.equals("campfire")) {
+                double cx = ox + ow * 0.50;
+                double cy = oy + oh * 0.58;
+                campfirePoints.add(new double[] { cx, cy });
+
+                // Vòng ánh sáng cam ấm áp tỏa xung quanh đống lửa
+                if (entityPane != null) {
+                    javafx.scene.paint.RadialGradient fireGrad = new javafx.scene.paint.RadialGradient(
+                        0, 0, 0.5, 0.5, 0.5, true, javafx.scene.paint.CycleMethod.NO_CYCLE,
+                        new javafx.scene.paint.Stop(0.0, Color.rgb(255, 168, 56, 0.42)),
+                        new javafx.scene.paint.Stop(0.55, Color.rgb(255, 114, 32, 0.18)),
+                        new javafx.scene.paint.Stop(1.0, Color.rgb(255, 92, 20, 0.0))
+                    );
+                    javafx.scene.shape.Circle glow = new javafx.scene.shape.Circle(0, 0, 86.0);
+                    glow.setFill(fireGrad);
+                    glow.setManaged(false);
+                    glow.setMouseTransparent(true);
+                    glow.setLayoutX(cx);
+                    glow.setLayoutY(cy + 4.0);
+                    double sortY = (objView.getUserData() instanceof Double) ? ((Double) objView.getUserData()) - 2.0 : (oy + oh - 2.0);
+                    glow.setUserData(sortY);
+                    entityPane.getChildren().add(glow);
+                    campfireGlows.add(glow);
+                }
+            }
+        }
+        if (mainHouseDoor != null) {
+            houseDoorPoints.add(0, mainHouseDoor);
+        }
+
+        // Dòng gợi ý nổi phía trên đầu nhân vật ([E] Đi ngủ / [E] Nấu ăn)
+        if (entityPane != null) {
+            interactPromptLabel = new Label();
+            interactPromptLabel.setStyle(
+                "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+                "-fx-font-size: 11.5px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-text-fill: #FFF6D6;" +
+                "-fx-background-color: rgba(42, 22, 10, 0.90);" +
+                "-fx-border-color: #E5AE58;" +
+                "-fx-border-width: 1.8px;" +
+                "-fx-padding: 3 9 3 9;" +
+                "-fx-background-radius: 7px;" +
+                "-fx-border-radius: 7px;"
+            );
+            interactPromptLabel.setMouseTransparent(true);
+            interactPromptLabel.setManaged(false);
+            interactPromptLabel.setVisible(false);
+            interactPromptLabel.setUserData(9995.0);
+            entityPane.getChildren().add(interactPromptLabel);
+
+            // Bong bóng cảnh báo nổi phía trên đầu nhân vật khi Đói hoặc Khát < 30%
+            survivalWarningLabel = new Label();
+            survivalWarningLabel.setStyle(
+                "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+                "-fx-font-size: 11px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-text-fill: #FFF5F5;" +
+                "-fx-background-color: rgba(168, 28, 28, 0.90);" +
+                "-fx-border-color: #FFB2B2;" +
+                "-fx-border-width: 1.5px;" +
+                "-fx-padding: 3 8 3 8;" +
+                "-fx-background-radius: 8px;" +
+                "-fx-border-radius: 8px;"
+            );
+            survivalWarningLabel.setMouseTransparent(true);
+            survivalWarningLabel.setManaged(false);
+            survivalWarningLabel.setVisible(false);
+            survivalWarningLabel.setUserData(9996.0);
+            entityPane.getChildren().add(survivalWarningLabel);
+        }
+        setupSurvivalHud();
+        updateSurvivalHud(animTimeSec);
+        updateFoodBuffHud();
+        updateQuestTrackerUi();
+    }
+
+    // ======================== BẢNG NHIỆM VỤ THU HOẠCH NGÀY (QUEST TRACKER) ========================
+
+    private void recordHarvestForQuest(String cropName) {
+        if (cropName == null) return;
+        String low = cropName.toLowerCase();
+        boolean changed = false;
+        if (low.contains("tomato")) {
+            questTomato = Math.min(QUEST_TARGET, questTomato + 1);
+            changed = true;
+        } else if (low.contains("potato")) {
+            questPotato = Math.min(QUEST_TARGET, questPotato + 1);
+            changed = true;
+        } else if (low.contains("corn")) {
+            questCorn = Math.min(QUEST_TARGET, questCorn + 1);
+            changed = true;
+        }
+        if (!changed) return;
+
+        updateQuestTrackerUi();
+        if (!questRewardClaimed
+                && questTomato >= QUEST_TARGET
+                && questPotato >= QUEST_TARGET
+                && questCorn >= QUEST_TARGET) {
+            questRewardClaimed = true;
+            if (player != null) {
+                player.addMoney(200);
+            }
+            updateQuestTrackerUi();
+            view.fx.SoundHook.playPickup();
+            spawnFloatingText("Hoàn thành nhiệm vụ! +200$", Color.rgb(255, 232, 92));
+            notify("Hoàn thành cả 3 mục tiêu thu hoạch ngày! Nhận thưởng +200$!");
+        }
+    }
+
+    private void resetDailyHarvestQuest() {
+        questTomato = 0;
+        questPotato = 0;
+        questCorn = 0;
+        questRewardClaimed = false;
+        updateQuestTrackerUi();
+    }
+
+    private void updateQuestTrackerUi() {
+        updateQuestLine(questTomatoLabel, "Cà chua", questTomato);
+        updateQuestLine(questPotatoLabel, "Khoai tây", questPotato);
+        updateQuestLine(questCornLabel, "Ngô", questCorn);
+        if (questRewardLabel != null) {
+            if (questRewardClaimed) {
+                questRewardLabel.setText("✓ ĐÃ NHẬN +200$");
+                questRewardLabel.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 10.5px; -fx-font-weight: bold; -fx-text-fill: #1F7A2E;");
+            } else {
+                questRewardLabel.setText("Thưởng: +200$");
+                questRewardLabel.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 10.5px; -fx-font-weight: bold; -fx-text-fill: #9A5212;");
+            }
+        }
+    }
+
+    private void updateQuestLine(Label lbl, String viName, int count) {
+        if (lbl == null) return;
+        boolean done = count >= QUEST_TARGET;
+        lbl.setText((done ? "✓ " : "• ") + viName + ": " + Math.min(count, QUEST_TARGET) + "/" + QUEST_TARGET);
+        lbl.setStyle(
+            "-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: " +
+            (done ? "#1F7A2E;" : "#3E210C;")
+        );
+    }
+
+    /**
+     * Dựng lớp cầu gỗ che phía trên (chỉ cắt đúng phần gỗ + 2 thành cầu, xóa sạch viền nước ngoài)
+     * và 2 dải bóng râm đổ xuống mặt nước hai bên gầm cầu để tạo cảm giác thuyền chui lọt bên dưới cầu.
+     */
+    private void setupBridgeUnderpassVisuals(ImageView bridgeObj, double riverTopY, double riverBotY) {
+        if (bridgeObj == null || entityPane == null) return;
+        double ox = bridgeObj.getLayoutX();
+        double oy = bridgeObj.getLayoutY();
+        double ow = bridgeObj.getFitWidth();
+        double oh = bridgeObj.getFitHeight();
+        if (ow <= 0 || oh <= 0) return;
+
+        // Tỉ lệ phần gỗ thực của bridge.png: x = 15.5% .. 86.2% (trừ sạch nước 2 bên)
+        final double leftFrac = 0.155;
+        final double rightFrac = 0.862;
+        bridgeWoodLeftX = ox + ow * leftFrac;
+        bridgeWoodRightX = ox + ow * rightFrac;
+
+        Image src = bridgeObj.getImage();
+        if (src != null && src.getPixelReader() != null) {
+            int imgW = (int) src.getWidth();
+            int imgH = (int) src.getHeight();
+            int sx0 = Math.max(0, (int) Math.round(imgW * leftFrac));
+            int sx1 = Math.min(imgW, (int) Math.round(imgW * rightFrac));
+            int cw = Math.max(1, sx1 - sx0);
+            javafx.scene.image.WritableImage canopyImg = new javafx.scene.image.WritableImage(cw, imgH);
+            javafx.scene.image.PixelReader pr = src.getPixelReader();
+            javafx.scene.image.PixelWriter pw = canopyImg.getPixelWriter();
+            for (int y = 0; y < imgH; y++) {
+                for (int x = 0; x < cw; x++) {
+                    Color col = pr.getColor(sx0 + x, y);
+                    // Xóa các pixel nước xanh sót lại ở 6px mép ngoài 2 thành gỗ để viền cầu sắc nét tuyệt đối
+                    boolean onOuterEdge = (x < 6 || x >= cw - 6);
+                    boolean isBlueWater = (col.getOpacity() > 0.1 && col.getBlue() > col.getRed() + 0.14 && col.getBlue() > 0.50);
+                    if (onOuterEdge && isBlueWater) {
+                        pw.setColor(x, y, Color.TRANSPARENT);
+                    } else {
+                        pw.setColor(x, y, col);
+                    }
+                }
+            }
+
+            bridgeCanopyView = new ImageView(canopyImg);
+            bridgeCanopyView.setFitWidth(bridgeWoodRightX - bridgeWoodLeftX);
+            bridgeCanopyView.setFitHeight(oh);
+            bridgeCanopyView.setLayoutX(bridgeWoodLeftX);
+            bridgeCanopyView.setLayoutY(oy);
+            bridgeCanopyView.setSmooth(false);
+            bridgeCanopyView.setMouseTransparent(true);
+            bridgeCanopyView.setVisible(false);
+            bridgeCanopyView.setUserData(-999.0);
+            entityPane.getChildren().add(bridgeCanopyView);
+        }
+
+        // Dải bóng râm mềm của gầm cầu đổ xuống mặt nước ở hai bên trái & phải cầu
+        double shadowTopY = Math.max(oy + 24.0, riverTopY);
+        double shadowH = Math.max(60.0, Math.min(oy + oh - 14.0, riverBotY) - shadowTopY);
+        javafx.scene.shape.Rectangle leftShadow = new javafx.scene.shape.Rectangle(bridgeWoodLeftX - 28.0, shadowTopY, 34.0, shadowH);
+        leftShadow.setFill(new javafx.scene.paint.LinearGradient(
+            0, 0, 1, 0, true, javafx.scene.paint.CycleMethod.NO_CYCLE,
+            new javafx.scene.paint.Stop(0.0, Color.rgb(6, 18, 28, 0.0)),
+            new javafx.scene.paint.Stop(1.0, Color.rgb(6, 18, 28, 0.48))
+        ));
+        leftShadow.setMouseTransparent(true);
+        leftShadow.setManaged(false);
+        leftShadow.setUserData(-890.0);
+
+        javafx.scene.shape.Rectangle rightShadow = new javafx.scene.shape.Rectangle(bridgeWoodRightX - 6.0, shadowTopY, 34.0, shadowH);
+        rightShadow.setFill(new javafx.scene.paint.LinearGradient(
+            0, 0, 1, 0, true, javafx.scene.paint.CycleMethod.NO_CYCLE,
+            new javafx.scene.paint.Stop(0.0, Color.rgb(6, 18, 28, 0.48)),
+            new javafx.scene.paint.Stop(1.0, Color.rgb(6, 18, 28, 0.0))
+        ));
+        rightShadow.setMouseTransparent(true);
+        rightShadow.setManaged(false);
+        rightShadow.setUserData(-890.0);
+
+        entityPane.getChildren().addAll(leftShadow, rightShadow);
+    }
+
+    private boolean isBoatCenterUnderBridge() {
+        if (boatEntity == null || bridgeWoodLeftX < 0 || bridgeWoodRightX <= bridgeWoodLeftX) return false;
+        double boatCenter = boatEntity.getBoatX() + view.river.BoatEntity.BOAT_WIDTH * 0.5;
+        return boatCenter > (bridgeWoodLeftX - 24.0) && boatCenter < (bridgeWoodRightX + 24.0);
+    }
+
+    /**
+     * Khi thuyền chạm vào vùng gầm cầu: đưa lớp cầu gỗ lên trên thuyền + nhân vật (Z-order cao hơn)
+     * và tạo hiệu ứng bóng râm tối dần mượt mà như đang chui thật sự dưới gầm cầu.
+     */
+    private void updateBoatUnderBridgeEffect(boolean lockedOnBoat) {
+        if (boatEntity == null || bridgeCanopyView == null || bridgeWoodLeftX < 0) return;
+
+        double boatLeft = boatEntity.getBoatX() + 8.0;
+        double boatRight = boatEntity.getBoatX() + view.river.BoatEntity.BOAT_WIDTH - 8.0;
+        double overlap = Math.min(boatRight, bridgeWoodRightX) - Math.max(boatLeft, bridgeWoodLeftX);
+        boolean boatUnderBridge = (overlap > 0.0);
+
+        if (boatUnderBridge) {
+            double boatSpan = Math.max(1.0, boatRight - boatLeft);
+            double shadeRatio = Math.max(0.0, Math.min(1.0, overlap / (boatSpan * 0.65)));
+
+            // Chỉ che phía trên thuyền & nhân vật khi thuyền đi dưới cầu (khi đi bộ trên cầu không bao giờ che nhân vật)
+            bridgeCanopyView.setVisible(true);
+            bridgeCanopyView.setUserData(boatEntity.getBoardedPlayerSortY() + 14.0);
+            boatEntity.setUnderBridgeShade(shadeRatio);
+
+            if (lockedOnBoat && playerCharacter != null) {
+                if (Math.abs(shadeRatio - lastPlayerBridgeShade) >= 0.015) {
+                    lastPlayerBridgeShade = shadeRatio;
+                    underBridgePlayerShade.setBrightness(-0.38 * shadeRatio);
+                    underBridgePlayerShade.setSaturation(-0.16 * shadeRatio);
+                }
+                if (playerCharacter.getEffect() != underBridgePlayerShade) {
+                    playerCharacter.setEffect(underBridgePlayerShade);
+                }
+            } else if (playerCharacter != null && playerCharacter.getEffect() == underBridgePlayerShade) {
+                playerCharacter.setEffect(null);
+                lastPlayerBridgeShade = 0.0;
+            }
+        } else {
+            if (bridgeCanopyView.isVisible()) {
+                bridgeCanopyView.setVisible(false);
+                bridgeCanopyView.setUserData(-999.0);
+            }
+            boatEntity.setUnderBridgeShade(0.0);
+            if (playerCharacter != null && playerCharacter.getEffect() == underBridgePlayerShade) {
+                playerCharacter.setEffect(null);
+                lastPlayerBridgeShade = 0.0;
+            }
+        }
+    }
+
+    private double[] findNearestPoint(java.util.List<double[]> pts, double px, double py, double maxDist) {
+        double[] best = null;
+        double bestDistSq = maxDist * maxDist;
+        for (double[] pt : pts) {
+            double dx = px - pt[0];
+            double dy = py - pt[1];
+            double d2 = dx * dx + dy * dy;
+            if (d2 <= bestDistSq) {
+                bestDistSq = d2;
+                best = pt;
+            }
+        }
+        return best;
+    }
+
+    private void updateNearbyInteractPrompt(boolean lockedOnBoat) {
+        if (interactPromptLabel == null) return;
+        if (lockedOnBoat || router.hasOverlay() || sleepTransitionRunning) {
+            interactPromptLabel.setVisible(false);
+            if (survivalWarningLabel != null) survivalWarningLabel.setVisible(false);
+            return;
+        }
+        double px = playerX + 22.0;
+        double py = playerY + 52.0;
+        double[] nearDoor = findNearestPoint(houseDoorPoints, px, py, 75.0);
+        double[] nearFire = findNearestPoint(campfirePoints, px, py, 80.0);
+        boolean nearRiverDrink = isNearRiverBankForDrink();
+
+        String promptText = null;
+        if (nearDoor != null && nearFire != null) {
+            double dDoor = Math.hypot(px - nearDoor[0], py - nearDoor[1]);
+            double dFire = Math.hypot(px - nearFire[0], py - nearFire[1]);
+            promptText = (dDoor <= dFire) ? "[E] Đi ngủ để qua ngày" : "[E] Nấu ăn tại đống lửa";
+        } else if (nearDoor != null) {
+            promptText = "[E] Đi ngủ để qua ngày";
+        } else if (nearFire != null) {
+            promptText = "[E] Nấu ăn tại đống lửa";
+        } else if (nearRiverDrink) {
+            promptText = "[R] Uống nước sông";
+        }
+
+        boolean promptShown = false;
+        if (promptText != null) {
+            if (!promptText.equals(interactPromptLabel.getText())) {
+                interactPromptLabel.setText(promptText);
+                interactPromptLabel.autosize();
+            }
+            double w = interactPromptLabel.getWidth() > 0 ? interactPromptLabel.getWidth() : 196.0;
+            interactPromptLabel.setLayoutX(playerX + 22.0 - w * 0.5);
+            interactPromptLabel.setLayoutY(playerY - 48.0);
+            interactPromptLabel.setVisible(true);
+            promptShown = true;
+        } else {
+            interactPromptLabel.setVisible(false);
+        }
+
+        // Hiện bong bóng nhắc nhở phía trên đầu khi Đói < 30% hoặc Khát < 30%
+        if (survivalWarningLabel != null && player != null) {
+            double h = player.getHunger();
+            double t = player.getThirst();
+            String warn = null;
+            if (h < 30.0 && t < 30.0) {
+                warn = (h <= t) ? "Đói quá! Đi nấu ăn thôi!" : "Khát quá! Ra sông uống nước!";
+            } else if (h < 30.0) {
+                warn = "Đói quá! Đi nấu ăn thôi!";
+            } else if (t < 30.0) {
+                warn = "Khát quá! Ra sông uống nước!";
+            }
+            if (warn != null) {
+                if (!warn.equals(survivalWarningLabel.getText())) {
+                    survivalWarningLabel.setText(warn);
+                    survivalWarningLabel.autosize();
+                }
+                double ww = survivalWarningLabel.getWidth() > 0 ? survivalWarningLabel.getWidth() : 206.0;
+                survivalWarningLabel.setLayoutX(playerX + 22.0 - ww * 0.5);
+                survivalWarningLabel.setLayoutY(playerY - (promptShown ? 76.0 : 48.0));
+                survivalWarningLabel.setVisible(true);
+            } else {
+                survivalWarningLabel.setVisible(false);
+            }
+        }
+    }
+
+    /** Xử lý phím [E] ưu tiên theo khoảng cách gần nhất giữa: Cửa nhà (ngủ), Đống lửa (nấu ăn), Thuyền (lên/xuống). */
+    private void handleInteractKeyE() {
+        if (activeCookingOverlay != null) {
+            if (!activeCookingOverlay.isCookingInProgress()) {
+                closeCookingOverlay();
+            }
+            return;
+        }
+        if (router.hasOverlay() || sleepTransitionRunning) return;
+
+        // Đang ngồi trên thuyền -> xuống thuyền ngay (chặn nếu đang chui ngay dưới gầm cầu)
+        if (boatEntity != null && (isOnBoat || boatEntity.isPlayerAboard())) {
+            if (isBoatCenterUnderBridge()) {
+                notify("Đang ở dưới gầm cầu — hãy chèo qua hẳn bên kia rồi bấm [E] lên bờ!");
+                return;
+            }
+            if (fishingGame != null) fishingGame.cancel();
+            boatEntity.startDisembarking();
+            return;
+        }
+
+        double px = playerX + 22.0;
+        double py = playerY + 52.0;
+
+        double bestDist = Double.MAX_VALUE;
+        int bestAction = 0; // 1 = sleep, 2 = cook, 3 = boat
+        double[] bestPt = null;
+
+        double[] nearDoor = findNearestPoint(houseDoorPoints, px, py, 75.0);
+        if (nearDoor != null) {
+            double d = Math.hypot(px - nearDoor[0], py - nearDoor[1]);
+            if (d < bestDist) {
+                bestDist = d;
+                bestAction = 1;
+                bestPt = nearDoor;
+            }
+        }
+
+        double[] nearFire = findNearestPoint(campfirePoints, px, py, 80.0);
+        if (nearFire != null) {
+            double d = Math.hypot(px - nearFire[0], py - nearFire[1]);
+            if (d < bestDist) {
+                bestDist = d;
+                bestAction = 2;
+                bestPt = nearFire;
+            }
+        }
+
+        if (boatEntity != null && boatEntity.canInteractFromShore(playerX, playerY)) {
+            double d = Math.hypot(px - boatEntity.getBoardedPlayerX(), py - boatEntity.getSyncedPlayerY());
+            if (d < bestDist) {
+                bestDist = d;
+                bestAction = 3;
+            }
+        }
+
+        if (bestAction == 1 && bestPt != null) {
+            openSleepDialog(bestPt[0], bestPt[1]);
+        } else if (bestAction == 2 && bestPt != null) {
+            openCookingOverlay(bestPt[0], bestPt[1]);
+        } else if (bestAction == 3 && boatEntity != null) {
+            boatEntity.startBoarding(playerX, playerY);
+        } else if (isNearRiverBankForDrink()) {
+            // Không ở gần thuyền/nhà/đống lửa -> cho phép bấm E uống nước sông tiện lợi ngoài phím riêng R
+            tryDrinkRiverWater();
+        }
+    }
+
+    /** Hộp thoại xác nhận đi ngủ phong cách gỗ/pixel trước cửa nhà. */
+    private void openSleepDialog(double doorX, double doorY) {
+        if (router == null || router.hasOverlay() || sleepTransitionRunning) return;
+        activeKeys.clear();
+
+        javafx.scene.layout.StackPane scrim = new javafx.scene.layout.StackPane();
+        scrim.setStyle("-fx-background-color: rgba(14, 10, 8, 0.62);");
+        scrim.setAlignment(Pos.CENTER);
+        scrim.setFocusTraversable(true);
+        scrim.setOnMouseClicked(ev -> {
+            if (ev.getTarget() == scrim) closeSleepDialog();
+        });
+        scrim.setOnKeyPressed(ev -> {
+            if (ev.getCode() == KeyCode.ESCAPE) {
+                ev.consume();
+                closeSleepDialog();
+            }
+        });
+
+        javafx.scene.layout.VBox woodBox = new javafx.scene.layout.VBox(14);
+        woodBox.setAlignment(Pos.CENTER);
+        woodBox.setMaxWidth(450);
+        woodBox.setPrefWidth(450);
+        woodBox.setMaxHeight(245);
+        woodBox.setPadding(new javafx.geometry.Insets(20, 24, 20, 24));
+        woodBox.setStyle(
+            "-fx-background-color: linear-gradient(to bottom, #7A4B2A 0%, #563218 100%);" +
+            "-fx-border-color: #2B1508;" +
+            "-fx-border-width: 4px;" +
+            "-fx-background-radius: 12px;" +
+            "-fx-border-radius: 12px;" +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.65), 18, 0.25, 0, 6);"
+        );
+
+        Label title = new Label("🌙 NGHỈ NGƠI TẠI NHÀ");
+        title.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 18px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-text-fill: #FFE9A8;"
+        );
+
+        javafx.scene.layout.VBox inner = new javafx.scene.layout.VBox(6);
+        inner.setAlignment(Pos.CENTER);
+        inner.setPadding(new javafx.geometry.Insets(12, 14, 12, 14));
+        inner.setStyle(
+            "-fx-background-color: #F6E6C4;" +
+            "-fx-border-color: #8C5A2B;" +
+            "-fx-border-width: 2px;" +
+            "-fx-background-radius: 8px;" +
+            "-fx-border-radius: 8px;"
+        );
+
+        Label question = new Label("Bạn có muốn đi ngủ để sang ngày mới không?");
+        question.setWrapText(true);
+        question.setAlignment(Pos.CENTER);
+        question.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 14px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-text-fill: #3A1F0C;"
+        );
+
+        Label note = new Label("Cây trồng, vật nuôi & thời tiết sẽ sang Ngày " + (gameManager.getCurrentDay() + 1) + " (06:00) và tự lưu game.");
+        note.setWrapText(true);
+        note.setAlignment(Pos.CENTER);
+        note.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 11.5px;" +
+            "-fx-text-fill: #6E4422;"
+        );
+        inner.getChildren().addAll(question, note);
+
+        javafx.scene.control.Button sleepBtn = new javafx.scene.control.Button("🛏 Đi ngủ");
+        sleepBtn.setFocusTraversable(false);
+        sleepBtn.setPrefSize(136, 38);
+        sleepBtn.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 13.5px; -fx-font-weight: bold; -fx-text-fill: #FFFDF2;" +
+            "-fx-background-color: linear-gradient(to bottom, #4EA44E, #2E7A34);" +
+            "-fx-border-color: #19471D; -fx-border-width: 2.5px;" +
+            "-fx-background-radius: 8px; -fx-border-radius: 8px; -fx-cursor: hand;"
+        );
+        sleepBtn.setOnAction(ev -> {
+            closeSleepDialog();
+            startSleepTransition(doorX, doorY);
+        });
+
+        javafx.scene.control.Button cancelBtn = new javafx.scene.control.Button("Hủy");
+        cancelBtn.setFocusTraversable(false);
+        cancelBtn.setPrefSize(116, 38);
+        cancelBtn.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 13.5px; -fx-font-weight: bold; -fx-text-fill: #FFF3D8;" +
+            "-fx-background-color: linear-gradient(to bottom, #9A6338, #704322);" +
+            "-fx-border-color: #3B1E0B; -fx-border-width: 2.5px;" +
+            "-fx-background-radius: 8px; -fx-border-radius: 8px; -fx-cursor: hand;"
+        );
+        cancelBtn.setOnAction(ev -> closeSleepDialog());
+
+        javafx.scene.layout.HBox btns = new javafx.scene.layout.HBox(16, sleepBtn, cancelBtn);
+        btns.setAlignment(Pos.CENTER);
+
+        woodBox.getChildren().addAll(title, inner, btns);
+        scrim.getChildren().add(woodBox);
+
+        activeSleepDialog = scrim;
+        router.showOverlay(scrim);
+        Platform.runLater(scrim::requestFocus);
+    }
+
+    private void closeSleepDialog() {
+        if (activeSleepDialog != null) {
+            activeSleepDialog = null;
+            if (router != null && router.hasOverlay()) {
+                router.closeOverlay();
+            }
+            activeKeys.clear();
+            Platform.runLater(rootPane::requestFocus);
+        }
+    }
+
+    /** Hiệu ứng màn hình tối dần 0.6s ("Đang ngủ... Zzz" + Ngày X) -> Chuyển ngày -> Sáng dần 0.6s trước cửa nhà. */
+    private void startSleepTransition(double wakeDoorX, double wakeDoorY) {
+        if (sleepTransitionRunning || rootPane == null) return;
+        sleepTransitionRunning = true;
+        activeKeys.clear();
+        if (interactPromptLabel != null) interactPromptLabel.setVisible(false);
+
+        int upcomingDay = gameManager.getCurrentDay() + 1;
+
+        javafx.scene.layout.StackPane curtain = new javafx.scene.layout.StackPane();
+        curtain.setManaged(false);
+        curtain.setLayoutX(0);
+        curtain.setLayoutY(0);
+        curtain.prefWidthProperty().bind(rootPane.widthProperty());
+        curtain.prefHeightProperty().bind(rootPane.heightProperty());
+        curtain.setStyle("-fx-background-color: rgb(6, 6, 12);");
+        curtain.setOpacity(0.0);
+
+        Label zzzLabel = new Label("Đang ngủ... Zzz");
+        zzzLabel.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 30px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-text-fill: #FFF4D2;"
+        );
+        Label dayText = new Label("Ngày " + upcomingDay);
+        dayText.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 20px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-text-fill: #FFD966;"
+        );
+
+        javafx.scene.layout.VBox centerMsg = new javafx.scene.layout.VBox(10, zzzLabel, dayText);
+        centerMsg.setAlignment(Pos.CENTER);
+        curtain.getChildren().add(centerMsg);
+        rootPane.getChildren().add(curtain);
+        curtain.toFront();
+
+        javafx.animation.FadeTransition fadeOut = new javafx.animation.FadeTransition(javafx.util.Duration.seconds(0.6), curtain);
+        fadeOut.setFromValue(0.0);
+        fadeOut.setToValue(1.0);
+        fadeOut.setOnFinished(ev -> {
+            // Đặt nhân vật đứng ngay trước cửa nhà buổi sáng 06:00 rồi gọi logic chuyển ngày chuẩn
+            playerX = wakeDoorX - 22.0;
+            playerY = wakeDoorY - 46.0;
+            facing = "DOWN";
+            if (playerCharacter != null) {
+                playerCharacter.setTranslateX(playerX);
+                playerCharacter.setTranslateY(playerY);
+            }
+            advanceDayCore(false);
+            updateTimeDisplay();
+            dayText.setText("Ngày " + gameManager.getCurrentDay() + "  •  06:00 Sáng");
+
+            javafx.animation.PauseTransition hold = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(0.55));
+            javafx.animation.FadeTransition fadeIn = new javafx.animation.FadeTransition(javafx.util.Duration.seconds(0.6), curtain);
+            fadeIn.setFromValue(1.0);
+            fadeIn.setToValue(0.0);
+            fadeIn.setOnFinished(done -> {
+                rootPane.getChildren().remove(curtain);
+                sleepTransitionRunning = false;
+                activeKeys.clear();
+                Platform.runLater(rootPane::requestFocus);
+            });
+            new javafx.animation.SequentialTransition(hold, fadeIn).play();
+        });
+        fadeOut.play();
+    }
+
+    /** Mở bảng Nấu Ăn tại Đống Lửa Trại. */
+    private void openCookingOverlay(double fireX, double fireY) {
+        if (router == null || router.hasOverlay() || sleepTransitionRunning) return;
+        activeKeys.clear();
+        activeCookingOverlay = new view.ui.CampfireCookingOverlay(
+            player,
+            this::getActiveBuffSummary,
+            () -> {
+                if (particleSystem != null) {
+                    particleSystem.spawnCookingBurst(fireX, fireY);
+                }
+                view.fx.SoundHook.playPickup();
+            },
+            this::applyCookedFoodBuff,
+            this::notify,
+            this::closeCookingOverlay
+        );
+        router.showOverlay(activeCookingOverlay);
+        Platform.runLater(activeCookingOverlay::requestFocus);
+    }
+
+    private void closeCookingOverlay() {
+        if (activeCookingOverlay != null) {
+            activeCookingOverlay = null;
+            if (router != null && router.hasOverlay()) {
+                router.closeOverlay();
+            }
+            activeKeys.clear();
+            Platform.runLater(rootPane::requestFocus);
+        }
+    }
+
+    /** Áp dụng hồi Đói/Khát + Buff tỉ lệ câu cá hiếm (nếu có) khi ăn món nấu từ đống lửa (KHÔNG tăng tốc độ chạy). */
+    private void applyCookedFoodBuff(model.game_item.CookedFoodItem dish) {
+        if (dish == null) return;
+        int hAdd = dish.getHungerRestore();
+        int tAdd = dish.getThirstRestore();
+        if (player != null) {
+            if (hAdd > 0) {
+                player.addHunger(hAdd);
+                hungerGraceTimerSec = HUNGER_FULL_GRACE_SEC; // Ăn xong giữ no ~4 tiếng trong game mới bắt đầu tụt Đói lại
+            }
+            if (tAdd > 0) {
+                player.addThirst(tAdd);
+                recentLaborStreak = 0;
+                recentLaborDecaySec = 0.0;
+            }
+            updateSurvivalHud(animTimeSec);
+        }
+        if (dish.hasRareFishBoost()) {
+            foodRareFishBuff = true;
+            if (fishShadows != null) fishShadows.setRareFishBuff(true);
+        }
+        updateFoodBuffHud();
+        view.fx.SoundHook.playPickup();
+
+        String restoreTxt = (tAdd > 0)
+                ? ("+" + hAdd + " Đói, +" + tAdd + " Nước!")
+                : ("+" + hAdd + " Đói!");
+        spawnFloatingText(restoreTxt, Color.rgb(132, 255, 146));
+        String buffPart = getActiveBuffSummary();
+        notify("Đã ăn " + dish.getName() + "! (" + restoreTxt + (buffPart.isEmpty() ? "" : (" | " + buffPart)) + ")");
+    }
+
+    // ======================== HỆ THỐNG SINH TỒN: ĐÓI & KHÁT ========================
+
+    /** Khởi tạo khung HUD gỗ/pixel 2 thanh ĐÓI & NƯỚC có tiêu đề rõ ràng + icon vẽ nét (không dùng emoji lỗi font). */
+    private void setupSurvivalHud() {
+        if (rootPane == null) return;
+        if (survivalHudBox != null) {
+            if (!rootPane.getChildren().contains(survivalHudBox)) {
+                rootPane.getChildren().add(survivalHudBox);
+            }
+            survivalHudBox.toFront();
+            return;
+        }
+
+        final double barW = 200.0;
+        final double barH = 12.0;
+
+        // Tiêu đề khung sinh tồn + tên nông trại
+        survivalHeaderTitle = new Label(farmName.toUpperCase());
+        survivalHeaderTitle.setMaxWidth(barW);
+        survivalHeaderTitle.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #FFE49E;"
+        );
+        javafx.scene.shape.Rectangle divider = new javafx.scene.shape.Rectangle(barW, 1.5);
+        divider.setFill(Color.rgb(214, 158, 92, 0.55));
+
+        // ---- THANH 1: ĐÓI (THỨC ĂN) ----
+        // Icon đùi gà / thức ăn vẽ vector sắc nét (màu cam vàng ấm)
+        javafx.scene.shape.Circle foodMeat = new javafx.scene.shape.Circle(5.5, 6.0, 4.8);
+        foodMeat.setFill(Color.rgb(244, 152, 46));
+        foodMeat.setStroke(Color.rgb(66, 30, 12));
+        foodMeat.setStrokeWidth(1.2);
+        javafx.scene.shape.Rectangle foodBone = new javafx.scene.shape.Rectangle(8.5, 4.5, 4.5, 3.0);
+        foodBone.setArcWidth(2); foodBone.setArcHeight(2);
+        foodBone.setFill(Color.rgb(255, 244, 218));
+        foodBone.setStroke(Color.rgb(66, 30, 12));
+        foodBone.setStrokeWidth(0.9);
+        javafx.scene.Group foodIcon = new javafx.scene.Group(foodBone, foodMeat);
+
+        Label hungerTitle = new Label("THANH ĐÓI");
+        hungerTitle.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: #FFD166;"
+        );
+        javafx.scene.layout.Region hungerSpacer = new javafx.scene.layout.Region();
+        javafx.scene.layout.HBox.setHgrow(hungerSpacer, javafx.scene.layout.Priority.ALWAYS);
+        hungerValueLabel = new Label("100/100");
+        hungerValueLabel.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: #FFF6DC;"
+        );
+        javafx.scene.layout.HBox hungerRow = new javafx.scene.layout.HBox(6, foodIcon, hungerTitle, hungerSpacer, hungerValueLabel);
+        hungerRow.setAlignment(Pos.CENTER_LEFT);
+        hungerRow.setPrefWidth(barW);
+
+        javafx.scene.shape.Rectangle hungerBg = new javafx.scene.shape.Rectangle(barW, barH);
+        hungerBg.setArcWidth(5); hungerBg.setArcHeight(5);
+        hungerBg.setFill(Color.rgb(34, 20, 12, 0.92));
+        hungerBg.setStroke(Color.rgb(112, 66, 30));
+        hungerBg.setStrokeWidth(1.3);
+        hungerBarFill = new javafx.scene.shape.Rectangle(barW, barH);
+        hungerBarFill.setArcWidth(5); hungerBarFill.setArcHeight(5);
+        hungerBarFill.setFill(Color.rgb(245, 166, 35));
+        javafx.scene.layout.StackPane hungerTrack = new javafx.scene.layout.StackPane(hungerBg, hungerBarFill);
+        hungerTrack.setAlignment(Pos.CENTER_LEFT);
+        hungerTrack.setMaxWidth(barW);
+
+        // ---- THANH 2: NƯỚC (KHÁT) ----
+        // Icon giọt nước vẽ vector sắc nét (màu xanh dương tươi)
+        javafx.scene.shape.Polygon waterDrop = new javafx.scene.shape.Polygon(
+            6.0, 0.5,
+            10.8, 7.2,
+            9.6, 10.8,
+            6.0, 12.2,
+            2.4, 10.8,
+            1.2, 7.2
+        );
+        waterDrop.setFill(Color.rgb(58, 194, 255));
+        waterDrop.setStroke(Color.rgb(18, 66, 108));
+        waterDrop.setStrokeWidth(1.2);
+        javafx.scene.shape.Circle waterShine = new javafx.scene.shape.Circle(4.5, 7.2, 1.3);
+        waterShine.setFill(Color.rgb(228, 250, 255));
+        javafx.scene.Group waterIcon = new javafx.scene.Group(waterDrop, waterShine);
+
+        Label thirstTitle = new Label("THANH NƯỚC");
+        thirstTitle.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: #7CE2FF;"
+        );
+        javafx.scene.layout.Region thirstSpacer = new javafx.scene.layout.Region();
+        javafx.scene.layout.HBox.setHgrow(thirstSpacer, javafx.scene.layout.Priority.ALWAYS);
+        thirstValueLabel = new Label("100/100");
+        thirstValueLabel.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: #E6F8FF;"
+        );
+        javafx.scene.layout.HBox thirstRow = new javafx.scene.layout.HBox(6, waterIcon, thirstTitle, thirstSpacer, thirstValueLabel);
+        thirstRow.setAlignment(Pos.CENTER_LEFT);
+        thirstRow.setPrefWidth(barW);
+
+        javafx.scene.shape.Rectangle thirstBg = new javafx.scene.shape.Rectangle(barW, barH);
+        thirstBg.setArcWidth(5); thirstBg.setArcHeight(5);
+        thirstBg.setFill(Color.rgb(16, 26, 40, 0.92));
+        thirstBg.setStroke(Color.rgb(66, 114, 156));
+        thirstBg.setStrokeWidth(1.3);
+        thirstBarFill = new javafx.scene.shape.Rectangle(barW, barH);
+        thirstBarFill.setArcWidth(5); thirstBarFill.setArcHeight(5);
+        thirstBarFill.setFill(Color.rgb(52, 182, 255));
+        javafx.scene.layout.StackPane thirstTrack = new javafx.scene.layout.StackPane(thirstBg, thirstBarFill);
+        thirstTrack.setAlignment(Pos.CENTER_LEFT);
+        thirstTrack.setMaxWidth(barW);
+
+        survivalHudBox = new javafx.scene.layout.VBox(4, survivalHeaderTitle, divider, hungerRow, hungerTrack, thirstRow, thirstTrack);
+        survivalHudBox.setPadding(new javafx.geometry.Insets(7, 11, 9, 11));
+        survivalHudBox.setPrefWidth(226.0);
+        survivalHudBox.setMouseTransparent(true);
+        survivalHudBox.setManaged(false);
+        survivalHudBox.setLayoutX(16.0);
+        survivalHudBox.setLayoutY(12.0);
+        survivalHudBox.setStyle(
+            "-fx-background-color: linear-gradient(to bottom, rgba(114, 68, 34, 0.93), rgba(74, 42, 20, 0.95));" +
+            "-fx-border-color: #2E170A;" +
+            "-fx-border-width: 2.5px;" +
+            "-fx-background-radius: 10px;" +
+            "-fx-border-radius: 10px;" +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.48), 8, 0.2, 0, 2);"
+        );
+        rootPane.getChildren().add(survivalHudBox);
+        survivalHudBox.toFront();
+    }
+
+    /** Cập nhật 2 thanh ĐÓI & NƯỚC mượt mà, tự chuyển đỏ & nhấp nháy khi dưới 30%. */
+    private void updateSurvivalHud(double timeSec) {
+        if (player == null) return;
+        if (survivalHudBox == null) setupSurvivalHud();
+        if (hungerBarFill == null || thirstBarFill == null) return;
+
+        final double barW = 200.0;
+        double h = player.getHunger();
+        double t = player.getThirst();
+        int hInt = (int) Math.round(h);
+        int tInt = (int) Math.round(t);
+        boolean hLow = h < 30.0;
+        boolean tLow = t < 30.0;
+
+        if (hInt != lastRenderedHungerInt || hLow != lastHungerLow) {
+            lastRenderedHungerInt = hInt;
+            lastHungerLow = hLow;
+            hungerValueLabel.setText(h <= 0.0 ? "0/100 (KIỆT)" : (hInt + "/100"));
+            hungerValueLabel.setStyle(
+                "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+                "-fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: " + (hLow ? "#FFB3B3;" : "#FFF6DC;")
+            );
+            hungerBarFill.setFill(hLow ? Color.rgb(235, 58, 58) : Color.rgb(245, 166, 35));
+        }
+        hungerBarFill.setWidth(Math.max(0.0, barW * (h / 100.0)));
+        hungerBarFill.setOpacity(hLow ? (0.50 + 0.50 * Math.abs(Math.sin(timeSec * 6.5))) : 1.0);
+
+        if (tInt != lastRenderedThirstInt || tLow != lastThirstLow) {
+            lastRenderedThirstInt = tInt;
+            lastThirstLow = tLow;
+            thirstValueLabel.setText(t <= 0.0 ? "0/100 (KIỆT)" : (tInt + "/100"));
+            thirstValueLabel.setStyle(
+                "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+                "-fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: " + (tLow ? "#FFB3B3;" : "#E6F8FF;")
+            );
+            thirstBarFill.setFill(tLow ? Color.rgb(235, 58, 58) : Color.rgb(52, 182, 255));
+        }
+        thirstBarFill.setWidth(Math.max(0.0, barW * (t / 100.0)));
+        thirstBarFill.setOpacity(tLow ? (0.50 + 0.50 * Math.abs(Math.sin(timeSec * 6.5 + 1.0))) : 1.0);
+    }
+
+    /**
+     * Tiêu hao Đói & Khát khi lao động (cuốc đất, tưới nước, câu cá):
+     * - Đói tụt rất nhẹ (đặc biệt trong 4 tiếng đang no).
+     * - Khát tụt ít khi làm lác đác (1-4 thao tác), và chỉ tăng tốc rõ rệt khi làm việc nhiều liên tục.
+     */
+    private void applyLaborSurvivalCost() {
+        if (player == null) return;
+        recentLaborStreak++;
+        recentLaborDecaySec = 6.0; // Nghỉ 6 giây sẽ hết mệt, reset chuỗi lao động
+
+        double hungerCost = (hungerGraceTimerSec > 0.0) ? 0.3 : 0.55;
+        double thirstCost;
+        if (recentLaborStreak <= 4) {
+            thirstCost = 0.7;
+        } else if (recentLaborStreak <= 8) {
+            thirstCost = 1.6;
+        } else {
+            thirstCost = 2.6;
+        }
+        WeatherType wType = (gameManager != null && gameManager.getCurrentWeather() != null)
+                ? gameManager.getCurrentWeather().getType()
+                : WeatherType.SUNNY;
+        if (wType == WeatherType.DROUGHT) {
+            thirstCost += 0.35;
+        } else if (wType == WeatherType.RAINY) {
+            thirstCost *= 0.75;
+        }
+
+        player.addHunger(-hungerCost);
+        player.addThirst(-thirstCost);
+        updateSurvivalHud(animTimeSec);
+    }
+
+    /** Kiểm tra nhân vật có đang đứng sát bờ con sông (không ở trên thuyền) để uống nước hay không. */
+    private boolean isNearRiverBankForDrink() {
+        if (farmMap == null || isOnBoat) return false;
+        if (boatEntity != null && (boatEntity.isPlayerAboard() || boatEntity.isTransitioning())) return false;
+
+        double footX = playerX + 22.0;
+        double footY = playerY + 54.0;
+        int col = (int) (footX / Constant.CELL_SIZE);
+        int row = (int) (footY / Constant.CELL_SIZE);
+
+        for (int dr = -1; dr <= 1; dr++) {
+            for (int dc = -1; dc <= 1; dc++) {
+                Cell c = farmMap.getCell(row + dr, col + dc);
+                if (c != null && c.getTerrain() == TerrainType.WATER) {
+                    return true;
+                }
+            }
+        }
+        return (Math.abs(footY - worldRiverTopY) <= 58.0 || Math.abs(footY - worldRiverBotY) <= 58.0);
+    }
+
+    /** Uống nước trực tiếp tại bờ sông ([R] hoặc [E] khi không ở gần thuyền/nhà/lửa). */
+    private void tryDrinkRiverWater() {
+        if (player == null) return;
+        if (!isNearRiverBankForDrink()) {
+            notify("Hãy đi tới sát bờ sông rồi bấm [R] để uống nước!");
+            return;
+        }
+        player.addThirst(50.0);
+        recentLaborStreak = 0;
+        recentLaborDecaySec = 0.0;
+        updateSurvivalHud(animTimeSec);
+        if (particleSystem != null) {
+            particleSystem.spawnWaterSplash(playerX + 22.0, playerY + 34.0);
+        }
+        view.fx.SoundHook.playWaterSplash();
+        spawnFloatingText("+50 Khát! Mát quá!", Color.rgb(86, 214, 255));
+        notify("💧 +50 Khát! Mát quá! (Khát: " + (int) Math.round(player.getThirst()) + "/100)");
+    }
+
+    /** Ăn nhanh 1 món đã nấu sẵn trong Inventory khi đang đi ngoài đồng bằng phím [Q]. */
+    private void tryQuickEatFood() {
+        if (player == null) return;
+        model.game_item.CookedFoodItem chosen = null;
+        boolean needWater = player.getThirst() < 45.0;
+        for (java.util.Map.Entry<Item, Integer> e : player.getInventory().getItems().entrySet()) {
+            if (e.getValue() > 0 && e.getKey() instanceof model.game_item.CookedFoodItem) {
+                model.game_item.CookedFoodItem cand = (model.game_item.CookedFoodItem) e.getKey();
+                if (chosen == null) {
+                    chosen = cand;
+                } else if (needWater && cand.getThirstRestore() > chosen.getThirstRestore()) {
+                    chosen = cand;
+                }
+            }
+        }
+        if (chosen == null) {
+            spawnFloatingText("Hết đồ ăn! Hãy nấu tại đống lửa!", Color.rgb(255, 206, 102));
+            notify("Không có món ăn đã nấu trong kho! Hãy tới đống lửa trại để nấu.");
+            return;
+        }
+        if (player.getInventory().removeItem(chosen, 1)) {
+            if (particleSystem != null) {
+                particleSystem.spawnPickupPop(playerX + 22.0, playerY + 18.0);
+            }
+            applyCookedFoodBuff(chosen);
+        }
+    }
+
+    /** Hiển thị dòng chữ nổi bay nhẹ lên trên đầu nhân vật rồi mờ dần. */
+    private void spawnFloatingText(String text, Color color) {
+        if (entityPane == null) return;
+        Label lbl = new Label(text);
+        String hex = String.format("#%02X%02X%02X",
+                (int) Math.round(color.getRed() * 255),
+                (int) Math.round(color.getGreen() * 255),
+                (int) Math.round(color.getBlue() * 255));
+        lbl.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: " + hex + ";" +
+            "-fx-background-color: rgba(24, 14, 8, 0.82);" +
+            "-fx-padding: 3 8 3 8; -fx-background-radius: 6px;" +
+            "-fx-effect: dropshadow(one-pass-box, rgba(0,0,0,0.85), 2, 1.0, 0, 1);"
+        );
+        lbl.setMouseTransparent(true);
+        lbl.setManaged(false);
+        lbl.setUserData(9998.0);
+        lbl.autosize();
+        double estW = Math.max(120.0, text.length() * 8.0);
+        lbl.setLayoutX(playerX + 22.0 - estW * 0.5);
+        lbl.setLayoutY(playerY - 26.0);
+        entityPane.getChildren().add(lbl);
+
+        javafx.animation.TranslateTransition move = new javafx.animation.TranslateTransition(javafx.util.Duration.seconds(1.25), lbl);
+        move.setByY(-42.0);
+        javafx.animation.FadeTransition fade = new javafx.animation.FadeTransition(javafx.util.Duration.seconds(1.25), lbl);
+        fade.setFromValue(1.0);
+        fade.setToValue(0.0);
+        javafx.animation.ParallelTransition anim = new javafx.animation.ParallelTransition(move, fade);
+        anim.setOnFinished(e -> entityPane.getChildren().remove(lbl));
+        anim.play();
+    }
+
+    /** Xóa toàn bộ buff đồ ăn khi qua ngày mới. */
+    private void clearFoodBuffs() {
+        foodRareFishBuff = false;
+        if (fishShadows != null) fishShadows.setRareFishBuff(false);
+        updateFoodBuffHud();
+    }
+
+    private String getActiveBuffSummary() {
+        return foodRareFishBuff ? "Tăng tỉ lệ cá hiếm" : "";
+    }
+
+    /** Hiển thị icon/huy hiệu Buff nhỏ trên HUD khi có hiệu lực trong ngày. */
+    private void updateFoodBuffHud() {
+        if (rootPane == null) return;
+        String summary = getActiveBuffSummary();
+        if (summary.isEmpty()) {
+            if (foodBuffHudPill != null) foodBuffHudPill.setVisible(false);
+            return;
+        }
+        if (foodBuffHudPill == null) {
+            foodBuffHudPill = new Label();
+            foodBuffHudPill.setMouseTransparent(true);
+            foodBuffHudPill.setManaged(false);
+            foodBuffHudPill.setStyle(
+                "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+                "-fx-font-size: 11.5px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-text-fill: #FFF7D6;" +
+                "-fx-background-color: rgba(54, 26, 10, 0.90);" +
+                "-fx-border-color: #FFAD3B;" +
+                "-fx-border-width: 2px;" +
+                "-fx-padding: 4 11 4 11;" +
+                "-fx-background-radius: 9px;" +
+                "-fx-border-radius: 9px;"
+            );
+            rootPane.getChildren().add(foodBuffHudPill);
+        }
+        foodBuffHudPill.setText("BUFF: " + summary);
+        foodBuffHudPill.setLayoutX(16.0);
+        foodBuffHudPill.setLayoutY(130.0);
+        foodBuffHudPill.setVisible(true);
+        foodBuffHudPill.toFront();
+    }
+
+    /** Mở / đóng Sổ Tay & Hướng Dẫn Câu Cá (Nút SỔ CÁ hoặc phím G). */
+    @FXML
+    private void toggleFishingGuide() {
+        if (activeFishingGuide != null) {
+            closeFishingGuide();
+            return;
+        }
+        if (router == null || router.hasOverlay()) return;
+
+        activeKeys.clear(); // Tạm dừng nhận phím di chuyển khi mở sổ
+        WeatherType weather = (gameManager != null && gameManager.getCurrentWeather() != null)
+                ? gameManager.getCurrentWeather().getType()
+                : WeatherType.SUNNY;
+        int curHour = getCurrentGameHour();
+        String clockStr = clockText(Math.min(1.0, Math.max(0.0, elapsedTimeInDay / 135000.0)));
+
+        activeFishingGuide = new view.ui.FishingGuideOverlay(
+                weather, curHour, clockStr, fishCaughtCounts, fishMaxCm, this::closeFishingGuide);
+        router.showOverlay(activeFishingGuide);
+        Platform.runLater(activeFishingGuide::requestFocus);
+    }
+
+    /**
+     * Hiển thị thẻ Khoe Cá phía trên màn hình (tự mờ ẩn sau 2.5 giây) với Tên cá, Độ hiếm, cm, Vương Miện & Kỷ lục mới.
+     */
+    private void showFishCatchCard(model.game_item.FishSpecies species, double sizeCm,
+                                   boolean isCrown, boolean isNewRecord, int rewardMoney) {
+        if (rootPane == null) return;
+        if (fishCatchCard == null) {
+            fishCatchCard = new javafx.scene.layout.VBox(4);
+            fishCatchCard.setAlignment(Pos.CENTER);
+            fishCatchCard.setMouseTransparent(true);
+            fishCatchCard.setManaged(false);
+            fishCatchCard.setPrefWidth(420);
+            fishCatchCard.setPadding(new javafx.geometry.Insets(10, 18, 10, 18));
+            rootPane.getChildren().add(fishCatchCard);
+        }
+
+        // Màu sắc chuẩn theo độ hiếm: Trắng (Thường) / Xanh dương (Hiếm) / Tím (Cực hiếm) / Vàng kim (Siêu hiếm)
+        String rarity = species.getRarityLabel();
+        String rarityHex;
+        if ("Siêu hiếm".equals(rarity))     rarityHex = "#FFD84A";
+        else if ("Cực hiếm".equals(rarity)) rarityHex = "#C87BFF";
+        else if ("Hiếm".equals(rarity))     rarityHex = "#4EB6FF";
+        else                                rarityHex = "#FFFFFF";
+
+        String borderHex = isCrown ? "#FFD84A" : rarityHex;
+        fishCatchCard.setStyle(
+            "-fx-background-color: rgba(34, 20, 12, 0.92);" +
+            "-fx-border-color: " + borderHex + ";" +
+            "-fx-border-width: 3px;" +
+            "-fx-background-radius: 10px;" +
+            "-fx-border-radius: 10px;" +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 14, 0.25, 0, 4);"
+        );
+
+        String crownTag = isCrown ? "  👑 VƯƠNG MIỆN" : "";
+        Label nameLbl = new Label(species.getDisplayName().toUpperCase() + "  [" + rarity + "]" + crownTag);
+        nameLbl.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 14px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-text-fill: " + rarityHex + ";"
+        );
+
+        String recTag = isNewRecord ? "   ★ KỶ LỤC MỚI!" : "";
+        Label sizeLbl = new Label(String.format("Kích thước: %.1f cm%s", sizeCm, recTag));
+        sizeLbl.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 13px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-text-fill: " + (isNewRecord ? "#FFE66D" : "#FFF3D4") + ";"
+        );
+
+        String rewardTxt = isCrown
+                ? ("+" + rewardMoney + "$ (x1.5 Vương Miện!)  •  +1 " + species.getDisplayName() + " vào kho")
+                : ("+" + rewardMoney + "$  •  +1 " + species.getDisplayName() + " vào kho");
+        Label rewardLbl = new Label(rewardTxt);
+        rewardLbl.setStyle(
+            "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+            "-fx-font-size: 12px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-text-fill: #8CFF98;"
+        );
+
+        fishCatchCard.getChildren().setAll(nameLbl, sizeLbl, rewardLbl);
+        double w = rootPane.getWidth() > 0 ? rootPane.getWidth() : 1280.0;
+        fishCatchCard.setLayoutX(Math.max(16, (w - 420.0) * 0.5));
+        fishCatchCard.setLayoutY(22.0);
+        fishCatchCard.setVisible(true);
+        fishCatchCard.setOpacity(1.0);
+        fishCatchCard.toFront();
+
+        if (fishCatchAnim != null) {
+            fishCatchAnim.stop();
+        }
+        javafx.animation.PauseTransition hold = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2.1));
+        javafx.animation.FadeTransition fade = new javafx.animation.FadeTransition(javafx.util.Duration.seconds(0.45), fishCatchCard);
+        fade.setFromValue(1.0);
+        fade.setToValue(0.0);
+        fade.setOnFinished(ev -> fishCatchCard.setVisible(false));
+        fishCatchAnim = new javafx.animation.SequentialTransition(hold, fade);
+        fishCatchAnim.play();
+    }
+
+    private void closeFishingGuide() {
+        if (activeFishingGuide != null) {
+            activeFishingGuide = null;
+            if (router != null && router.hasOverlay()) {
+                router.closeOverlay();
+            }
+            activeKeys.clear();
+            Platform.runLater(rootPane::requestFocus);
+        }
+    }
+
+    private int getCurrentGameHour() {
+        double progress = Math.min(1.0, Math.max(0.0, elapsedTimeInDay / 135000.0));
+        int totalMins = (int) (progress * 16 * 60);
+        return (6 + totalMins / 60) % 24;
+    }
+
+    /** Thanh gợi ý nhỏ phía dưới màn hình khi người chơi đứng gần hoặc bước lên thuyền. */
+    private void updateBoatHintBanner(boolean show) {
+        if (show == boatHintVisible) return;
+        boatHintVisible = show;
+        if (rootPane == null) return;
+        if (boatHintBanner == null) {
+            boatHintBanner = new Label("[E] Lên/Xuống thuyền  |  [A/D] Chèo  |  [Space] Câu cá  |  [G] Xem Sổ Cá");
+            boatHintBanner.setStyle(
+                "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+                "-fx-font-size: 12.5px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-text-fill: #FFF4D2;" +
+                "-fx-background-color: rgba(42, 24, 12, 0.88);" +
+                "-fx-border-color: #DDA95F;" +
+                "-fx-border-width: 2px;" +
+                "-fx-padding: 5 14 5 14;" +
+                "-fx-background-radius: 8px;" +
+                "-fx-border-radius: 8px;"
+            );
+            boatHintBanner.setMouseTransparent(true);
+            boatHintBanner.setManaged(false);
+            boatHintBanner.setPrefWidth(560);
+            boatHintBanner.setAlignment(Pos.CENTER);
+            rootPane.getChildren().add(boatHintBanner);
+        }
+        boatHintBanner.setVisible(show);
+        if (show) {
+            double w = rootPane.getWidth() > 0 ? rootPane.getWidth() : 1280.0;
+            double h = rootPane.getHeight() > 0 ? rootPane.getHeight() : 720.0;
+            boatHintBanner.setLayoutX(Math.max(16, (w - 560.0) * 0.5));
+            boatHintBanner.setLayoutY(h - 144.0);
+            boatHintBanner.toFront();
         }
     }
 
@@ -1818,13 +4127,32 @@ public class InGameController {
         }
     }
 
-    // ======================== rendering (Giữ nguyên) ========================
+    // ======================== rendering (Tối ưu 60 FPS, không khựng khi chuyển ngày/thời tiết) ========================
     private void refreshAll() {
         if (tiles != null) {
             for (Tile[] row : tiles) {
                 for (Tile t : row) t.style();
             }
         }
+        refreshHudOnly();
+    }
+
+    /** Chỉ cập nhật các ô đất canh tác / có cây / có sâu (nhanh gấp 40x so với duyệt toàn bộ 2080 ô). */
+    private void refreshDynamicTiles() {
+        if (tiles != null) {
+            for (Tile[] row : tiles) {
+                for (Tile t : row) {
+                    if (t.needsDynamicRefresh()) {
+                        t.style();
+                    }
+                }
+            }
+        }
+        refreshHudOnly();
+    }
+
+    /** Chỉ cập nhật HUD, đồng hồ và hiệu ứng thời tiết mượt (0ms khựng, không duyệt lại ô map). */
+    private void refreshHudOnly() {
         lastDisplayedMinute = -1;
         updateTimeDisplay();
         syncWeatherToggles();
@@ -1836,27 +4164,68 @@ public class InGameController {
         WeatherType type = gameManager.getCurrentWeather() != null
                 ? gameManager.getCurrentWeather().getType()
                 : WeatherType.SUNNY;
-        final String cls;
+        // Chuyển sắc thái thời tiết mượt mà qua weatherTintRect (tránh đổi CSS trên rootPane làm lag toàn bộ scene)
         switch (type) {
-            case RAINY:   cls = "weather-rainy";   break;
-            case DROUGHT: cls = "weather-drought"; break;
+            case RAINY:
+                targetWeatherTint = Color.rgb(34, 60, 96, 0.14);
+                break;
+            case DROUGHT:
+                targetWeatherTint = Color.rgb(228, 142, 42, 0.11);
+                break;
             case SUNNY:
-            default:      cls = "weather-sunny";   break;
+            default:
+                targetWeatherTint = Color.rgb(255, 245, 220, 0.0);
+                break;
         }
-        setWeatherClass(rootPane, cls);
-        setWeatherClass(weatherOverlay, cls);
     }
 
-    private static void setWeatherClass(Region node, String cls) {
-        if (node == null) return;
-        node.getStyleClass().removeAll("weather-sunny", "weather-rainy", "weather-drought");
-        if (!node.getStyleClass().contains(cls)) {
-            node.getStyleClass().add(cls);
+    private boolean lastSoilPanelVisible = false;
+    private Cell lastAutoSoilCell = null;
+
+    private boolean isPlayerInFarmZone() {
+        if (farmZone == null || isOnBoat) return false;
+        if (boatEntity != null && boatEntity.isLockedToBoat()) return false;
+        return farmZone.contains(playerX + 22.0, playerY + 52.0);
+    }
+
+    /** Hiện bảng thông số đất khi vào Farming Zone và tự ẩn hoàn toàn khi rời khỏi khu vực đó. */
+    private void updateSoilStatusPanelVisibility(boolean lockedOnBoat, Cell facingCell) {
+        boolean inFarm = !lockedOnBoat && isPlayerInFarmZone();
+        if (soilStatusPanel != null && (inFarm != lastSoilPanelVisible || soilStatusPanel.isVisible() != inFarm)) {
+            lastSoilPanelVisible = inFarm;
+            soilStatusPanel.setVisible(inFarm);
+        }
+        if (inFarm) {
+            Cell inspectCell = isCellInFarmZone(facingCell) ? facingCell : null;
+            if (inspectCell == null && farmMap != null) {
+                int col = (int) ((playerX + 22.0) / Constant.CELL_SIZE);
+                int row = (int) ((playerY + 52.0) / Constant.CELL_SIZE);
+                Cell underFoot = farmMap.getCell(row, col);
+                if (isCellInFarmZone(underFoot)) inspectCell = underFoot;
+            }
+            if (inspectCell != null && inspectCell != lastAutoSoilCell) {
+                lastAutoSoilCell = inspectCell;
+                updateHover(inspectCell);
+            }
+        } else {
+            lastAutoSoilCell = null;
         }
     }
 
     private void updateHover(Cell cell) {
+        if (cell == null) return;
+        if (!isPlayerInFarmZone() || !isCellInFarmZone(cell)) {
+            if (soilStatusPanel != null && !isPlayerInFarmZone()) {
+                soilStatusPanel.setVisible(false);
+                lastSoilPanelVisible = false;
+            }
+            return;
+        }
         hovered = cell;
+        if (soilStatusPanel != null && !soilStatusPanel.isVisible()) {
+            soilStatusPanel.setVisible(true);
+            lastSoilPanelVisible = true;
+        }
         cellLabel.setText("CELL : " + cell.getY() + "," + cell.getX());
         waterLabel.setText("WATER : " + cell.getMoistureLevel());
         nutrientLabel.setText("NUTR : " + cell.getNutrientLevel());
@@ -1949,28 +4318,104 @@ public class InGameController {
         seedTool.setGraphic(Assets.imageView(sprite, 48));
     }
 
-    // ======================== cell tile (Giữ nguyên) ========================
+    // Border tái sử dụng cho Tile (tránh cấp phát 2080 đối tượng Border mới mỗi lần refresh)
+    private static final Border TILE_BORDER_NONE = Border.EMPTY;
+    private static final Border TILE_BORDER_HARVEST = new Border(
+            new BorderStroke(Color.web("#F6D46F"), BorderStrokeStyle.SOLID, TILE_RADII, new BorderWidths(3)));
+    private static final Border TILE_BORDER_DEAD = new Border(
+            new BorderStroke(Color.web("#B23A2A"), BorderStrokeStyle.SOLID, TILE_RADII, new BorderWidths(2.5)));
+
+    // ======================== cell tile (Tối ưu cache, 0 cấp phát thừa) ========================
 private final class Tile {
         final Cell cell;
         final StackPane pane = new StackPane();
-        final ImageView backgroundView = new ImageView(); // THÊM DÒNG NÀY: Khai báo lớp ảnh nền
+        final ImageView backgroundView = new ImageView();
         final ImageView pestMark = Assets.imageView(Assets.BEETLE_ICON, 20);
         final javafx.scene.shape.Rectangle dirtOverlay = new javafx.scene.shape.Rectangle(Constant.CELL_SIZE + 1.5, Constant.CELL_SIZE + 1.5, Color.rgb(0, 0, 0, 0.2));
         final ImageView cropView = new ImageView();
-        final ProgressBar progressBar = new ProgressBar();
+        final ImageView waterNeedIcon = new ImageView(Assets.WATER_NEED_ICON != null ? Assets.WATER_NEED_ICON : Assets.WATER_ICON);
+        // Thanh lực báo quá trình lớn lên & chín (34x5 px, nền tối viền đen mỏng + chấm sao vàng khi chín 100%)
+        final javafx.scene.layout.HBox growthBarGroup = new javafx.scene.layout.HBox(2);
+        final javafx.scene.shape.Rectangle growthBarFill = new javafx.scene.shape.Rectangle(0, 3);
+        final javafx.scene.shape.Polygon ripeStar = new javafx.scene.shape.Polygon(
+            0, -4.2, 1.3, -1.3, 4.2, 0, 1.3, 1.3,
+            0, 4.2, -1.3, 1.3, -4.2, 0, -1.3, -1.3
+        );
+        final double bobPhase;
+
+        // Cache trạng thái vẽ để bỏ qua các ô không thay đổi
+        private int lastGid = Integer.MIN_VALUE;
+        private boolean lastTilled = false;
+        private boolean lastWet = false;
+        private int lastMoistureBucket = -1;
+        private int lastBorderKind = -1; // 0=none, 1=harvest, 2=dead
+        private Image lastCropImg = null;
+        private boolean lastWaterNeedVisible = false;
+        private boolean lastBarVisible = false;
+        private boolean lastBarRipe = false;
+        private boolean lastBarDry = false;
+        private double lastBarWidth = -1.0;
+        private boolean lastPestVisible = false;
+        private boolean hadDynamicState = false;
+
+        boolean needsDynamicRefresh() {
+            return hadDynamicState
+                    || cell.getTerrain() == TerrainType.DIRT
+                    || cell.getCellState() == CellState.TILLED
+                    || cell.getCrop() != null
+                    || cell.getPest() != null;
+        }
 
         Tile(final Cell cell) {
             this.cell = cell;
+            this.bobPhase = (cell.getX() * 0.7 + cell.getY() * 1.1);
             
             // Cài đặt kích thước cho ảnh nền lấp đầy ô đất, cộng thêm 1 pixel để đè lên viền/rãnh gạch (grid lines)
             backgroundView.setFitWidth(Constant.CELL_SIZE + 1.5);
             backgroundView.setFitHeight(Constant.CELL_SIZE + 1.5);
             backgroundView.setSmooth(false); // Fix: Tắt chế độ làm mờ để pixel art luôn sắc nét
 
+            // Ảnh cây 4 giai đoạn sắc nét, căn gốc nằm gọn trên ô đất
             cropView.setFitWidth(54);
             cropView.setFitHeight(54);
-            cropView.setSmooth(false); // Fix: Tắt chế độ làm mờ để pixel art sắc nét
-            // ... (các cài đặt cropView, progressBar giữ nguyên)
+            cropView.setPreserveRatio(true);
+            cropView.setSmooth(false);
+            StackPane.setAlignment(cropView, Pos.BOTTOM_CENTER);
+            cropView.setTranslateY(-5.0);
+
+            waterNeedIcon.setFitWidth(22);
+            waterNeedIcon.setFitHeight(22);
+            waterNeedIcon.setPreserveRatio(true);
+            waterNeedIcon.setSmooth(false);
+            waterNeedIcon.setMouseTransparent(true);
+            waterNeedIcon.setVisible(false);
+            StackPane.setAlignment(waterNeedIcon, Pos.TOP_CENTER);
+
+            // Dựng thanh lực nhỏ 34x5 px (nền tối viền đen mỏng + thanh màu + chấm sao vàng khi chín)
+            javafx.scene.shape.Rectangle barTrack = new javafx.scene.shape.Rectangle(34, 5);
+            barTrack.setFill(Color.rgb(22, 16, 12, 0.90));
+            barTrack.setStroke(Color.rgb(10, 8, 6));
+            barTrack.setStrokeWidth(1.0);
+            growthBarFill.setFill(Color.web("#4CAF50"));
+            StackPane barStack = new StackPane(barTrack, growthBarFill);
+            barStack.setAlignment(Pos.CENTER_LEFT);
+            barStack.setMinSize(34, 5);
+            barStack.setPrefSize(34, 5);
+            barStack.setMaxSize(34, 5);
+            StackPane.setMargin(growthBarFill, new javafx.geometry.Insets(0, 0, 0, 1));
+
+            ripeStar.setFill(Color.web("#FFD700"));
+            ripeStar.setStroke(Color.rgb(112, 68, 8));
+            ripeStar.setStrokeWidth(0.8);
+            ripeStar.setVisible(false);
+            ripeStar.setManaged(false);
+
+            growthBarGroup.setAlignment(Pos.CENTER);
+            growthBarGroup.setMouseTransparent(true);
+            growthBarGroup.setVisible(false);
+            growthBarGroup.getChildren().addAll(barStack, ripeStar);
+            StackPane.setAlignment(growthBarGroup, Pos.BOTTOM_CENTER);
+            growthBarGroup.setTranslateY(-2.0);
 
             pane.setMinSize(Constant.CELL_SIZE, Constant.CELL_SIZE);
             pane.setPrefSize(Constant.CELL_SIZE, Constant.CELL_SIZE);
@@ -1978,7 +4423,8 @@ private final class Tile {
             
             // QUAN TRỌNG: Thêm backgroundView vào đầu tiên để nó nằm dưới cùng (làm nền)
             dirtOverlay.setVisible(false);
-            pane.getChildren().addAll(backgroundView, dirtOverlay, cropView, progressBar, pestMark);
+            pestMark.setVisible(false);
+            pane.getChildren().addAll(backgroundView, dirtOverlay, cropView, growthBarGroup, pestMark, waterNeedIcon);
 
             pane.setOnMouseClicked(e -> onCellClick(cell));
             pane.setOnMouseEntered(e -> updateHover(cell));
@@ -1988,80 +4434,124 @@ private final class Tile {
 // ...
 
 void style() {
-            // 1. Dán ảnh đồ họa Pixel từ TMX Map thay vì dùng mã màu Hex
-            backgroundView.setEffect(null);
-            pane.setStyle("");
-
             int gid = 0;
             if (tmxMap != null && !tmxMap.layers.isEmpty()) {
                 gid = tmxMap.layers.get(0).data[cell.getY()][cell.getX()];
             }
-            
-            // Nếu ô đất đã được xới hoặc được định nghĩa là Đất Trồng, luôn luôn hiển thị là Đất
             if (cell.getTerrain() == TerrainType.DIRT) {
-                gid = 3; 
+                gid = 3;
             }
 
-            if (gid > 0 && tmxMap != null) {
-                javafx.scene.image.Image img = tmxMap.getTileImage(gid);
-                if (img != null) {
-                    backgroundView.setImage(img);
+            // 3 trạng thái đất hoàn toàn tách biệt (CHỈ áp dụng trên các luống đất DIRT, lối đi cỏ luôn giữ màu cỏ xanh):
+            // 1) Chưa cuốc (UNTILLED): đất phẳng màu vàng cát sáng (UNPLOWED_BED_TILE) -> KHÔNG trồng được
+            // 2) Đã cuốc - Khô (TILLED, moisture < 55): đất nâu ấm có rãnh cày ngang (TILLED_DRY_TILE) -> trồng được ngay
+            // 3) Đã cuốc - Ướt (TILLED, moisture >= 55): đất nâu sẫm ẩm ướt tối hơn ~30% (TILLED_WET_TILE)
+            boolean isDirtPlot = (cell.getTerrain() == TerrainType.DIRT);
+            boolean tilled = isDirtPlot && (cell.getCellState() == CellState.TILLED);
+            boolean wet = tilled && (cell.getMoistureLevel() >= 55);
+            int visualKey = tilled ? (wet ? -3 : -2) : gid;
+            if (visualKey != lastGid || tilled != lastTilled || wet != lastWet) {
+                lastGid = visualKey;
+                lastTilled = tilled;
+                lastWet = wet;
+                javafx.scene.image.Image img;
+                if (tilled) {
+                    img = wet ? Assets.TILLED_WET_TILE : Assets.TILLED_DRY_TILE;
+                    backgroundView.setScaleX(0.96);
+                    backgroundView.setScaleY(0.96);
+                } else if (gid == 3 && Assets.UNPLOWED_BED_TILE != null) {
+                    img = Assets.UNPLOWED_BED_TILE;
+                    backgroundView.setScaleX(1.0);
+                    backgroundView.setScaleY(1.0);
                 } else {
-                    backgroundView.setImage(null);
+                    img = (gid > 0 && tmxMap != null) ? tmxMap.getTileImage(gid) : null;
+                    backgroundView.setScaleX(1.0);
+                    backgroundView.setScaleY(1.0);
                 }
-            } else {
-                backgroundView.setImage(null);
-            }
-
-            // Xử lý khi ô đất bị xới (TILLED)
-            if (cell.getCellState() == CellState.TILLED) {
-                // Đất đã cuốc: Trông đậm hơn (Bật lớp phủ đen thay vì dùng ColorAdjust gây lag fps)
-                double darkness = 0.2 + (cell.getMoistureLevel() / 200.0); // Tối thiểu giảm 20% độ sáng
-                dirtOverlay.setFill(Color.rgb(0, 0, 0, Math.min(1.0, darkness)));
-                dirtOverlay.setVisible(true);
-                
-                // Thu nhỏ tile 5% để tạo khe hở (cảm giác đất bị xới nứt nẻ)
-                backgroundView.setScaleX(0.95);
-                backgroundView.setScaleY(0.95);
-                dirtOverlay.setScaleX(0.95);
-                dirtOverlay.setScaleY(0.95);
-            } else {
+                backgroundView.setImage(img);
                 dirtOverlay.setVisible(false);
-                backgroundView.setScaleX(1.0);
-                backgroundView.setScaleY(1.0);
             }
 
-            // 2. Viền chọn ô đất (Highlight)
-            String border = "transparent";
-            double bw = 0;
+            // Viền chọn ô đất — dùng static Border, chỉ đổi khi khác loại viền
             Crop crop = cell.getCrop();
-            
+            int borderKind = 0;
             if (crop != null && crop.getCurrentState() == GrowthState.HARVEST) {
-                border = "#F6D46F"; bw = 3;
+                borderKind = 1;
             } else if (crop != null && (crop.getCurrentState() == GrowthState.DEAD
                     || crop.getCurrentState() == GrowthState.ROTTEN)) {
-                border = "#B23A2A"; bw = 2.5;
+                borderKind = 2;
+            }
+            if (borderKind != lastBorderKind) {
+                lastBorderKind = borderKind;
+                pane.setBorder(borderKind == 1 ? TILE_BORDER_HARVEST : (borderKind == 2 ? TILE_BORDER_DEAD : TILE_BORDER_NONE));
             }
 
-            pane.setBorder(new Border(
-                    new BorderStroke(Color.web(border), BorderStrokeStyle.SOLID,
-                            TILE_RADII, new BorderWidths(bw))));
-
-            // 3. Hiển thị cây trồng
-            if (crop == null) {
-                cropView.setImage(null);
-                progressBar.setVisible(false);
-            } else {
-                cropView.setImage(Assets.getCropSprite(crop));
-                progressBar.setVisible(
-                        crop.getCurrentState() != GrowthState.HARVEST
-                                && crop.getCurrentState() != GrowthState.DEAD
-                                && crop.getCurrentState() != GrowthState.ROTTEN
-                );
-                progressBar.setProgress(crop.getCurrentGrowthProgress() / 100.0);
+            // Hiển thị cây trồng 4 giai đoạn & thanh lực báo lớn/chín (34x5 px)
+            Image cropImg = (crop == null) ? null : Assets.getCropSprite(crop);
+            if (cropImg != lastCropImg) {
+                lastCropImg = cropImg;
+                cropView.setImage(cropImg);
             }
-            
-            pestMark.setVisible(cell.getPest() != null);
+            boolean isAliveCrop = (crop != null
+                    && crop.getCurrentState() != GrowthState.DEAD
+                    && crop.getCurrentState() != GrowthState.ROTTEN);
+            boolean isRipe = isAliveCrop && (crop.getCurrentState() == GrowthState.HARVEST || crop.getCurrentGrowthProgress() >= 100);
+            boolean isGrowing = isAliveCrop && !isRipe;
+            boolean isDryCrop = isGrowing && cell.getMoistureLevel() < 55;
+
+            if (isAliveCrop != lastBarVisible) {
+                lastBarVisible = isAliveCrop;
+                growthBarGroup.setVisible(isAliveCrop);
+            }
+            if (isAliveCrop) {
+                double pct = isRipe ? 1.0 : Math.max(0.0, Math.min(0.99, crop.getCurrentGrowthProgress() / 100.0));
+                double targetW = isRipe ? 32.0 : Math.max(2.0, 32.0 * pct);
+                if (Math.abs(targetW - lastBarWidth) > 0.25) {
+                    lastBarWidth = targetW;
+                    growthBarFill.setWidth(targetW);
+                }
+                if (isRipe != lastBarRipe || isDryCrop != lastBarDry) {
+                    lastBarRipe = isRipe;
+                    lastBarDry = isDryCrop;
+                    if (isRipe) {
+                        growthBarFill.setFill(Color.web("#FFD700"));
+                        ripeStar.setVisible(true);
+                        ripeStar.setManaged(true);
+                        ripeCropTiles.add(this);
+                    } else {
+                        growthBarFill.setFill(isDryCrop ? Color.web("#FFA726") : Color.web("#4CAF50"));
+                        growthBarFill.setOpacity(1.0);
+                        ripeStar.setVisible(false);
+                        ripeStar.setManaged(false);
+                        ripeCropTiles.remove(this);
+                    }
+                }
+            } else if (lastBarRipe) {
+                lastBarRipe = false;
+                ripeStar.setVisible(false);
+                ripeStar.setManaged(false);
+                ripeCropTiles.remove(this);
+            }
+
+            // Icon bình tưới màu xanh dương nổi trên ô đã gieo hạt/trồng cây đang thiếu nước (< 55% độ ẩm)
+            boolean needsWater = isDryCrop;
+            if (needsWater != lastWaterNeedVisible) {
+                lastWaterNeedVisible = needsWater;
+                waterNeedIcon.setVisible(needsWater);
+                if (needsWater) {
+                    waterNeedTiles.add(this);
+                } else {
+                    waterNeedTiles.remove(this);
+                }
+            }
+
+            boolean hasPest = (cell.getPest() != null);
+            if (hasPest != lastPestVisible) {
+                lastPestVisible = hasPest;
+                pestMark.setVisible(hasPest);
+            }
+
+            hadDynamicState = (tilled || crop != null || hasPest);
         }
 
     private static String lerpHex(String a, String b, double t) {
@@ -2086,6 +4576,46 @@ void style() {
     private java.util.List<Animal> animals = new java.util.ArrayList<>();
     /** Khu vực chăn thả (AnimalZone trong TMX); null nếu map không định nghĩa. */
     private javafx.geometry.Rectangle2D animalZone;
+    /** Khu vực canh tác (FarmZone trong TMX); giới hạn phạm vi hoạt động của Cuốc. */
+    private javafx.geometry.Rectangle2D farmZone;
+
+    private boolean isCellInFarmZone(Cell cell) {
+        if (cell == null) return false;
+        if (farmZone == null) return true;
+        double cx = cell.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
+        double cy = cell.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
+        return farmZone.contains(cx, cy);
+    }
+
+    private boolean tryClearWheatAtCell(Cell cell) {
+        if (cell == null || !isCellInFarmZone(cell)) return false;
+        double fcx = cell.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
+        double fcy = cell.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
+        ImageView wheatToClear = null;
+        for (ImageView objView : sceneryObjects) {
+            String id = objView.getId();
+            if (id != null && id.toLowerCase().contains("wheat")) {
+                double wx = objView.getLayoutX() + objView.getFitWidth() / 2.0;
+                double wy = objView.getLayoutY() + objView.getFitHeight() / 2.0;
+                if (Math.abs(wx - fcx) < 22 && Math.abs(wy - fcy) < 22) {
+                    wheatToClear = objView;
+                    break;
+                }
+            }
+        }
+        if (wheatToClear != null) {
+            clearedSceneryKeys.add(sceneryKey(wheatToClear));
+            sceneryObjects.remove(wheatToClear);
+            if (entityPane != null) {
+                entityPane.getChildren().remove(wheatToClear);
+            } else {
+                mapPane.getChildren().remove(wheatToClear);
+            }
+            notify("Đã đào sạch bụi lúa! Giờ có thể cuốc đất trồng cây.");
+            return true;
+        }
+        return false;
+    }
 
     // ======================== MÁNG ĂN TỰ ĐỘNG ========================
     private static final int TROUGH_CAPACITY = 10;
@@ -2378,6 +4908,7 @@ void style() {
         int type;
         int ageDays = 0;
         boolean isFed = false;
+        boolean producedToday = false;
         boolean facingLeft = false;
         javafx.scene.text.Text heartEmoji;
         javafx.scene.control.Label saleBadge;

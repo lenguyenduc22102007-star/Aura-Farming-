@@ -83,6 +83,13 @@ public final class StorageViewController {
                 if (cropsPane != null) {
                     cropsPane.getChildren().add(makeCropCard((HarvestedCropItem) item, qty));
                 }
+            } else if (item instanceof model.game_item.AnimalProductItem
+                    || item instanceof model.game_item.FishItem
+                    || item instanceof model.game_item.CookedFoodItem) {
+                hasCrops = true;
+                if (cropsPane != null) {
+                    cropsPane.getChildren().add(makeSellableCard(item, qty));
+                }
             } else if (item instanceof AnimalFeedItem || item.getName().equalsIgnoreCase("Animal Feed")) {
                 hasFeed = true;
                 if (feedPane != null) {
@@ -170,6 +177,58 @@ public final class StorageViewController {
         });
 
         HBox actions = new HBox(8, sell1, sellAll, feedBtn);
+        actions.setAlignment(Pos.CENTER_LEFT);
+
+        VBox card = new VBox(8, icon, name, stats, price, actions);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.getStyleClass().add("shop-card");
+        card.setPrefWidth(377);
+        return card;
+    }
+
+    private VBox makeSellableCard(Item item, int quantity) {
+        ImageView icon = Assets.imageView(Assets.getShopIcon(item), 22);
+
+        Label name = new Label(item.getName().toUpperCase());
+        name.getStyleClass().add("shop-name");
+
+        Label stats = new Label("OWNED: " + quantity + "  |  " + item.getStats());
+        stats.getStyleClass().add("shop-stats");
+
+        Label price = new Label("$" + (item.getPrice() * quantity) + "  ($" + item.getPrice() + "/ea)");
+        price.getStyleClass().add("shop-name");
+
+        Button sell1 = new Button("SELL 1");
+        sell1.getStyleClass().add("btn-gold");
+        sell1.setPrefWidth(90);
+        sell1.setOnAction(e -> {
+            if (player.getInventory().getItemCount(item) >= 1) {
+                player.getInventory().removeItem(item, 1);
+                player.addMoney(item.getPrice());
+                if (statusLabel != null) {
+                    statusLabel.setText("Sold 1 " + item.getName() + " for $" + item.getPrice() + "!");
+                }
+                build();
+            }
+        });
+
+        Button sellAll = new Button("SELL ALL");
+        sellAll.getStyleClass().add("btn-gold");
+        sellAll.setPrefWidth(100);
+        sellAll.setOnAction(e -> {
+            int currentQty = player.getInventory().getItemCount(item);
+            if (currentQty > 0) {
+                int earned = currentQty * item.getPrice();
+                player.getInventory().removeItem(item, currentQty);
+                player.addMoney(earned);
+                if (statusLabel != null) {
+                    statusLabel.setText("Sold " + currentQty + " " + item.getName() + " for $" + earned + "!");
+                }
+                build();
+            }
+        });
+
+        HBox actions = new HBox(8, sell1, sellAll);
         actions.setAlignment(Pos.CENTER_LEFT);
 
         VBox card = new VBox(8, icon, name, stats, price, actions);

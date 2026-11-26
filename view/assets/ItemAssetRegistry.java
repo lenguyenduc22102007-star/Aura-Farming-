@@ -25,6 +25,7 @@ public final class ItemAssetRegistry {
         KEYS.put(ChickenFeedItem.class, "corn");
         KEYS.put(CowFeedItem.class, "water_rice");
         KEYS.put(PigFeedItem.class, "potato");
+        KEYS.put(FishItem.class, "river_fish");
     }
 
     public static String getKey(Item item) {
@@ -34,6 +35,12 @@ public final class ItemAssetRegistry {
 
         if (item instanceof HarvestedCropItem) {
             return ((HarvestedCropItem) item).getCropName().toLowerCase().replace(" ", "_");
+        }
+        if (item instanceof AnimalProductItem) {
+            return item.getName().toLowerCase().replace(" ", "_");
+        }
+        if (item instanceof CookedFoodItem) {
+            return ((CookedFoodItem) item).getRecipeId();
         }
 
         return KEYS.get(item.getClass());

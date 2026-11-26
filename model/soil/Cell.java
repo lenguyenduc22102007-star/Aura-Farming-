@@ -72,7 +72,7 @@ public class Cell {
 
     // ---------- Player / system actions ----------
     public boolean till() {
-        if (terrain == TerrainType.WATER) return false;
+        if (terrain != TerrainType.DIRT) return false;
 
         if (state == CellState.UNTILLED) {
             state = CellState.TILLED;
