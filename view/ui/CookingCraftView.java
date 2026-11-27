@@ -436,7 +436,7 @@ public class CookingCraftView extends StackPane {
             "-fx-text-fill: #FFD77A;"
         );
 
-        recipeGuideRow = new HBox(10);
+        recipeGuideRow = new HBox(8);
         recipeGuideRow.setAlignment(Pos.CENTER_LEFT);
 
         guideBox.getChildren().addAll(guideHeader, recipeGuideRow);
@@ -674,7 +674,7 @@ public class CookingCraftView extends StackPane {
         }
 
         if (available.isEmpty()) {
-            Label emptyLbl = new Label("Kho nguyên liệu nấu ăn đang trống!\n\nHãy nhặt Củi khô, Nấm dại, Thảo mộc quanh khu trại, thu hoạch nông sản hoặc thu sản phẩm từ Gà / Lợn / Bò.");
+            Label emptyLbl = new Label("Kho nguyên liệu nấu ăn đang trống!\n\nHãy nhặt Củi khô, Nấm dại, Thảo mộc quanh khu trại, câu cá ở sông, thu hoạch nông sản hoặc thu sản phẩm từ Gà / Lợn / Bò.");
             emptyLbl.setWrapText(true);
             emptyLbl.setPrefWidth(295);
             emptyLbl.setPadding(new Insets(12));
@@ -887,8 +887,8 @@ public class CookingCraftView extends StackPane {
         for (CookingRecipe recipe : CookingRecipeManager.getAllRecipes()) {
             CookedFoodItem dish = recipe.createOutput();
             VBox card = new VBox(3);
-            card.setPrefWidth(242);
-            card.setPadding(new Insets(7, 8, 7, 8));
+            card.setPrefWidth(190);
+            card.setPadding(new Insets(6, 7, 6, 7));
             card.setStyle(
                 "-fx-background-color: #392112;" +
                 "-fx-border-color: #8E592C;" +

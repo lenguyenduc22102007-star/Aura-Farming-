@@ -17,6 +17,7 @@ public class Assets {
     // TOOL ICONS
     public static Image HOE_ICON;
     public static Image WATER_ICON;
+    public static Image WATER_HOTBAR_ICON; // chỉ dùng cho ô bình tưới trên thanh công cụ
     public static Image SEED_ICON;
     public static Image HAND_ICON;
     public static Image FERTILIZER_ICON;
@@ -78,12 +79,18 @@ public class Assets {
     public static Image CRAFT_STATION_TILE;
     public static Image[] FLAG_FRAMES;
     public static Image[] CAMPFIRE_FRAMES;
+    public static Image CAMPFIRE_EXTINGUISHED;
 
     // FARM PROPS (Load sắc nét smooth=false từ /view/assets/props/)
     public static Image FARM_GATE;
+    public static Image FARM_GATE_SIDE;
+    public static Image FARM_GATE_SIDE_BACK;
+    public static Image FARM_GATE_SIDE_FRONT;
     public static Image FARM_PLOT;
     public static Image FENCE_WOOD;
     public static Image LANTERN_POST;
+    public static Image LANTERN_POST_LEFT;
+    public static Image LANTERN_POST_DOWN;
     public static Image GARDEN_ROCK;
     public static Image WILDFLOWERS;
     public static Image MAIN_HOUSE;
@@ -109,6 +116,7 @@ public class Assets {
     public static Image FOOD_PORK_ICON;
     public static Image FOOD_STEAK_ICON;
     public static Image FOOD_HOTPOT_ICON;
+    public static Image FOOD_FRIED_FISH_ICON;
 
     // FORAGING ICONS (Vật phẩm tự nhiên quanh khu trại: Củi khô, Nấm dại, Thảo mộc)
     public static Image FIREWOOD_ICON;
@@ -159,6 +167,7 @@ public class Assets {
         // TOOLS (Load sắc nét pixel-art với smooth=false, phóng nguyên 64x64 không bị nhòe)
         HOE_ICON = safeLoadPixelImage("/view/assets/tools/hoe.png", 64, 64);
         WATER_ICON = safeLoadPixelImage("/view/assets/tools/watering_can.png", 64, 64);
+        WATER_HOTBAR_ICON = safeLoadPixelImage("/view/assets/tools/watering_can_hotbar.png", 64, 64);
         SEED_ICON = safeLoadPixelImage("/view/assets/tools/seed.png", 64, 64);
         HAND_ICON = safeLoadPixelImage("/view/assets/tools/hand.png", 64, 64);
         FERTILIZER_ICON = safeLoadPixelImage("/view/assets/tools/fertilizer.png", 64, 64);
@@ -244,6 +253,7 @@ public class Assets {
         FOOD_PORK_ICON = createPixelGrilledPorkIcon();
         FOOD_STEAK_ICON = createPixelMilkSteakIcon();
         FOOD_HOTPOT_ICON = createPixelHotpotIcon();
+        FOOD_FRIED_FISH_ICON = safeLoadPixelImage("/view/assets/shop/fried_fish.png", 64, 64);
         WATER_NEED_ICON = createPixelWaterNeedIcon();
         UNPLOWED_BED_TILE = createUnplowedBedTile();
         TILLED_DRY_TILE = createTilledSoilTile(false);
@@ -252,6 +262,9 @@ public class Assets {
         SHOP_ICONS.put(model.game_item.CookedFoodItem.ID_PORK_GRILL, FOOD_PORK_ICON);
         SHOP_ICONS.put(model.game_item.CookedFoodItem.ID_MILK_STEAK, FOOD_STEAK_ICON);
         SHOP_ICONS.put(model.game_item.CookedFoodItem.ID_FARM_HOTPOT, FOOD_HOTPOT_ICON);
+        SHOP_ICONS.put(model.game_item.CookedFoodItem.ID_FRIED_FISH_COMMON, FOOD_FRIED_FISH_ICON);
+        SHOP_ICONS.put(model.game_item.CookedFoodItem.ID_FRIED_FISH_RARE, FOOD_FRIED_FISH_ICON);
+        SHOP_ICONS.put(model.game_item.CookedFoodItem.ID_FRIED_FISH_EPIC, FOOD_FRIED_FISH_ICON);
 
         FIREWOOD_ICON = createPixelFirewoodIcon();
         WILD_MUSHROOM_ICON = createPixelWildMushroomIcon();
@@ -323,7 +336,7 @@ public class Assets {
         NPC_USOPP_WALK   = loadNpcFrames("usopp", "walk", 4, NPC_USOPP);
 
         // PLAYER ACTION & RUN FRAMES (Cuốc đứng/bổ 4 frame, chạy cầm cuốc 4 frame, tưới 3 frame, chạy cầm bình 4 frame; smooth = false)
-        LUFFY_SUNBATHE = safeLoadPixelImage("/view/assets/player/luffy_sunbathe.png", 112, 68);
+        LUFFY_SUNBATHE = safeLoadPixelImage("/view/assets/player/luffy_sunbathe.png", 49, 111);
         LUFFY_HOE_FRAMES = new Image[4];
         LUFFY_HOE_RUN_FRAMES = new Image[4];
         LUFFY_AXE_FRAMES = new Image[4];
@@ -348,11 +361,17 @@ public class Assets {
             FLAG_FRAMES[i] = safeLoadPixelImage("/view/assets/props/flag_" + i + ".png", 48, 64);
             CAMPFIRE_FRAMES[i] = safeLoadPixelImage("/view/assets/props/campfire_" + i + ".png", 48, 48);
         }
+        CAMPFIRE_EXTINGUISHED = safeLoadPixelImage("/view/assets/props/campfire_extinguished.png", 96, 96);
 
-        FARM_GATE    = safeLoadPixelImage("/view/assets/props/farm_gate.png",    144, 118);
+        FARM_GATE            = safeLoadPixelImage("/view/assets/props/farm_gate.png",            144, 118);
+        FARM_GATE_SIDE       = safeLoadPixelImage("/view/assets/props/farm_gate_side.png",        80, 300);
+        FARM_GATE_SIDE_BACK  = safeLoadPixelImage("/view/assets/props/farm_gate_side_back.png",   80, 300);
+        FARM_GATE_SIDE_FRONT = safeLoadPixelImage("/view/assets/props/farm_gate_side_front.png",  80, 300);
         FARM_PLOT    = safeLoadPixelImage("/view/assets/props/farm_plot.png",     96,  96);
         FENCE_WOOD   = safeLoadPixelImage("/view/assets/props/fence_wood.png",    48,  48);
-        LANTERN_POST = safeLoadPixelImage("/view/assets/props/lantern_post.png",  48,  72);
+        LANTERN_POST      = safeLoadPixelImage("/view/assets/props/lantern_post.png",      48,  72);
+        LANTERN_POST_LEFT = safeLoadPixelImage("/view/assets/props/lantern_post_left.png", 48,  72);
+        LANTERN_POST_DOWN = safeLoadPixelImage("/view/assets/props/lantern_post_down.png", 48,  72);
         GARDEN_ROCK   = safeLoadPixelImage("/view/assets/props/garden_rock.png",   48,  48);
         WILDFLOWERS   = safeLoadPixelImage("/view/assets/props/wildflowers.png",   48,  48);
         MAIN_HOUSE    = safeLoadPixelImage("/view/assets/props/main_house.png",   224, 225);

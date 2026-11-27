@@ -20,9 +20,37 @@ public class FishItem extends Item {
         return new FishItem(species.getDisplayName(), species.getPrice());
     }
 
+    public FishSpecies getSpecies() {
+        return FishSpecies.findByDisplayName(name);
+    }
+
+    /**
+     * Xếp hạng độ hiếm của cá theo 3 mức dùng khi chế biến món ăn:
+     * 1 = Thường (Cá Rô, Cá Chép...), 2 = Hiếm (Cá Chép Vàng, Lươn Mưa, Cá Đèn Lồng),
+     * 3 = Cực hiếm / Siêu hiếm (Cá Trê Điện, Cá Vương Miện).
+     */
+    public int getRarityTier() {
+        FishSpecies sp = getSpecies();
+        if (sp != null) {
+            String label = sp.getRarityLabel();
+            if ("Siêu hiếm".equalsIgnoreCase(label) || "Cực hiếm".equalsIgnoreCase(label)) {
+                return 3;
+            }
+            if ("Hiếm".equalsIgnoreCase(label)) {
+                return 2;
+            }
+            return 1;
+        }
+        if (price >= 120) return 3;
+        if (price >= 75) return 2;
+        return 1;
+    }
+
     @Override
     public String getStats() {
-        return "Cá sông tươi | Bán: " + price + "$";
+        FishSpecies sp = getSpecies();
+        String rarity = (sp != null) ? sp.getRarityLabel() : "Thường";
+        return "Cá sông tươi (" + rarity + ") | Bán: " + price + "$";
     }
 
     @Override

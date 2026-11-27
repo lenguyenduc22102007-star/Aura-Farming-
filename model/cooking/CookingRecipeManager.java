@@ -2,6 +2,8 @@ package model.cooking;
 
 import model.game_item.AnimalProductItem;
 import model.game_item.CookedFoodItem;
+import model.game_item.FishItem;
+import model.game_item.FishSpecies;
 import model.game_item.ForageItem;
 import model.game_item.HarvestedCropItem;
 import model.game_item.Item;
@@ -31,7 +33,8 @@ public final class CookingRecipeManager {
         ANY_MEAT_OR_ANIMAL("Thịt / SP Gà-Lợn-Bò"),
         CORN_OR_RICE("Ngô / Lúa nước"),
         TOMATO("Cà chua"),
-        POTATO("Khoai tây");
+        POTATO("Khoai tây"),
+        FISH("Cá sông tươi");
 
         private final String displayLabel;
 
@@ -164,6 +167,17 @@ public final class CookingRecipeManager {
             "+45 Đói • Bán $60 (lời >x2)",
             roastChicken
         ));
+
+        // 5. 1 Củi khô + 1 Cá sông -> Cá Rán (+20/+30/+40 Đói & bán $65/$175/$290 tùy độ hiếm cá)
+        List<IngredientKind> friedFish = new ArrayList<>();
+        friedFish.add(IngredientKind.FIREWOOD);
+        friedFish.add(IngredientKind.FISH);
+        RECIPES.add(new CookingRecipe(
+            CookedFoodItem.ID_FRIED_FISH_COMMON,
+            "1 Củi khô + 1 Cá bất kỳ",
+            "+20/30/40 Đói • Bán $65/$175/$290",
+            friedFish
+        ));
     }
 
     private CookingRecipeManager() {}
@@ -172,18 +186,29 @@ public final class CookingRecipeManager {
         return Collections.unmodifiableList(RECIPES);
     }
 
+    /** Kiểm tra 1 Item có phải cá có thể đem rán không (loại trừ Cổ Vật Đáy Sông). */
+    public static boolean isCookableFish(Item item) {
+        if (!(item instanceof FishItem)) return false;
+        return FishSpecies.findByDisplayName(item.getName()) != FishSpecies.CO_VAT_DAY_SONG;
+    }
+
     /** Kiểm tra 1 Item trong kho có phải nguyên liệu có thể đưa vào bàn nấu ăn hay không. */
     public static boolean isCookingIngredient(Item item) {
         if (item == null) return false;
         return (item instanceof ForageItem)
             || (item instanceof AnimalProductItem)
-            || (item instanceof HarvestedCropItem);
+            || (item instanceof HarvestedCropItem)
+            || isCookableFish(item);
     }
 
     /** Tên hiển thị tiếng Việt ngắn gọn, rõ ràng trên bàn ghép nấu ăn. */
     public static String getVietnameseDisplayName(Item item) {
         if (item == null) return "";
         if (item instanceof ForageItem) {
+            return item.getName();
+        }
+        if (item instanceof FishItem) {
+            if (FishItem.DEFAULT_NAME.equalsIgnoreCase(item.getName())) return "Cá sông";
             return item.getName();
         }
         if (item instanceof AnimalProductItem) {
@@ -265,6 +290,9 @@ public final class CookingRecipeManager {
                 }
                 return false;
 
+            case FISH:
+                return isCookableFish(item);
+
             default:
                 return false;
         }
@@ -303,7 +331,19 @@ public final class CookingRecipeManager {
             List<IngredientKind> req = recipe.getRequiredIngredients();
             if (placed.size() != req.size()) continue;
             if (canAssignBijectively(placed, req, 0, new boolean[placed.size()])) {
-                CookedFoodItem out = recipe.createOutput();
+                CookedFoodItem out;
+                if (CookedFoodItem.ID_FRIED_FISH_COMMON.equals(recipe.getRecipeId())) {
+                    FishItem placedFish = null;
+                    for (Item it : placed) {
+                        if (it instanceof FishItem) {
+                            placedFish = (FishItem) it;
+                            break;
+                        }
+                    }
+                    out = CookedFoodItem.createFriedFishFor(placedFish);
+                } else {
+                    out = recipe.createOutput();
+                }
                 String note = firewoodAtBottom
                     ? "🔥 Nhóm lửa chuẩn hàng dưới! Sẵn sàng chế tạo."
                     : "🔥 Công thức hợp lệ! (Mẹo: đặt Củi khô ở hàng dưới cho chuẩn bếp lửa)";

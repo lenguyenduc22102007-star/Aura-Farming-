@@ -46,6 +46,7 @@ import view.fx.SoundHook;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
@@ -77,6 +78,7 @@ public class GameBookOverlay extends StackPane {
     private final Runnable onClaimQuestCallback;
     private final Runnable onCloseCallback;
     private model.factory.MarketManager marketManager = null;
+    private Consumer<Item> onEatItemCallback = null;
 
     private final Button[] tabButtons = new Button[5];
     private final StackPane contentHolder = new StackPane();
@@ -288,6 +290,10 @@ public class GameBookOverlay extends StackPane {
         selectTab(activeTabIndex);
     }
 
+    public void setOnEatItem(Consumer<Item> onEatItemCallback) {
+        this.onEatItemCallback = onEatItemCallback;
+    }
+
     private void closeBook() {
         SoundHook.playMenuClick();
         if (onCloseCallback != null) {
@@ -376,7 +382,7 @@ public class GameBookOverlay extends StackPane {
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         FlowPane grid = new FlowPane(12, 10);
-        grid.setPrefWrapLength(780);
+        grid.setPrefWrapLength(800);
 
         int countShown = 0;
         if (player != null) {
@@ -467,6 +473,51 @@ public class GameBookOverlay extends StackPane {
                     }
                 });
                 btnRow.getChildren().add(toFeed);
+            } else if (item instanceof CookedFoodItem) {
+                CookedFoodItem dish = (CookedFoodItem) item;
+                Button eatBtn = createSmallBtn("🍽 Ăn", "#D95B26", "#A83E14");
+                eatBtn.setOnAction(e -> {
+                    if (player.getInventory().removeItem(dish, 1)) {
+                        if (onEatItemCallback != null) {
+                            onEatItemCallback.accept(dish);
+                        } else {
+                            if (dish.getHungerRestore() > 0) player.addHunger(dish.getHungerRestore());
+                            if (dish.getThirstRestore() > 0) player.addThirst(dish.getThirstRestore());
+                            SoundHook.playPickup();
+                        }
+                        String restore = dish.getThirstRestore() > 0
+                                ? ("+" + dish.getHungerRestore() + " Đói, +" + dish.getThirstRestore() + " Khát")
+                                : ("+" + dish.getHungerRestore() + " Đói");
+                        setStatus("🍽 Đã ăn 1× " + dish.getName() + " (" + restore + ")!");
+                        selectTab(TAB_STORAGE);
+                    }
+                });
+                btnRow.getChildren().add(eatBtn);
+            } else if (item instanceof FactoryProductItem) {
+                FactoryProductItem prod = (FactoryProductItem) item;
+                if (prod.getHungerRestore() > 0 || prod.getThirstRestore() > 0) {
+                    boolean drinkOnly = (prod.getHungerRestore() <= 0 && prod.getThirstRestore() > 0);
+                    Button eatBtn = createSmallBtn(drinkOnly ? "🧃 Uống" : "🍽 Ăn", "#D95B26", "#A83E14");
+                    eatBtn.setOnAction(e -> {
+                        if (player.getInventory().removeItem(prod, 1)) {
+                            if (onEatItemCallback != null) {
+                                onEatItemCallback.accept(prod);
+                            } else {
+                                if (prod.getHungerRestore() > 0) player.addHunger(prod.getHungerRestore());
+                                if (prod.getThirstRestore() > 0) player.addThirst(prod.getThirstRestore());
+                                SoundHook.playPickup();
+                            }
+                            String restore = drinkOnly
+                                    ? ("+" + prod.getThirstRestore() + " Khát")
+                                    : (prod.getThirstRestore() > 0
+                                        ? ("+" + prod.getHungerRestore() + " Đói, +" + prod.getThirstRestore() + " Khát")
+                                        : ("+" + prod.getHungerRestore() + " Đói"));
+                            setStatus((drinkOnly ? "🧃 Đã uống 1× " : "🍽 Đã ăn 1× ") + prod.getName() + " (" + restore + ")!");
+                            selectTab(TAB_STORAGE);
+                        }
+                    });
+                    btnRow.getChildren().add(eatBtn);
+                }
             }
         } else {
             Label supplyBadge = new Label("Vật tư canh tác / Hạt giống");
@@ -478,8 +529,8 @@ public class GameBookOverlay extends StackPane {
         VBox info = new VBox(4, name, sub, btnRow);
         HBox card = new HBox(12, icon, info);
         card.setAlignment(Pos.CENTER_LEFT);
-        card.setPrefWidth(382);
-        card.setPadding(new Insets(9, 12, 9, 12));
+        card.setPrefWidth(392);
+        card.setPadding(new Insets(9, 10, 9, 10));
         card.setStyle(
             "-fx-background-color: #FFFDF7;" +
             "-fx-border-color: #C8A273; -fx-border-width: 1.8px;" +

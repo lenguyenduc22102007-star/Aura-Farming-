@@ -231,6 +231,24 @@ public final class StorageViewController {
         HBox actions = new HBox(8, sell1, sellAll);
         actions.setAlignment(Pos.CENTER_LEFT);
 
+        if (item instanceof model.game_item.CookedFoodItem) {
+            model.game_item.CookedFoodItem dish = (model.game_item.CookedFoodItem) item;
+            Button eatBtn = new Button("Ăn");
+            eatBtn.getStyleClass().add("btn-wood");
+            eatBtn.setPrefWidth(72);
+            eatBtn.setOnAction(e -> {
+                if (player.getInventory().removeItem(dish, 1)) {
+                    if (dish.getHungerRestore() > 0) player.addHunger(dish.getHungerRestore());
+                    if (dish.getThirstRestore() > 0) player.addThirst(dish.getThirstRestore());
+                    if (statusLabel != null) {
+                        statusLabel.setText("Đã ăn 1 " + dish.getName() + " (+" + dish.getHungerRestore() + " Đói)!");
+                    }
+                    build();
+                }
+            });
+            actions.getChildren().add(eatBtn);
+        }
+
         VBox card = new VBox(8, icon, name, stats, price, actions);
         card.setAlignment(Pos.CENTER_LEFT);
         card.getStyleClass().add("shop-card");

@@ -226,10 +226,13 @@ def generate_resort_and_casino_sprites() -> dict:
     # Đồng bộ các asset tách từ sheet_farm_gate / sheet_farm_props / sheet_main_house / sheet_pool_resort vào objects/
     props_dir = os.path.join(ROOT_DIR, "view", "assets", "props")
     prop_copies = {
-        "farm_gate.png":     "farm_gate.png",
+        "farm_gate.png":      "farm_gate.png",
+        "farm_gate_side.png": "farm_gate_side.png",
         "farm_plot.png":     "farm_plot.png",
         "fence_wood.png":    "fence_wood.png",
-        "lantern_post.png":  "lantern_post.png",
+        "lantern_post.png":      "lantern_post.png",
+        "lantern_post_left.png": "lantern_post_left.png",
+        "lantern_post_down.png": "lantern_post_down.png",
         "garden_rock.png":   "garden_rock.png",
         "wildflowers.png":   "wildflowers.png",
         "main_house.png":    "main_house.png",
@@ -255,8 +258,11 @@ def generate_resort_and_casino_sprites() -> dict:
         "ore_rock": ("objects/ore_rock.png", 64, 56),
         "mine_anvil": ("objects/mine_anvil.png", 64, 56),
         "farm_gate": ("objects/farm_gate.png", 144, 118),
+        "farm_gate_side": ("objects/farm_gate_side.png", 80, 300),
         "fence_wood": ("objects/fence_wood.png", 48, 48),
         "lantern_post": ("objects/lantern_post.png", 48, 72),
+        "lantern_post_left": ("objects/lantern_post_left.png", 48, 72),
+        "lantern_post_down": ("objects/lantern_post_down.png", 48, 72),
         "garden_rock": ("objects/garden_rock.png", 48, 48),
         "wildflowers": ("objects/wildflowers.png", 48, 48),
     }
@@ -402,8 +408,8 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
         "orchard_fence_h", "orchard_fence_v", "orchard_sign", "mine_rock", "mine_anvil", "mine_sign",
         "rustic_farm_gate", "farm_bed_frame", "ground_clovers", "ground_daisies",
         "ground_yellow_flowers", "ground_tuft", "ground_pebbles", "farm_decor_bush", "farm_decor_rock",
-        "farm_gate", "lantern_post_road", "garden_rock_decor", "wildflowers_decor",
-        "lantern_post_orchard", "garden_rock_orchard", "wildflowers_orchard",
+        "farm_gate", "farm_gate_side", "lantern_post_road", "garden_rock_decor", "wildflowers_decor",
+        "lantern_post_orchard", "lantern_post_orchard_left", "garden_rock_orchard", "wildflowers_orchard",
         "orchard_gate", "fence_orchard_perm_h", "fence_orchard_perm_v"
     }
     for og in root.findall("objectgroup"):
@@ -513,8 +519,8 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
                 ("mine_rock",  gid_map["ore_rock"],   1232, 2002, 62, 54),
                 ("mine_rock",  gid_map["ore_rock"],   1318, 1966, 62, 54),
 
-                # --- CỔNG CHÀO NÔNG TRẠI (FARM_GATE) NGAY LỐI VÀO GÓC TRÊN PHẢI KHU RUỘNG ---
-                ("farm_gate", gid_map["farm_gate"], 560, 718, 144, 118),
+                # --- CỔNG CHÀO NÔNG TRẠI XOAY NGANG (FARM_GATE_SIDE) KHỚP LỐI VÀO KHU VƯỜN ĐẦU TIÊN ---
+                ("farm_gate_side", gid_map["farm_gate_side"], 562, 804, 50, 186),
 
                 # --- 2 CỘT ĐÈN LỒNG GỖ (LANTERN_POST) DỌC CON ĐƯỜNG ĐÁ BÊN PHẢI ---
                 ("lantern_post_road", gid_map["lantern_post"], 652, 856, 48, 72),
@@ -552,8 +558,8 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
             # Trang trí VƯỜN CÂY ĂN QUẢ MỞ RỘNG (x=136..664, y=1840..2068):
             # 2 cột đèn lồng gỗ hai bên cổng + đá vườn + hoa dại & cỏ 3 lá rải đều giữa các khoảng cỏ 120px
             orchard_extras = [
-                ("lantern_post_orchard", gid_map["lantern_post"], 264, 1852, 48, 72),
-                ("lantern_post_orchard", gid_map["lantern_post"], 494, 1852, 48, 72),
+                ("lantern_post_orchard",      gid_map["lantern_post"],      264, 1852, 48, 72),
+                ("lantern_post_orchard_left", gid_map["lantern_post_left"], 494, 1852, 48, 72),
                 ("garden_rock_orchard",  gid_map["garden_rock"],  606, 1892, 42, 42),
                 ("garden_rock_orchard",  gid_map["garden_rock"],  154, 2028, 42, 42),
                 ("wildflowers_orchard",  gid_map["wildflowers"],  262, 1948, 40, 40),

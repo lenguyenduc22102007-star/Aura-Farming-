@@ -6,10 +6,13 @@ package model.game_item;
  */
 public class CookedFoodItem extends Item {
 
-    public static final String ID_EGG_FRY     = "food_egg_fry";
-    public static final String ID_PORK_GRILL  = "food_pork_grill";
-    public static final String ID_MILK_STEAK  = "food_milk_steak";
-    public static final String ID_FARM_HOTPOT = "food_farm_hotpot";
+    public static final String ID_EGG_FRY           = "food_egg_fry";
+    public static final String ID_PORK_GRILL        = "food_pork_grill";
+    public static final String ID_MILK_STEAK        = "food_milk_steak";
+    public static final String ID_FARM_HOTPOT       = "food_farm_hotpot";
+    public static final String ID_FRIED_FISH_COMMON = "food_fried_fish_common";
+    public static final String ID_FRIED_FISH_RARE   = "food_fried_fish_rare";
+    public static final String ID_FRIED_FISH_EPIC   = "food_fried_fish_epic";
 
     private final String recipeId;
     private final int hungerRestore;
@@ -73,14 +76,55 @@ public class CookedFoodItem extends Item {
                     true,
                     "Hồi +100 Đói, +50 Khát | Tăng mạnh cá hiếm"
                 );
+            case ID_FRIED_FISH_COMMON:
+                return new CookedFoodItem(
+                    ID_FRIED_FISH_COMMON,
+                    "Cá Rán",
+                    65,
+                    20, 0,
+                    0,
+                    false,
+                    "Hồi +20 Đói | Cá Thường"
+                );
+            case ID_FRIED_FISH_RARE:
+                return new CookedFoodItem(
+                    ID_FRIED_FISH_RARE,
+                    "Cá Rán Thượng Hạng",
+                    175,
+                    30, 0,
+                    0,
+                    false,
+                    "Hồi +30 Đói | Cá Hiếm"
+                );
+            case ID_FRIED_FISH_EPIC:
+                return new CookedFoodItem(
+                    ID_FRIED_FISH_EPIC,
+                    "Cá Rán Hoàng Gia",
+                    290,
+                    40, 0,
+                    0,
+                    false,
+                    "Hồi +40 Đói | Cá Cực/Siêu Hiếm"
+                );
             default:
                 return null;
         }
     }
 
+    /** Tạo món Cá Rán đúng bậc (+20/+30/+40 Đói và giá bán $65/$175/$290) theo độ hiếm của cá nguyên liệu. */
+    public static CookedFoodItem createFriedFishFor(FishItem fish) {
+        int tier = (fish != null) ? fish.getRarityTier() : 1;
+        if (tier >= 3) return createById(ID_FRIED_FISH_EPIC);
+        if (tier == 2) return createById(ID_FRIED_FISH_RARE);
+        return createById(ID_FRIED_FISH_COMMON);
+    }
+
     public static CookedFoodItem findByName(String name) {
         if (name == null) return null;
-        String[] ids = { ID_EGG_FRY, ID_PORK_GRILL, ID_MILK_STEAK, ID_FARM_HOTPOT };
+        String[] ids = {
+            ID_EGG_FRY, ID_PORK_GRILL, ID_MILK_STEAK, ID_FARM_HOTPOT,
+            ID_FRIED_FISH_COMMON, ID_FRIED_FISH_RARE, ID_FRIED_FISH_EPIC
+        };
         for (String id : ids) {
             CookedFoodItem candidate = createById(id);
             if (candidate != null && candidate.getName().equalsIgnoreCase(name)) {
@@ -93,6 +137,9 @@ public class CookedFoodItem extends Item {
         if (low.contains("thịt lợn nướng")) return createById(ID_PORK_GRILL);
         if (low.contains("sữa nóng") || low.contains("bò bít tết")) return createById(ID_MILK_STEAK);
         if (low.contains("lẩu nông trại")) return createById(ID_FARM_HOTPOT);
+        if (low.contains("cá rán hoàng gia")) return createById(ID_FRIED_FISH_EPIC);
+        if (low.contains("cá rán thượng hạng")) return createById(ID_FRIED_FISH_RARE);
+        if (low.contains("cá rán")) return createById(ID_FRIED_FISH_COMMON);
         return null;
     }
 

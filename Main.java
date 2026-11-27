@@ -14,7 +14,7 @@ import controller.shopmanager.ShopController;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;   
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.stage.Stage;
 import model.game_item.Item;
@@ -105,7 +105,8 @@ public class Main extends Application implements GameLauncher {
             protected void layoutChildren() {
                 double sw = getWidth();
                 double sh = getHeight();
-                if (sw <= 0 || sh <= 0) return;
+                if (sw <= 0 || sh <= 0)
+                    return;
                 double s = Math.min(1.0, Math.min(sw / 1280.0, sh / 720.0));
                 double lw = sw / s;
                 double lh = sh / s;
@@ -149,7 +150,10 @@ public class Main extends Application implements GameLauncher {
         saveGameAsync();
     }
 
-    /** Build a session; when save != null the saved state is restored on top of the fresh farm. */
+    /**
+     * Build a session; when save != null the saved state is restored on top of the
+     * fresh farm.
+     */
     private void buildSession(Properties save) {
         view.fx.SoundHook.stopMenuBgm();
         gameManager = GameManager.getInstance();
@@ -163,7 +167,7 @@ public class Main extends Application implements GameLauncher {
         }
         int[][] terrain = tmxMap.layers.isEmpty() ? null : tmxMap.layers.get(0).data;
         farmMap = new FarmMap(tmxMap.width, tmxMap.height, terrain);
-        
+
         player = new Player();
 
         // Day-lifecycle order matters: FarmController (growth) must run before
@@ -179,8 +183,7 @@ public class Main extends Application implements GameLauncher {
 
         // Simulator: the only outcome is a loss (bankruptcy) — no win condition.
         List<GameOverCondition> conditions = List.of(
-                new BankruptcyCondition(cheapestSeedPrice(shopController))
-        );
+                new BankruptcyCondition(cheapestSeedPrice(shopController)));
         gameOverController = new GameOverController(
                 gameManager, farmMap, player, conditions, this::showGameOver,
                 Constant.GAME_OVER_GRACE_DAYS);
@@ -215,9 +218,8 @@ public class Main extends Application implements GameLauncher {
         ingame.setEnvironmentController(environmentController);
         if (pauseController != null) {
             pauseController.setSessionCallbacks(
-                () -> ingame.openGameBook(view.ui.GameBookOverlay.TAB_SETTINGS),
-                ingame::restoreGameFocus
-            );
+                    () -> ingame.openGameBook(view.ui.GameBookOverlay.TAB_SETTINGS),
+                    ingame::restoreGameFocus);
         }
         ingame.setFarmName(currentFarmName);
         ingame.setGame(farmMap, player, gameManager, playerController, demoController, tmxMap);
@@ -259,16 +261,21 @@ public class Main extends Application implements GameLauncher {
     /** Write the current run to disk (no-op without a running session). */
     @Override
     public void saveGame() {
-        if (!hasSession() || ingameView == null) return;
+        if (!hasSession() || ingameView == null)
+            return;
         Properties p = new Properties();
         SaveManager.captureModel(p, gameManager, player, farmMap, currentFarmName);
         ingameView.exportViewState(p);
         SaveManager.write(p);
     }
 
-    /** Lưu nền không chặn JavaFX UI thread (dùng khi câu cá, chuyển ngày...) để giữ 60 FPS mượt mà. */
+    /**
+     * Lưu nền không chặn JavaFX UI thread (dùng khi câu cá, chuyển ngày...) để giữ
+     * 60 FPS mượt mà.
+     */
     public void saveGameAsync() {
-        if (!hasSession() || ingameView == null) return;
+        if (!hasSession() || ingameView == null)
+            return;
         Properties p = new Properties();
         SaveManager.captureModel(p, gameManager, player, farmMap, currentFarmName);
         ingameView.exportViewState(p);
@@ -290,7 +297,8 @@ public class Main extends Application implements GameLauncher {
     }
 
     private void refreshMainMenuInfo(boolean skipSplash) {
-        if (menuController == null) return;
+        if (menuController == null)
+            return;
         boolean canContinue = hasSession() || SaveManager.exists();
         String name = currentFarmName;
         int day = 1;
