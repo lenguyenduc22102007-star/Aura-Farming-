@@ -1773,7 +1773,7 @@
    <tile gid="5" />
    <tile gid="7" />
    <tile gid="5" />
-   <tile gid="7" />
+   <tile gid="5" />
    <tile gid="5" />
    <tile gid="7" />
    <tile gid="5" />
@@ -1807,20 +1807,20 @@
    <tile gid="2" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="17" />
-   <tile gid="10" />
-   <tile gid="10" />
-   <tile gid="10" />
-   <tile gid="10" />
-   <tile gid="10" />
-   <tile gid="10" />
-   <tile gid="10" />
-   <tile gid="10" />
-   <tile gid="10" />
-   <tile gid="10" />
-   <tile gid="10" />
-   <tile gid="10" />
-   <tile gid="21" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="5" />
+   <tile gid="5" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
    <tile gid="5" />
    <tile gid="5" />
    <tile gid="5" />
@@ -1847,37 +1847,37 @@
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="4" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="4" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="5" />
+   <tile gid="5" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="4" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="17" />
    <tile gid="21" />
    <tile gid="5" />
    <tile gid="7" />
    <tile gid="22" />
    <tile gid="18" />
    <tile gid="1" />
-   <tile gid="4" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="5" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="4" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="4" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
@@ -1888,19 +1888,19 @@
    <tile gid="2" />
    <tile gid="4" />
    <tile gid="1" />
-   <tile gid="4" />
+   <tile gid="1" />
+   <tile gid="3" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="2" />
+   <tile gid="3" />
    <tile gid="1" />
    <tile gid="1" />
+   <tile gid="3" />
    <tile gid="1" />
    <tile gid="1" />
+   <tile gid="3" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="2" />
    <tile gid="13" />
    <tile gid="5" />
    <tile gid="5" />
@@ -1915,109 +1915,29 @@
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="2" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="2" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="13" />
-   <tile gid="5" />
-   <tile gid="7" />
-   <tile gid="14" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="13" />
-   <tile gid="5" />
-   <tile gid="5" />
-   <tile gid="14" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="4" />
-   <tile gid="1" />
-   <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="2" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="2" />
+   <tile gid="4" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
@@ -2025,14 +1945,94 @@
    <tile gid="5" />
    <tile gid="7" />
    <tile gid="14" />
+   <tile gid="4" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="2" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="2" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="4" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="4" />
+   <tile gid="1" />
+   <tile gid="4" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="13" />
+   <tile gid="5" />
+   <tile gid="5" />
+   <tile gid="14" />
+   <tile gid="4" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="4" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="3" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="3" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="3" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="3" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="13" />
+   <tile gid="5" />
+   <tile gid="7" />
+   <tile gid="14" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
@@ -2047,19 +2047,19 @@
    <tile gid="2" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="2" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="1" />
-   <tile gid="4" />
-   <tile gid="4" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
    <tile gid="1" />
-   <tile gid="2" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
+   <tile gid="1" />
    <tile gid="1" />
    <tile gid="13" />
    <tile gid="5" />
@@ -2207,8 +2207,7 @@
   <object id="82" name="fence_v" gid="43" x="88" y="912" width="20" height="70" />
   <object id="83" name="fence_v" gid="43" x="595" y="865" width="20" height="70" />
   <object id="84" name="fence_v" gid="43" x="595" y="935" width="20" height="70" />
-  <object id="145" name="streetlamp" gid="74" x="612" y="668" width="26" height="80" />
-  <object id="146" name="signpost_left" gid="83" x="555" y="688" width="44" height="78" />
+  <object id="145" name="streetlamp" gid="74" x="646" y="668" width="26" height="80" />
   <object id="147" name="flower_patch" gid="104" x="605" y="835" width="64" height="48" />
   <object id="148" name="grass_patch_lg" gid="109" x="-10" y="658" width="152" height="92" />
   <object id="149" name="tree" gid="64" x="2" y="625" width="128" height="148" />
@@ -2319,7 +2318,7 @@
   <object id="239" name="rock_cracked" gid="97" x="868" y="1250" width="68" height="58" />
   <object id="240" name="pebble1" gid="99" x="842" y="1258" width="22" height="16" />
   <object id="241" name="flower_patch" gid="104" x="852" y="1125" width="64" height="48" />
-  <object id="242" name="bridge" gid="26" x="657" y="1530" width="212" height="316">
+  <object id="242" name="bridge" gid="26" x="637" y="1508" width="248" height="276">
    <properties>
     <property name="category" value="building" />
    </properties>
@@ -2330,7 +2329,6 @@
   <object id="248" name="flag_blue" gid="44" x="895" y="1615" width="38" height="80" />
   <object id="249" name="signpost_right" gid="84" x="945" y="1585" width="46" height="78" />
   <object id="252" name="streetlamp" gid="74" x="1420" y="1715" width="26" height="80" />
-  <object id="256" name="flower_patch" gid="104" x="1080" y="1950" width="64" height="48" />
   <object id="257" name="flower_patch" gid="104" x="1320" y="1620" width="64" height="48" />
   <object id="258" name="grass_patch_lg" gid="109" x="1" y="1654" width="160" height="96" />
   <object id="259" name="tree_dark" gid="89" x="12" y="1620" width="138" height="160" />
@@ -2338,26 +2336,14 @@
   <object id="261" name="tree_small" gid="107" x="18" y="1785" width="104" height="120" />
   <object id="262" name="grass_patch_lg" gid="109" x="-1" y="2020" width="162" height="98" />
   <object id="263" name="tree_bush" gid="108" x="12" y="1985" width="136" height="158" />
-  <object id="264" name="grass_patch_lg" gid="109" x="133" y="2083" width="152" height="92" />
-  <object id="265" name="tree" gid="64" x="145" y="2050" width="128" height="148" />
-  <object id="266" name="grass_patch_md" gid="110" x="477" y="2081" width="120" height="74" />
-  <object id="267" name="tree_small" gid="107" x="485" y="2055" width="104" height="120" />
-  <object id="268" name="grass_patch_sm" gid="111" x="555" y="2047" width="88" height="54" />
-  <object id="269" name="bush2" gid="28" x="565" y="2035" width="68" height="44" />
   <object id="270" name="grass_patch_lg" gid="109" x="1456" y="1653" width="152" height="92" />
   <object id="271" name="tree" gid="64" x="1468" y="1620" width="128" height="148" />
   <object id="272" name="grass_patch_md" gid="110" x="1472" y="1811" width="120" height="74" />
   <object id="273" name="tree_small" gid="107" x="1480" y="1785" width="104" height="120" />
   <object id="274" name="grass_patch_lg" gid="109" x="1452" y="2020" width="162" height="98" />
   <object id="275" name="tree_bush" gid="108" x="1465" y="1985" width="136" height="158" />
-  <object id="276" name="grass_patch_lg" gid="109" x="969" y="2089" width="160" height="96" />
-  <object id="277" name="tree_dark" gid="89" x="980" y="2055" width="138" height="160" />
-  <object id="278" name="grass_patch_lg" gid="109" x="1268" y="2083" width="152" height="92" />
-  <object id="279" name="tree" gid="64" x="1280" y="2050" width="128" height="148" />
-  <object id="280" name="grass_patch_sm" gid="111" x="1130" y="2047" width="92" height="56" />
-  <object id="281" name="bush6" gid="32" x="1140" y="2035" width="72" height="46" />
   <object id="282" name="rock_large" gid="56" x="1395" y="2035" width="68" height="50" />
- <object id="1300" name="swimming_pool" gid="112" x="168" y="1682" width="236" height="138" /><object id="1301" name="pool_lounger" gid="113" x="420" y="1584" width="58" height="36" /><object id="1302" name="pool_lounger" gid="113" x="420" y="1632" width="58" height="36" /><object id="1303" name="pool_lounger" gid="113" x="420" y="1680" width="58" height="36" /><object id="1304" name="pool_umbrella" gid="114" x="482" y="1608" width="72" height="76" /><object id="1305" name="pool_umbrella" gid="114" x="482" y="1682" width="72" height="76" /><object id="1306" name="palm_tree" gid="115" x="96" y="1596" width="90" height="128" /><object id="1307" name="palm_tree" gid="115" x="96" y="1702" width="90" height="128" /><object id="1308" name="palm_tree" gid="115" x="542" y="1596" width="90" height="128" /><object id="1309" name="palm_tree" gid="115" x="542" y="1704" width="90" height="128" /><object id="1310" name="casino_building" gid="116" x="1012" y="1708" width="240" height="196" /><object id="1311" name="palm_tree" gid="115" x="928" y="1704" width="90" height="128" /><object id="1312" name="palm_tree" gid="115" x="1256" y="1704" width="90" height="128" /></objectgroup>
+ <object id="1300" name="swimming_pool" gid="112" x="168" y="1766" width="168" height="238" /><object id="1301" name="pool_lounger" gid="113" x="364" y="1648" width="52" height="72" /><object id="1302" name="pool_lounger" gid="113" x="426" y="1648" width="52" height="72" /><object id="1303" name="pool_lounger" gid="113" x="426" y="1732" width="52" height="72" /><object id="1304" name="pool_umbrella" gid="114" x="392" y="1626" width="72" height="72" /><object id="1305" name="pool_umbrella" gid="114" x="470" y="1706" width="72" height="72" /><object id="1306" name="palm_tree" gid="115" x="74" y="1618" width="96" height="120" /><object id="1307" name="palm_tree" gid="115" x="74" y="1762" width="96" height="120" /><object id="1308" name="palm_tree" gid="115" x="526" y="1676" width="96" height="120" /><object id="1309" name="casino_building" gid="116" x="1012" y="1708" width="240" height="196" /><object id="1310" name="palm_tree" gid="115" x="928" y="1704" width="90" height="128" /><object id="1311" name="palm_tree" gid="115" x="1256" y="1704" width="90" height="128" /><object id="1312" name="farm_gate" gid="126" x="330" y="1864" width="144" height="118" /><object id="1313" name="orchard_fence_h" gid="127" x="358" y="1858" width="48" height="44" /><object id="1314" name="orchard_fence_h" gid="127" x="406" y="1858" width="48" height="44" /><object id="1315" name="orchard_sign" gid="58" x="302" y="1854" width="34" height="42" /><object id="1316" name="fence_orchard_perm_h" gid="127" x="142" y="1846" width="48" height="44" /><object id="1317" name="fence_orchard_perm_h" gid="127" x="190" y="1846" width="48" height="44" /><object id="1318" name="fence_orchard_perm_h" gid="127" x="238" y="1846" width="48" height="44" /><object id="1319" name="fence_orchard_perm_h" gid="127" x="286" y="1846" width="48" height="44" /><object id="1320" name="fence_orchard_perm_h" gid="127" x="470" y="1846" width="48" height="44" /><object id="1321" name="fence_orchard_perm_h" gid="127" x="518" y="1846" width="48" height="44" /><object id="1322" name="fence_orchard_perm_h" gid="127" x="566" y="1846" width="48" height="44" /><object id="1323" name="fence_orchard_perm_h" gid="127" x="614" y="1846" width="48" height="44" /><object id="1324" name="fence_orchard_perm_h" gid="127" x="142" y="2070" width="48" height="44" /><object id="1325" name="fence_orchard_perm_h" gid="127" x="190" y="2070" width="48" height="44" /><object id="1326" name="fence_orchard_perm_h" gid="127" x="238" y="2070" width="48" height="44" /><object id="1327" name="fence_orchard_perm_h" gid="127" x="286" y="2070" width="48" height="44" /><object id="1328" name="fence_orchard_perm_h" gid="127" x="334" y="2070" width="48" height="44" /><object id="1329" name="fence_orchard_perm_h" gid="127" x="382" y="2070" width="48" height="44" /><object id="1330" name="fence_orchard_perm_h" gid="127" x="430" y="2070" width="48" height="44" /><object id="1331" name="fence_orchard_perm_h" gid="127" x="478" y="2070" width="48" height="44" /><object id="1332" name="fence_orchard_perm_h" gid="127" x="526" y="2070" width="48" height="44" /><object id="1333" name="fence_orchard_perm_h" gid="127" x="574" y="2070" width="48" height="44" /><object id="1334" name="fence_orchard_perm_h" gid="127" x="618" y="2070" width="48" height="44" /><object id="1335" name="fence_orchard_perm_v" gid="43" x="134" y="1916" width="20" height="72" /><object id="1336" name="fence_orchard_perm_v" gid="43" x="134" y="1988" width="20" height="72" /><object id="1337" name="fence_orchard_perm_v" gid="43" x="134" y="2060" width="20" height="72" /><object id="1338" name="fence_orchard_perm_v" gid="43" x="656" y="1916" width="20" height="72" /><object id="1339" name="fence_orchard_perm_v" gid="43" x="656" y="1988" width="20" height="72" /><object id="1340" name="fence_orchard_perm_v" gid="43" x="656" y="2060" width="20" height="72" /><object id="1341" name="mine_anvil" gid="118" x="986" y="1886" width="56" height="48" /><object id="1342" name="mine_sign" gid="58" x="942" y="1882" width="34" height="42" /><object id="1343" name="mine_rock" gid="117" x="1072" y="1916" width="62" height="54" /><object id="1344" name="mine_rock" gid="117" x="1166" y="1906" width="62" height="54" /><object id="1345" name="mine_rock" gid="117" x="1264" y="1920" width="62" height="54" /><object id="1346" name="mine_rock" gid="117" x="1036" y="1998" width="62" height="54" /><object id="1347" name="mine_rock" gid="117" x="1134" y="2012" width="62" height="54" /><object id="1348" name="mine_rock" gid="117" x="1232" y="2002" width="62" height="54" /><object id="1349" name="mine_rock" gid="117" x="1318" y="1966" width="62" height="54" /><object id="1350" name="farm_gate" gid="126" x="560" y="718" width="144" height="118" /><object id="1351" name="lantern_post_road" gid="85" x="652" y="856" width="48" height="72" /><object id="1352" name="lantern_post_road" gid="85" x="652" y="1018" width="48" height="72" /><object id="1353" name="garden_rock_decor" gid="128" x="424" y="622" width="42" height="42" /><object id="1354" name="garden_rock_decor" gid="128" x="612" y="996" width="44" height="44" /><object id="1355" name="garden_rock_decor" gid="128" x="112" y="622" width="40" height="40" /><object id="1356" name="wildflowers_decor" gid="129" x="200" y="704" width="40" height="40" /><object id="1357" name="wildflowers_decor" gid="129" x="320" y="704" width="40" height="40" /><object id="1358" name="wildflowers_decor" gid="129" x="440" y="704" width="40" height="40" /><object id="1359" name="wildflowers_decor" gid="129" x="140" y="756" width="40" height="40" /><object id="1360" name="wildflowers_decor" gid="129" x="260" y="756" width="40" height="40" /><object id="1361" name="wildflowers_decor" gid="129" x="380" y="756" width="40" height="40" /><object id="1362" name="wildflowers_decor" gid="129" x="200" y="824" width="40" height="40" /><object id="1363" name="wildflowers_decor" gid="129" x="320" y="824" width="40" height="40" /><object id="1364" name="wildflowers_decor" gid="129" x="440" y="824" width="40" height="40" /><object id="1365" name="wildflowers_decor" gid="129" x="140" y="876" width="40" height="40" /><object id="1366" name="wildflowers_decor" gid="129" x="260" y="876" width="40" height="40" /><object id="1367" name="wildflowers_decor" gid="129" x="380" y="876" width="40" height="40" /><object id="1368" name="wildflowers_decor" gid="129" x="500" y="876" width="40" height="40" /><object id="1369" name="wildflowers_decor" gid="129" x="200" y="944" width="40" height="40" /><object id="1370" name="wildflowers_decor" gid="129" x="320" y="944" width="40" height="40" /><object id="1371" name="wildflowers_decor" gid="129" x="440" y="944" width="40" height="40" /><object id="1372" name="wildflowers_decor" gid="129" x="614" y="816" width="42" height="42" /><object id="1373" name="wildflowers_decor" gid="129" x="614" y="926" width="42" height="42" /><object id="1374" name="lantern_post_orchard" gid="85" x="264" y="1852" width="48" height="72" /><object id="1375" name="lantern_post_orchard" gid="85" x="494" y="1852" width="48" height="72" /><object id="1376" name="garden_rock_orchard" gid="128" x="606" y="1892" width="42" height="42" /><object id="1377" name="garden_rock_orchard" gid="128" x="154" y="2028" width="42" height="42" /><object id="1378" name="wildflowers_orchard" gid="129" x="262" y="1948" width="40" height="40" /><object id="1379" name="wildflowers_orchard" gid="129" x="382" y="1948" width="40" height="40" /><object id="1380" name="wildflowers_orchard" gid="129" x="502" y="1948" width="40" height="40" /><object id="1381" name="wildflowers_orchard" gid="129" x="262" y="2036" width="40" height="40" /><object id="1382" name="wildflowers_orchard" gid="129" x="382" y="2036" width="40" height="40" /><object id="1383" name="wildflowers_orchard" gid="129" x="502" y="2036" width="40" height="40" /><object id="1384" name="wildflowers_orchard" gid="129" x="158" y="1952" width="40" height="40" /><object id="1385" name="wildflowers_orchard" gid="129" x="604" y="1986" width="40" height="40" /></objectgroup>
  <objectgroup id="3" name="GameplayZones">
   <object id="500" name="FarmZone" type="zone" x="100" y="645" width="500" height="320"><properties><property name="action" value="FarmZone" /></properties></object>
   <object id="501" name="AnimalZone" type="zone" x="985" y="948" width="555" height="305"><properties><property name="action" value="AnimalZone" /></properties></object>
@@ -2365,5 +2351,5 @@
   <object id="503" name="DigZone" type="zone" x="100" y="250" width="500" height="320"><properties><property name="action" value="DigZone" /></properties></object>
   <object id="504" name="ResourceZone" type="zone" x="880" y="0" width="720" height="466"><properties><property name="action" value="ResourceZone" /></properties></object>
   <object id="505" name="CityBuildZone" type="zone" x="120" y="1520" width="1360" height="500"><properties><property name="action" value="CityBuildZone" /></properties></object>
- <object id="506" name="PoolZone" type="zone" x="110" y="1520" width="490" height="195" /><object id="507" name="CasinoZone" type="zone" x="995" y="1505" width="275" height="215" /></objectgroup>
+ <object id="506" name="PoolZone" type="zone" x="110" y="1520" width="490" height="195" /><object id="507" name="CasinoZone" type="zone" x="995" y="1505" width="275" height="215" /><object id="508" name="OrchardZone" type="zone" x="136" y="1836" width="528" height="234" /><object id="509" name="MineZone" type="zone" x="935" y="1850" width="445" height="205" /></objectgroup>
 </map>

@@ -17,9 +17,14 @@ import java.util.Random;
 public class EnvironmentController extends BaseController implements DayObserver {
     private final FarmMap farmMap;
     private final Random rng;
+    private boolean zoroPestProtection = false;
 
     public EnvironmentController(GameManager gameManager, FarmMap farmMap) {
         this(gameManager, farmMap, new Random());
+    }
+
+    public void setZoroPestProtection(boolean enabled) {
+        this.zoroPestProtection = enabled;
     }
 
     public EnvironmentController(GameManager gameManager, FarmMap farmMap, Random rng) {
@@ -47,7 +52,10 @@ public class EnvironmentController extends BaseController implements DayObserver
     }
 
     public void spawnPest() {
-        if (rng.nextInt(100) >= Constant.PEST_SPAWN_CHANCE) {
+        int effectiveChance = zoroPestProtection
+                ? Math.max(1, (int) Math.round(Constant.PEST_SPAWN_CHANCE * 0.20)) // Zoro >= 3 Tim: giảm 80% sâu bệnh!
+                : Constant.PEST_SPAWN_CHANCE;
+        if (rng.nextInt(100) >= effectiveChance) {
             return;
         }
 

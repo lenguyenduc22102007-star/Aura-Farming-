@@ -93,6 +93,11 @@ public class Cell {
     /** Harvest the crop if it is in HARVEST state */
     public Crop harvestCrop() {
         if (currentCrop != null && currentCrop.isHarvestable()) {
+            if (currentCrop instanceof model.crop.PerennialFruitTree) {
+                model.crop.PerennialFruitTree tree = (model.crop.PerennialFruitTree) currentCrop;
+                tree.onPerennialHarvested();
+                return tree;
+            }
             Crop harvested = currentCrop;
             currentCrop = null;
             state = CellState.UNTILLED;     // soil exhausted; needs re-tilling

@@ -141,6 +141,65 @@ public class ParticleSystem {
         }
     }
 
+    /** Đập đá khai khoáng: bắn tia lửa kim loại vàng/cam sáng lóe + mảnh đá xám văng ra. */
+    public void spawnOreSparkBurst(double worldX, double worldY, boolean shattered) {
+        int count = shattered ? 18 : 10;
+        for (int i = 0; i < count; i++) {
+            boolean spark = (i % 2 == 0);
+            Node pNode;
+            if (spark) {
+                Rectangle s = new Rectangle(3.2, 3.2);
+                s.setFill(i % 4 == 0 ? Color.rgb(255, 248, 168) : Color.rgb(255, 174, 48));
+                pNode = s;
+            } else {
+                Circle pebble = new Circle(2.4 + rng.nextDouble() * 1.8, Color.rgb(126, 134, 148));
+                pebble.setStroke(Color.rgb(42, 46, 54));
+                pebble.setStrokeWidth(0.8);
+                pNode = pebble;
+            }
+            double angle = -Math.PI * (0.06 + rng.nextDouble() * 0.88);
+            double speed = (shattered ? 95.0 : 68.0) + rng.nextDouble() * 105.0;
+            addParticle(new Particle(
+                pNode,
+                worldX + (rng.nextDouble() - 0.5) * 20.0,
+                worldY + (rng.nextDouble() - 0.5) * 14.0,
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed - 48.0,
+                460.0, 0.95, (rng.nextDouble() - 0.5) * 420.0,
+                0.0, 0.0,
+                0.42 + rng.nextDouble() * 0.25,
+                1.15, 0.25
+            ));
+        }
+    }
+
+    /** Pháo hoa rực rỡ nhiều màu nổ tung trên bầu trời Khu Bể Bơi vào Đêm Lễ Hội (Day 14, 28...). */
+    public void spawnFireworkBurst(double worldX, double worldY) {
+        Color[][] palettes = {
+            { Color.web("#FF4D6D"), Color.web("#FFB3C1"), Color.web("#FFF0F3") },
+            { Color.web("#FFD166"), Color.web("#FFEE99"), Color.web("#FFFFFF") },
+            { Color.web("#38BDF8"), Color.web("#7DD3FC"), Color.web("#F0F9FF") },
+            { Color.web("#4ADE80"), Color.web("#BBF7D0"), Color.web("#FEF08A") },
+            { Color.web("#C084FC"), Color.web("#F472B6"), Color.web("#FFF1F2") }
+        };
+        Color[] pal = palettes[rng.nextInt(palettes.length)];
+        int rays = 20;
+        for (int i = 0; i < rays; i++) {
+            double angle = (Math.PI * 2.0 * i) / rays + (rng.nextDouble() - 0.5) * 0.14;
+            double speed = 75.0 + rng.nextDouble() * 95.0;
+            Circle spark = new Circle(2.8 + rng.nextDouble() * 1.8, pal[i % pal.length]);
+            addParticle(new Particle(
+                spark, worldX, worldY,
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed,
+                95.0, 0.94, 0.0,
+                0.0, 0.0,
+                0.75 + rng.nextDouble() * 0.35,
+                1.25, 0.20
+            ));
+        }
+    }
+
     /** Tưới nước: bắn ra 11 giọt nước xanh nhỏ rơi xuống theo trọng lực. */
     public void spawnWaterSplash(double worldX, double worldY) {
         for (int i = 0; i < 11; i++) {

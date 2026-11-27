@@ -15,6 +15,9 @@ public final class CropAssetRegistry {
         KEYS.put(Corn.class, "corn");
         KEYS.put(Tomato.class, "tomato");
         KEYS.put(WaterRice.class, "water_rice");
+        KEYS.put(OrangeTree.class, "orange");
+        KEYS.put(AppleTree.class, "apple");
+        KEYS.put(CoconutTree.class, "coconut");
     }
 
     public static String getKey(Crop crop) {

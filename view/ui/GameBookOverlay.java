@@ -28,10 +28,13 @@ import model.game_item.BabyChickenItem;
 import model.game_item.BabyCowItem;
 import model.game_item.BabyPigItem;
 import model.game_item.CookedFoodItem;
+import model.game_item.FactoryProductItem;
 import model.game_item.FishItem;
 import model.game_item.FishSpecies;
+import model.game_item.ForageItem;
 import model.game_item.HarvestedCropItem;
 import model.game_item.Item;
+import model.game_item.OreItem;
 import model.game_item.Seed;
 import model.player_inventory.Player;
 import model.quest.Quest;
@@ -73,6 +76,7 @@ public class GameBookOverlay extends StackPane {
     private final Map<FishSpecies, Double> fishMaxCm;
     private final Runnable onClaimQuestCallback;
     private final Runnable onCloseCallback;
+    private model.factory.MarketManager marketManager = null;
 
     private final Button[] tabButtons = new Button[5];
     private final StackPane contentHolder = new StackPane();
@@ -279,6 +283,11 @@ public class GameBookOverlay extends StackPane {
         selectTab(activeTabIndex);
     }
 
+    public void setMarketManager(model.factory.MarketManager marketManager) {
+        this.marketManager = marketManager;
+        selectTab(activeTabIndex);
+    }
+
     private void closeBook() {
         SoundHook.playMenuClick();
         if (onCloseCallback != null) {
@@ -291,10 +300,17 @@ public class GameBookOverlay extends StackPane {
     // =========================================================================
 
     private VBox buildStorageTab() {
-        Label header = sectionTitle("📦 KHO ĐỒ NÔNG TRẠI — XEM & BÁN VẬT PHẨM");
+        String hotTip = (marketManager != null) ? ("  •  " + marketManager.getMorningBannerText()) : "";
+        Label header = sectionTitle("📦 KHO ĐỒ NÔNG TRẠI" + hotTip);
 
         Button sellAllBtn = createWoodActionBtn("💰 Bán hết Nông sản/Cá/Đồ ăn", "#E59819", "#B56E08");
+        Button craftSprinklerBtn = createWoodActionBtn("⚙ Đúc Vòi Tưới (2 Sắt + 1 Vàng)", "#2563EB", "#1D4ED8");
         Button convertCropsBtn = createWoodActionBtn("🌾 Đổi Nông sản -> Thức ăn thú", "#4A934A", "#2F6B31");
+
+        craftSprinklerBtn.setOnAction(e -> {
+            view.mine.MineManager.craftAutoSprinkler(player, this::setStatus);
+            selectTab(TAB_STORAGE);
+        });
 
         sellAllBtn.setOnAction(e -> {
             if (player == null) return;
@@ -306,7 +322,7 @@ public class GameBookOverlay extends StackPane {
                 }
             }
             if (sellables.isEmpty()) {
-                setStatus("Kho chưa có nông sản, cá hoặc món ăn nào để bán!");
+                setStatus("Kho chưa có nông sản, thành phẩm, quặng, cá hoặc món ăn nào để bán!");
                 return;
             }
             int totalEarned = 0;
@@ -314,7 +330,8 @@ public class GameBookOverlay extends StackPane {
             for (Item it : sellables) {
                 int q = player.getInventory().getItemCount(it);
                 if (q > 0) {
-                    totalEarned += q * it.getPrice();
+                    int unitPrice = (marketManager != null) ? marketManager.getSellUnitPrice(it) : it.getPrice();
+                    totalEarned += q * unitPrice;
                     totalCount += q;
                     player.getInventory().removeItem(it, q);
                 }
@@ -355,7 +372,7 @@ public class GameBookOverlay extends StackPane {
 
         Region topSpacer = new Region();
         HBox.setHgrow(topSpacer, Priority.ALWAYS);
-        HBox topRow = new HBox(10, header, topSpacer, convertCropsBtn, sellAllBtn);
+        HBox topRow = new HBox(8, header, topSpacer, craftSprinklerBtn, convertCropsBtn, sellAllBtn);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         FlowPane grid = new FlowPane(12, 10);
@@ -389,40 +406,46 @@ public class GameBookOverlay extends StackPane {
         return item instanceof HarvestedCropItem
                 || item instanceof FishItem
                 || item instanceof AnimalProductItem
-                || item instanceof CookedFoodItem;
+                || item instanceof CookedFoodItem
+                || item instanceof FactoryProductItem
+                || item instanceof OreItem
+                || item instanceof ForageItem;
     }
 
     private HBox createStorageItemCard(Item item, int qty) {
         ImageView icon = Assets.imageView(Assets.getShopIcon(item), 34);
+        boolean isHot = (marketManager != null && marketManager.isHotItem(item));
+        int unitPrice = (marketManager != null) ? marketManager.getSellUnitPrice(item) : item.getPrice();
 
-        Label name = new Label(item.getName() + "  ×" + qty);
+        Label name = new Label(item.getName() + "  ×" + qty + (isHot ? "  🔥 +50% HOT" : ""));
         lockNoEllipsis(name);
-        name.setStyle("-fx-font-family: " + FONT_MONO + "; -fx-font-size: 13.5px; -fx-font-weight: bold; -fx-text-fill: #3A1F0A;");
+        name.setStyle("-fx-font-family: " + FONT_MONO + "; -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: "
+                + (isHot ? "#C2271A;" : "#3A1F0A;"));
 
-        Label sub = new Label("Giá bán: $" + item.getPrice() + "/món  •  Tổng: $" + (item.getPrice() * qty));
+        Label sub = new Label("Giá bán: $" + unitPrice + "/món" + (isHot ? " (Gốc $" + item.getPrice() + ")" : "") + "  •  Tổng: $" + (unitPrice * qty));
         lockNoEllipsis(sub);
-        sub.setStyle("-fx-font-family: " + FONT_MONO + "; -fx-font-size: 11.5px; -fx-text-fill: #6D4626;");
+        sub.setStyle("-fx-font-family: " + FONT_MONO + "; -fx-font-size: 11.5px; -fx-text-fill: " + (isHot ? "#B45309;" : "#6D4626;"));
 
         HBox btnRow = new HBox(6);
         btnRow.setAlignment(Pos.CENTER_LEFT);
 
         boolean canSell = isSellableProduce(item) || item instanceof AnimalFeedItem;
-        if (canSell && item.getPrice() > 0) {
-            Button sellOne = createSmallBtn("Bán 1 (+$" + item.getPrice() + ")", "#E5A124", "#B8780E");
+        if (canSell && unitPrice > 0) {
+            Button sellOne = createSmallBtn("Bán 1 (+$" + unitPrice + ")", "#E5A124", "#B8780E");
             sellOne.setOnAction(e -> {
                 if (player.getInventory().removeItem(item, 1)) {
-                    player.addMoney(item.getPrice());
+                    player.addMoney(unitPrice);
                     SoundHook.playPickup();
-                    setStatus("Đã bán 1× " + item.getName() + " nhận +$" + item.getPrice() + "!");
+                    setStatus("Đã bán 1× " + item.getName() + " nhận +$" + unitPrice + (isHot ? " (Thưởng +50% SỐT GIÁ!)" : "") + "!");
                     selectTab(TAB_STORAGE);
                 }
             });
 
-            Button sellAll = createSmallBtn("Bán hết (+$" + (item.getPrice() * qty) + ")", "#2F9A4E", "#1E6E36");
+            Button sellAll = createSmallBtn("Bán hết (+$" + (unitPrice * qty) + ")", "#2F9A4E", "#1E6E36");
             sellAll.setOnAction(e -> {
                 int cur = player.getInventory().getItemCount(item);
                 if (cur > 0 && player.getInventory().removeItem(item, cur)) {
-                    int gain = cur * item.getPrice();
+                    int gain = cur * unitPrice;
                     player.addMoney(gain);
                     SoundHook.playPickup();
                     setStatus("Đã bán " + cur + "× " + item.getName() + " nhận +$" + gain + "!");
@@ -631,21 +654,28 @@ public class GameBookOverlay extends StackPane {
     private HBox createShopCard(ItemManager entry, Item proto, String accentHex) {
         ImageView icon = Assets.imageView(Assets.getShopIcon(proto), 38);
         int owned = countOwnedByName(proto.getName());
+        int unitCost = (shop != null) ? shop.getEffectiveUnitPrice(proto) : proto.getPrice();
+        boolean discounted = (shop != null && shop.isNamiDiscountActive() && unitCost < proto.getPrice());
+        boolean lockedOrchard = (shop != null && ShopController.isOrchardTreeSeed(proto) && !shop.isOrchardUnlocked());
 
-        Label name = new Label(proto.getName() + "  •  $" + proto.getPrice());
+        Label name = new Label(proto.getName() + "  •  $" + unitCost + (discounted ? " (-15% Nami)" : ""));
         lockNoEllipsis(name);
-        name.setStyle("-fx-font-family: " + FONT_MONO + "; -fx-font-size: 13.5px; -fx-font-weight: bold; -fx-text-fill: #3A1F0A;");
+        name.setStyle("-fx-font-family: " + FONT_MONO + "; -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #3A1F0A;");
 
-        Label stats = new Label("Đang có trong kho: " + owned);
+        Label stats = new Label(lockedOrchard
+                ? "🔒 Cần mở khóa Vườn Cây Ăn Quả ($3.000)"
+                : ("Đang có trong kho: " + owned));
         lockNoEllipsis(stats);
-        stats.setStyle("-fx-font-family: " + FONT_MONO + "; -fx-font-size: 11.5px; -fx-font-weight: bold; -fx-text-fill: " + accentHex + ";");
+        stats.setStyle("-fx-font-family: " + FONT_MONO + "; -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: "
+                + (lockedOrchard ? "#B91C1C;" : (accentHex + ";")));
 
         Label detail = new Label(proto.getStats());
         detail.setWrapText(true);
         detail.setMaxWidth(295);
         detail.setStyle("-fx-font-family: " + FONT_MONO + "; -fx-font-size: 11px; -fx-text-fill: #7B5230;");
 
-        Button buy1 = createSmallBtn("Mua ×1 ($" + proto.getPrice() + ")", "#E59819", "#B56E08");
+        Button buy1 = createSmallBtn("Mua ×1 ($" + unitCost + ")", "#E59819", "#B56E08");
+        buy1.setDisable(lockedOrchard);
         buy1.setOnAction(e -> {
             shop.buyItem(entry, 1);
             SoundHook.playPickup();
@@ -653,7 +683,8 @@ public class GameBookOverlay extends StackPane {
             selectTab(TAB_SHOP);
         });
 
-        Button buy5 = createSmallBtn("Mua ×5 ($" + (proto.getPrice() * 5) + ")", "#388E3C", "#236326");
+        Button buy5 = createSmallBtn("Mua ×5 ($" + (unitCost * 5) + ")", "#388E3C", "#236326");
+        buy5.setDisable(lockedOrchard);
         buy5.setOnAction(e -> {
             shop.buyItem(entry, 5);
             SoundHook.playPickup();

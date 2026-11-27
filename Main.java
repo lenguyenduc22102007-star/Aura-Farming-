@@ -212,6 +212,7 @@ public class Main extends Application implements GameLauncher {
         InGameController ingame = ingameLoader.getController();
         ingame.setRouter(router);
         ingame.setShopAndPause(shopController, pauseController);
+        ingame.setEnvironmentController(environmentController);
         if (pauseController != null) {
             pauseController.setSessionCallbacks(
                 () -> ingame.openGameBook(view.ui.GameBookOverlay.TAB_SETTINGS),

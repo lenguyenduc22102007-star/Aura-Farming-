@@ -43,6 +43,9 @@ public class Assets {
     public static Image[] POTATO_STAGES;
     public static Image[] CORN_STAGES;
     public static Image[] RICE_STAGES;
+    public static Image[] ORANGE_STAGES;
+    public static Image[] APPLE_STAGES;
+    public static Image[] COCONUT_STAGES;
 
     // SHOP ITEM ICONS
     private static final Map<String, Image> SHOP_ICONS = new HashMap<>();
@@ -73,6 +76,21 @@ public class Assets {
 
     public static Image FLAG_TILE;
     public static Image CRAFT_STATION_TILE;
+    public static Image[] FLAG_FRAMES;
+    public static Image[] CAMPFIRE_FRAMES;
+
+    // FARM PROPS (Load sắc nét smooth=false từ /view/assets/props/)
+    public static Image FARM_GATE;
+    public static Image FARM_PLOT;
+    public static Image FENCE_WOOD;
+    public static Image LANTERN_POST;
+    public static Image GARDEN_ROCK;
+    public static Image WILDFLOWERS;
+    public static Image MAIN_HOUSE;
+    public static Image POOL_WATER;
+    public static Image POOL_CHAIR;
+    public static Image POOL_UMBRELLA;
+    public static Image PALM_TREE;
 
     // ANIMAL SPRITES
     public static Image PIG_SPRITE;
@@ -247,6 +265,42 @@ public class Assets {
         SHOP_ICONS.put(model.game_item.ForageItem.ID_WILD_MUSHROOM, WILD_MUSHROOM_ICON);
         SHOP_ICONS.put(model.game_item.ForageItem.ID_HERB, HERB_ICON);
 
+        // FACTORY PRODUCTS, ORES, AUTO SPRINKLER & PERENNIAL ORCHARD FRUITS
+        SHOP_ICONS.put(model.game_item.FactoryProductItem.ID_TOMATO_JUICE,   createBottleIcon(Color.rgb(228, 52, 46), Color.rgb(255, 126, 112)));
+        SHOP_ICONS.put(model.game_item.FactoryProductItem.ID_POTATO_SNACK,   createSnackBagIcon(Color.rgb(242, 184, 48), Color.rgb(214, 58, 42)));
+        SHOP_ICONS.put(model.game_item.FactoryProductItem.ID_BUTTER_POPCORN, createPopcornBoxIcon());
+        SHOP_ICONS.put(model.game_item.FactoryProductItem.ID_CANNED_CHEESE,  createCheeseWheelIcon());
+        SHOP_ICONS.put(model.game_item.FactoryProductItem.ID_PACKED_RICE,    createRiceSackIcon());
+        SHOP_ICONS.put(model.game_item.FactoryProductItem.ID_SUNFLOWER_OIL,  createBottleIcon(Color.rgb(246, 198, 44), Color.rgb(255, 238, 132)));
+
+        SHOP_ICONS.put(model.game_item.OreItem.ID_COPPER_ORE, createOreIcon(Color.rgb(214, 114, 56), Color.rgb(252, 172, 114)));
+        SHOP_ICONS.put(model.game_item.OreItem.ID_IRON_ORE,   createOreIcon(Color.rgb(156, 170, 188), Color.rgb(226, 236, 248)));
+        SHOP_ICONS.put(model.game_item.OreItem.ID_GOLD_ORE,   createOreIcon(Color.rgb(245, 192, 42), Color.rgb(255, 242, 138)));
+        SHOP_ICONS.put(model.game_item.OreItem.ID_GEMSTONE,   createGemIcon());
+        SHOP_ICONS.put("auto_sprinkler", createSprinklerIcon());
+
+        Image orangeIcon  = createRoundFruitIcon(Color.rgb(248, 136, 28), Color.rgb(255, 194, 88));
+        Image appleIcon   = createRoundFruitIcon(Color.rgb(224, 44, 44),  Color.rgb(255, 132, 132));
+        Image coconutIcon = createRoundFruitIcon(Color.rgb(132, 82, 42),  Color.rgb(186, 132, 78));
+        SHOP_ICONS.put("orange",  orangeIcon);
+        SHOP_ICONS.put("apple",   appleIcon);
+        SHOP_ICONS.put("coconut", coconutIcon);
+
+        APPLE_STAGES = new Image[4];
+        for (int i = 0; i < 4; i++) {
+            APPLE_STAGES[i] = safeLoadPixelImage("/view/assets/props/apple_tree_" + i + ".png", 128, 128);
+        }
+        Image orangeHarvestImg = safeLoadPixelImage("/view/assets/props/orange_tree_3.png", 128, 128);
+        ORANGE_STAGES = new Image[] {
+            APPLE_STAGES[0], APPLE_STAGES[1], APPLE_STAGES[2],
+            (orangeHarvestImg != null ? orangeHarvestImg : APPLE_STAGES[3])
+        };
+        Image coconutPalm = safeLoadPixelImage("/view/assets/props/palm_tree.png", 96, 120);
+        COCONUT_STAGES = new Image[] {
+            APPLE_STAGES[0], APPLE_STAGES[1], APPLE_STAGES[2],
+            (coconutPalm != null ? coconutPalm : APPLE_STAGES[3])
+        };
+
         // NPC POOL & ROAMING BOTS (108x108 chuẩn tỉ lệ Luffy + đủ frame Idle cử động thở & Walk 4 frame vung tay sải chân, smooth = false)
         NPC_NAMI    = safeLoadPixelImage("/view/assets/npcs/nami.png", 108, 108);
         NPC_HANCOCK = safeLoadPixelImage("/view/assets/npcs/hancock.png", 108, 108);
@@ -286,6 +340,26 @@ public class Assets {
         for (int i = 0; i < 4; i++) {
             LUFFY_WATER_RUN_FRAMES[i] = safeLoadPixelImage("/view/assets/player_actions/luffy_water_run_" + i + ".png", 144, 144);
         }
+
+        // ANIMATED MAP PROPS (Cờ bay theo gió 6 frame 48x64 & Lửa trại cháy bập bùng 6 frame 48x48, smooth=false)
+        FLAG_FRAMES = new Image[6];
+        CAMPFIRE_FRAMES = new Image[6];
+        for (int i = 0; i < 6; i++) {
+            FLAG_FRAMES[i] = safeLoadPixelImage("/view/assets/props/flag_" + i + ".png", 48, 64);
+            CAMPFIRE_FRAMES[i] = safeLoadPixelImage("/view/assets/props/campfire_" + i + ".png", 48, 48);
+        }
+
+        FARM_GATE    = safeLoadPixelImage("/view/assets/props/farm_gate.png",    144, 118);
+        FARM_PLOT    = safeLoadPixelImage("/view/assets/props/farm_plot.png",     96,  96);
+        FENCE_WOOD   = safeLoadPixelImage("/view/assets/props/fence_wood.png",    48,  48);
+        LANTERN_POST = safeLoadPixelImage("/view/assets/props/lantern_post.png",  48,  72);
+        GARDEN_ROCK   = safeLoadPixelImage("/view/assets/props/garden_rock.png",   48,  48);
+        WILDFLOWERS   = safeLoadPixelImage("/view/assets/props/wildflowers.png",   48,  48);
+        MAIN_HOUSE    = safeLoadPixelImage("/view/assets/props/main_house.png",   224, 225);
+        POOL_WATER    = safeLoadPixelImage("/view/assets/props/pool_water.png",   168, 238);
+        POOL_CHAIR    = safeLoadPixelImage("/view/assets/props/pool_chair.png",    52,  72);
+        POOL_UMBRELLA = safeLoadPixelImage("/view/assets/props/pool_umbrella.png", 72,  72);
+        PALM_TREE     = safeLoadPixelImage("/view/assets/props/palm_tree.png",     96, 120);
 
         // 8-DIRECTION TOOL RUN & IDLE MAPS (side dùng sheet 72x72 gốc; down/up/down_right/up_right dùng sprite 108x108)
         LUFFY_HOE_RUN_BY_DIR = new HashMap<>();
@@ -675,6 +749,293 @@ public class Assets {
         });
     }
 
+    private static Image createBottleIcon(Color main, Color hi) {
+        return renderPixelPattern(new String[] {
+            "....oooo....",
+            "....oCCo....",
+            "....oooo....",
+            "...oMMMMo...",
+            "..oMHHMMMo..",
+            "..oMHMMMMo..",
+            "..oMMMMMMo..",
+            "..oWWWWWWo..",
+            "..oMMMMMMo..",
+            "..oMMMMMMo..",
+            "...oooooo...",
+            "............"
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(32, 22, 18);
+            if (ch == 'C') return Color.rgb(214, 168, 96);
+            if (ch == 'M') return main;
+            if (ch == 'H') return hi;
+            if (ch == 'W') return Color.rgb(252, 248, 236);
+            return null;
+        });
+    }
+
+    private static Image createSnackBagIcon(Color bagCol, Color stripeCol) {
+        return renderPixelPattern(new String[] {
+            ".oooooooooo.",
+            ".oSSSSSSSSo.",
+            "..oBBBBBBBo.",
+            "..oBBWWBBBo.",
+            "..oBWWWWBBo.",
+            "..oBBWWBBBo.",
+            "..oSSSSSSSSo",
+            "..oBBBBBBBo.",
+            ".oSSSSSSSSo.",
+            ".oooooooooo.",
+            "............",
+            "............"
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(34, 22, 16);
+            if (ch == 'B') return bagCol;
+            if (ch == 'S') return stripeCol;
+            if (ch == 'W') return Color.rgb(255, 248, 212);
+            return null;
+        });
+    }
+
+    private static Image createPopcornBoxIcon() {
+        return renderPixelPattern(new String[] {
+            "..oo.oo.oo..",
+            ".oYYoYYoYYo.",
+            "oYYYYYYYYYYo",
+            ".oooooooooo.",
+            ".oRWRWRWRWo.",
+            ".oRWRWRWRWo.",
+            "..oRWRWRWo..",
+            "..oRWRWRWo..",
+            "..oRWRWRWo..",
+            "...oooooo...",
+            "............",
+            "............"
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(38, 20, 14);
+            if (ch == 'Y') return Color.rgb(255, 224, 92);
+            if (ch == 'R') return Color.rgb(220, 48, 42);
+            if (ch == 'W') return Color.rgb(252, 248, 240);
+            return null;
+        });
+    }
+
+    private static Image createCheeseWheelIcon() {
+        return renderPixelPattern(new String[] {
+            "............",
+            "...oooooo...",
+            ".ooLLLLLLoo.",
+            "oLLLLLLLLLLo",
+            "oooooooooooo",
+            "oYYDYYYYDYYo",
+            "oYYYYYYYYYYo",
+            "oYYYYDYYYYYo",
+            ".oooooooooo.",
+            "............",
+            "............",
+            "............"
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(44, 28, 12);
+            if (ch == 'L') return Color.rgb(255, 236, 124);
+            if (ch == 'Y') return Color.rgb(245, 192, 42);
+            if (ch == 'D') return Color.rgb(198, 136, 22);
+            return null;
+        });
+    }
+
+    private static Image createRiceSackIcon() {
+        return renderPixelPattern(new String[] {
+            "...oooooo...",
+            "..oLLLLLLo..",
+            "...oRRRRo...",
+            "..oSSSSSSo..",
+            ".oSSGGGGSSo.",
+            ".oSSGGGGSSo.",
+            ".oSSSSSSSSo.",
+            ".oSSSSSSSSo.",
+            "..oooooooo..",
+            "............",
+            "............",
+            "............"
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(42, 28, 16);
+            if (ch == 'L') return Color.rgb(236, 214, 172);
+            if (ch == 'S') return Color.rgb(212, 184, 136);
+            if (ch == 'R') return Color.rgb(206, 48, 42);
+            if (ch == 'G') return Color.rgb(86, 172, 68);
+            return null;
+        });
+    }
+
+    private static Image createOreIcon(Color ore, Color shine) {
+        return renderPixelPattern(new String[] {
+            "............",
+            "...oooooo...",
+            "..oRRRRRRo..",
+            ".oRROSHRRRo.",
+            "oRRROOORRRRo",
+            "oRROSHRRRRRo",
+            "oRRRRROORRRo",
+            ".oRRRRRRRRo.",
+            "..oooooooo..",
+            "............",
+            "............",
+            "............"
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(28, 30, 36);
+            if (ch == 'R') return Color.rgb(104, 112, 124);
+            if (ch == 'O') return ore;
+            if (ch == 'S' || ch == 'H') return shine;
+            return null;
+        });
+    }
+
+    private static Image createGemIcon() {
+        return renderPixelPattern(new String[] {
+            "............",
+            "...oooooo...",
+            "..oCCCCCCo..",
+            ".oCWWCCCCCo.",
+            "oCCWCCCCCCCo",
+            ".oCCCCCCCCo.",
+            "..oCCCCCCo..",
+            "...oCCCCo...",
+            "....oooo....",
+            "............",
+            "............",
+            "............"
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(18, 42, 68);
+            if (ch == 'C') return Color.rgb(56, 198, 252);
+            if (ch == 'W') return Color.rgb(224, 250, 255);
+            return null;
+        });
+    }
+
+    private static Image createSprinklerIcon() {
+        return renderPixelPattern(new String[] {
+            "............",
+            ".oooooooooo.",
+            "oBBBBWWBBBBo",
+            ".ooooYYoooo.",
+            "....oYYo....",
+            "....oYYo....",
+            "....oYYo....",
+            "..ooSSSSoo..",
+            ".oSSSSSSSSo.",
+            ".oooooooooo.",
+            "............",
+            "............"
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(24, 32, 42);
+            if (ch == 'B') return Color.rgb(56, 189, 248);
+            if (ch == 'W') return Color.rgb(224, 242, 254);
+            if (ch == 'Y') return Color.rgb(250, 204, 21);
+            if (ch == 'S') return Color.rgb(100, 116, 139);
+            return null;
+        });
+    }
+
+    private static Image createRoundFruitIcon(Color body, Color hi) {
+        return renderPixelPattern(new String[] {
+            ".....oo.....",
+            "....oGGo....",
+            "...oooooo...",
+            "..oBBHHBBo..",
+            ".oBBHBBBBBo.",
+            ".oBBBBBBBBo.",
+            ".oBBBBBBBBo.",
+            "..oBBBBBBo..",
+            "...oooooo...",
+            "............",
+            "............",
+            "............"
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(38, 22, 14);
+            if (ch == 'G') return Color.rgb(74, 182, 62);
+            if (ch == 'B') return body;
+            if (ch == 'H') return hi;
+            return null;
+        });
+    }
+
+    /** 4 giai đoạn cây ăn quả lâu năm (Mầm -> Cây non -> Cây tán lá lớn -> Cây sai trĩu quả). */
+    private static Image[] createFruitTreeStages(Color fruitColor) {
+        Image s0 = renderPixelPattern(new String[] {
+            "................",
+            "................",
+            "................",
+            ".......oo.......",
+            "......oGGo......",
+            ".....oGGLLo.....",
+            "......oTTo......",
+            "......oTTo......",
+            ".....ooTToo.....",
+            "................"
+        }, 4, ch -> {
+            if (ch == 'o') return Color.rgb(24, 42, 20);
+            if (ch == 'G') return Color.rgb(62, 168, 56);
+            if (ch == 'L') return Color.rgb(132, 224, 92);
+            if (ch == 'T') return Color.rgb(132, 82, 40);
+            return null;
+        });
+        Image s1 = renderPixelPattern(new String[] {
+            "................",
+            ".....oooooo.....",
+            "....oGGLLGGo....",
+            "...oGLLLLGGGo...",
+            "....oGGGGGGo....",
+            "......oTTo......",
+            "......oTTo......",
+            "......oTTo......",
+            ".....ooTToo.....",
+            "................"
+        }, 4, ch -> {
+            if (ch == 'o') return Color.rgb(24, 42, 20);
+            if (ch == 'G') return Color.rgb(54, 158, 52);
+            if (ch == 'L') return Color.rgb(122, 214, 84);
+            if (ch == 'T') return Color.rgb(132, 82, 40);
+            return null;
+        });
+        Image s2 = renderPixelPattern(new String[] {
+            "....oooooooo....",
+            "..ooGGLLLLGGoo..",
+            ".oGGLLLLLLLLGGo.",
+            ".oGLLLLGGLLLLGo.",
+            "..oGGGGGGGGGGoo.",
+            "....ooTTTTTo....",
+            "......oTTTo.....",
+            "......oTTTo.....",
+            ".....ooTTToo....",
+            "................"
+        }, 4, ch -> {
+            if (ch == 'o') return Color.rgb(22, 40, 18);
+            if (ch == 'G') return Color.rgb(46, 148, 48);
+            if (ch == 'L') return Color.rgb(106, 204, 76);
+            if (ch == 'T') return Color.rgb(128, 76, 36);
+            return null;
+        });
+        Image s3 = renderPixelPattern(new String[] {
+            "....oooooooo....",
+            "..ooGFFLLLGGoo..",
+            ".oGGLFFLLLFFGGo.",
+            ".oGLLGGGGFFLLGo.",
+            "..oGGFFGGGGGGoo.",
+            "....ooTTTTTo....",
+            "......oTTTo.....",
+            "......oTTTo.....",
+            ".....ooTTToo....",
+            "................"
+        }, 4, ch -> {
+            if (ch == 'o') return Color.rgb(22, 40, 18);
+            if (ch == 'G') return Color.rgb(46, 148, 48);
+            if (ch == 'L') return Color.rgb(106, 204, 76);
+            if (ch == 'T') return Color.rgb(128, 76, 36);
+            if (ch == 'F') return fruitColor;
+            return null;
+        });
+        return new Image[] { s0, s1, s2, s3 };
+    }
+
     /** Icon bình tưới nước pixel màu xanh dương nổi bật (24x24) để nhắc người chơi tưới cây. */
     private static Image createPixelWaterNeedIcon() {
         return renderPixelPattern(new String[] {
@@ -700,65 +1061,62 @@ public class Assets {
         });
     }
 
-    /** Ô đất luống chưa cuốc (UNTILLED): đất phẳng màu vàng cát sáng nhẹ, viền đất ấm tách biệt rõ với đất đã cuốc. */
+    /** Ô đất luống chưa cuốc (UNTILLED): đất tơi ấm tự nhiên, có hạt đất & độ sâu nhẹ, khớp khung luống viền đất nhô. */
     private static Image createUnplowedBedTile() {
         return renderPixelPattern(new String[] {
-            "bbbbbbbbbbbbbbbb",
-            "bLLLLLLLLLLLLLLb",
-            "bLLsLLLLLLLLsLLb",
-            "bLLLLLLLdLLLLLLb",
-            "bLLLLLLLLLLLLLLb",
-            "bLLLdLLLLLLsLLLb",
-            "bLLLLLLLLLLLLLLb",
-            "bLsLLLLLLLdLLLLb",
-            "bLLLLLLLLLLLLLLb",
-            "bLLLLsLLLLLLLLLb",
-            "bLLLLLLLLdLLLLLb",
-            "bLLdLLLLLLLLsLLb",
-            "bLLLLLLLLLLLLLLb",
-            "bLLLLLLsLLLLLLLb",
-            "bLLLLLLLLLLLLLLb",
-            "bbbbbbbbbbbbbbbb"
+            "dLLLLdLLLLdLLLLd",
+            "LLsLLLLLLdLLLLsL",
+            "LLLLLdLLLLLLsLLL",
+            "LdLLLLLLsLLLLdLL",
+            "LLLLsLLLLLLdLLLL",
+            "LLdLLLLdLLLLLLsL",
+            "LLLLLLsLLLLdLLLL",
+            "dLLsLLLLLLsLLLdL",
+            "LLLLLLdLLLLLLLLL",
+            "LLdLLLLLLsLLdLLL",
+            "LLLLsLLLLLLLLsLL",
+            "LsLLLLdLLLLdLLLL",
+            "LLLLLLLLsLLLLLLd",
+            "LLdLLsLLLLLLsLLL",
+            "LLLLLLLLdLLLLdLL",
+            "dLLsLLLLLLdLLLLd"
         }, 4, ch -> {
-            if (ch == 'b') return Color.rgb(176, 134, 84);
-            if (ch == 'L') return Color.rgb(214, 174, 118);
-            if (ch == 's') return Color.rgb(226, 190, 136);
-            if (ch == 'd') return Color.rgb(188, 146, 94);
+            if (ch == 'L') return Color.rgb(168, 118, 72);
+            if (ch == 's') return Color.rgb(186, 136, 86);
+            if (ch == 'd') return Color.rgb(138, 90, 50);
             return null;
         });
     }
 
     /**
-     * Ô đất ĐÃ CUỐC (TILLED) có rãnh cày ngang rõ nét:
-     * - wet=false (Khô): màu nâu ấm đậm vừa, tách biệt hoàn toàn với đất chưa cuốc.
-     * - wet=true  (Ướt): màu nâu sẫm ẩm ướt tối hơn ~30%.
+     * Ô đất ĐÃ CUỐC (TILLED) tơi xốp giàu dinh dưỡng, rãnh cày tự nhiên:
+     * - wet=false (Khô): đất mùn nâu sẫm ấm, hạt đất tơi nổi rõ.
+     * - wet=true  (Ướt): đất ẩm đen nâu sâu (~30% tối hơn), bóng ẩm rõ rệt.
      */
     private static Image createTilledSoilTile(boolean wet) {
-        Color border = wet ? Color.rgb(52, 26, 10)  : Color.rgb(102, 56, 24);
-        Color ridge  = wet ? Color.rgb(98, 56, 26)  : Color.rgb(164, 100, 48);
-        Color mid    = wet ? Color.rgb(82, 44, 18)  : Color.rgb(142, 82, 36);
-        Color furrow = wet ? Color.rgb(56, 28, 10)  : Color.rgb(106, 58, 22);
-        Color speck  = wet ? Color.rgb(116, 72, 38) : Color.rgb(184, 120, 64);
+        Color ridge  = wet ? Color.rgb(86, 48, 22)  : Color.rgb(126, 74, 36);
+        Color mid    = wet ? Color.rgb(70, 38, 16)  : Color.rgb(106, 60, 28);
+        Color furrow = wet ? Color.rgb(48, 24, 10)  : Color.rgb(78, 42, 18);
+        Color speck  = wet ? Color.rgb(104, 62, 32) : Color.rgb(148, 92, 48);
 
         return renderPixelPattern(new String[] {
-            "bbbbbbbbbbbbbbbb",
-            "bRRRRRRRsRRRRRRb",
-            "bMMMMMMMMMMMMMMb",
-            "bFFFFFFFFFFFFFFb",
-            "bRRRsRRRRRRRRRRb",
-            "bMMMMMMMMMMMMMMb",
-            "bFFFFFFFFFFFFFFb",
-            "bRRRRRRRRRsRRRRb",
-            "bMMMMMMMMMMMMMMb",
-            "bFFFFFFFFFFFFFFb",
-            "bRRRRRsRRRRRRRRb",
-            "bMMMMMMMMMMMMMMb",
-            "bFFFFFFFFFFFFFFb",
-            "bRRRRRRRRRRRsRRb",
-            "bMMMMMMMMMMMMMMb",
-            "bbbbbbbbbbbbbbbb"
+            "MRRRsRRRRMRRsRRM",
+            "MMMMMMMMMMMMMMMM",
+            "MFFFFFFFFFFFFFFM",
+            "RRsRRRRRRRRRsRRR",
+            "MMMMMMsMMMMMMMMM",
+            "FFFFFFFFFFFFFFFF",
+            "RRRRRsRRRRRsRRRR",
+            "MMMMMMMMMMsMMMMM",
+            "FFFFFFFFFFFFFFFF",
+            "RRRsRRRRRRRRRRsR",
+            "MMMsMMMMMMMMMMMM",
+            "FFFFFFFFFFFFFFFF",
+            "RRRRRRRsRRRRRsRR",
+            "MMMMMMMMMMMMMMMM",
+            "MFFFFFFFFFFFFFFM",
+            "MRRsRRRRMRRRsRRM"
         }, 4, ch -> {
-            if (ch == 'b') return border;
             if (ch == 'R') return ridge;
             if (ch == 'M') return mid;
             if (ch == 'F') return furrow;
@@ -868,6 +1226,9 @@ public class Assets {
         else if ("potato".equals(cropKey))    stages = POTATO_STAGES;
         else if ("corn".equals(cropKey))      stages = CORN_STAGES;
         else if ("water_rice".equals(cropKey)) stages = RICE_STAGES;
+        else if ("orange".equals(cropKey))     stages = ORANGE_STAGES;
+        else if ("apple".equals(cropKey))      stages = APPLE_STAGES;
+        else if ("coconut".equals(cropKey))    stages = COCONUT_STAGES;
 
         if (stages != null) {
             int pct = crop.getCurrentGrowthProgress();

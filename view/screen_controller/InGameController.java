@@ -133,7 +133,14 @@ public class InGameController {
     private view.ui.GameBookOverlay activeGameBook = null;
     private view.ui.CookingCraftView activeCookingOverlay = null;
     private view.ui.CasinoOverlay activeCasinoOverlay = null;
+    private view.ui.FactoryView activeFactoryView = null;
+    private javafx.scene.layout.StackPane activeGiftDialog = null;
     private view.npc.NpcManager npcManager = null;
+    private controller.environmentcontroller.EnvironmentController environmentController = null;
+    private final model.factory.FactoryManager factoryManager = new model.factory.FactoryManager();
+    private final model.factory.MarketManager marketManager = new model.factory.MarketManager();
+    private final model.festival.FestivalManager festivalManager = new model.festival.FestivalManager();
+    private final view.mine.MineManager mineManager = new view.mine.MineManager();
     private javafx.scene.layout.StackPane activeSleepDialog = null;
     private boolean sleepTransitionRunning = false;
     private boolean isSitting = false;
@@ -141,6 +148,12 @@ public class InGameController {
     private final java.util.List<CampForageSpot> campForageSpots = new java.util.ArrayList<>();
     private final java.util.List<TreeObject> choppableTrees = new java.util.ArrayList<>();
     private boolean pendingAxeChopFelled = false;
+    private final java.util.List<double[]> factoryDoorPoints = new java.util.ArrayList<>();
+    private final java.util.List<double[]> orchardUnlockPoints = new java.util.ArrayList<>();
+    private boolean orchardUnlocked = false;
+    private Label orchardWorldSignLabel = null;
+    private Label festivalTopBannerLabel = null;
+    private double fireworkBurstTimer = 0.0;
 
     /** Đối tượng cây gỗ có thể chặt bằng Rìu quanh nông trại (HP=4, rớt +4 Củi khô, mọc lại sau 3 ngày). */
     private static final class TreeObject {
@@ -200,6 +213,10 @@ public class InGameController {
     private double sunbatheSparkleTimer = 0.0;
     private boolean suppressQuestMoneyTracking = false;
     private final java.util.List<javafx.scene.shape.Circle> campfireGlows = new java.util.ArrayList<>();
+    /** Các cụm ánh sáng của cột đèn đường (tự động bật sáng ấm áp bắt đầu từ 18:00 tối). */
+    private final java.util.List<javafx.scene.Node[]> streetlampLights = new java.util.ArrayList<>();
+    private double[] farmGatePortalBox = null; // [x0, y0, x1, y1] vùng đi qua dưới vòm Cổng Chào Nông Trại
+    private boolean playerInsideFarmGateZone = false;
     private double campfireEmberTimer = 0.0;
     private Label interactPromptLabel = null;
     private Label survivalWarningLabel = null;
@@ -282,6 +299,11 @@ public class InGameController {
     private boolean isWalking = false;
     private long actionTime = 0;
     private java.util.List<ImageView> animatedFlags = new java.util.ArrayList<>();
+    private final java.util.List<ImageView> animatedCampfires = new java.util.ArrayList<>();
+    private double flagAnimTimer = 0.0;
+    private int flagAnimFrame = 0;
+    private double campfireAnimTimer = 0.0;
+    private int campfireAnimFrame = 0;
     private java.util.List<ImageView> sceneryObjects = new java.util.ArrayList<>();
     private java.util.Set<String> clearedSceneryKeys = new java.util.HashSet<>();
 
@@ -397,6 +419,10 @@ public class InGameController {
     public void setShopAndPause(controller.shopmanager.ShopController shopController, PauseController pauseController) {
         this.shopController = shopController;
         this.pauseController = pauseController;
+    }
+
+    public void setEnvironmentController(controller.environmentcontroller.EnvironmentController envController) {
+        this.environmentController = envController;
     }
 
     public void restoreGameFocus() {
@@ -579,7 +605,19 @@ public class InGameController {
                     break;
                 case G:
                     event.consume();
+                    if (isNewPress && !router.hasOverlay() && !isOnBoat && npcManager != null) {
+                        view.npc.NpcManager.NpcTarget nearNpc = npcManager.findNearestNpc(playerX + 22.0, playerY + 52.0, 84.0);
+                        if (nearNpc != null) {
+                            openNpcGiftOverlay(nearNpc);
+                            break;
+                        }
+                    }
                     toggleFishingGuide();
+                    break;
+                case V:
+                    if (isNewPress && !router.hasOverlay() && !isOnBoat && !isSitting && !isSunbathing) {
+                        tryPlaceAutoSprinklerUnderFeet();
+                    }
                     break;
                 case I:
                     openStorageMenu();
@@ -745,8 +783,15 @@ public class InGameController {
             return;
         }
 
-        // Cuốc (Hoe) CHỈ hoạt động trên các luống đất 2x2 (TerrainType.DIRT) trong Farming Zone — giữ nguyên lối đi cỏ xanh!
+        // Cuốc (Hoe): ưu tiên đập tảng đá mỏ quặng ở Khu Khai Khoáng Mini trước khi kiểm tra khu trồng trọt!
         if (curToolCheck instanceof Hoe) {
+            if (mineManager.tryStrikeRock(targetX, targetY, playerX + 22.0, playerY + 52.0,
+                    player, particleSystem, this::spawnFloatingText, this::notify)) {
+                updateSurvivalHud(animTimeSec);
+                triggerToolAnimation("HOE", -1, -1);
+                rootPane.requestFocus();
+                return;
+            }
             Cell hoeCell = getFacingCell();
             if (!isCellInFarmZone(hoeCell)) {
                 notify("Chỉ có thể dùng cuốc trong khu trồng trọt (Farming Zone)!");
@@ -1020,6 +1065,16 @@ public class InGameController {
             }
         }
         controller.lifecyclemanager.SaveManager.saveTreeStates(p, treeStates);
+
+        // Lưu đầy đủ trạng thái Nhà Máy, Thị Trường Sốt Giá, Lễ Hội 7 Ngày, Mỏ Đá & Vòi Tưới, Vườn Cây Ăn Quả và Tim 6 NPC
+        p.setProperty("orchard.unlocked", Boolean.toString(orchardUnlocked));
+        factoryManager.save(p);
+        marketManager.save(p);
+        festivalManager.save(p);
+        mineManager.save(p);
+        if (npcManager != null) {
+            npcManager.save(p);
+        }
     }
 
     /** Restore the state written by {@link #exportViewState}. Call after setGame. */
@@ -1084,6 +1139,21 @@ public class InGameController {
                     }
                 }
             }
+
+            // Khôi phục Vườn Cây Ăn Quả, Nhà Máy, Thị Trường, Lễ Hội, Mỏ Đá / Vòi Tưới & Tim 6 NPC
+            orchardUnlocked = Boolean.parseBoolean(p.getProperty("orchard.unlocked", "false"));
+            if (orchardUnlocked) {
+                applyOrchardUnlockedVisuals();
+            }
+            factoryManager.load(p);
+            marketManager.load(p);
+            festivalManager.load(p);
+            mineManager.load(p, entityPane);
+            if (npcManager != null) {
+                npcManager.load(p);
+            }
+            syncAllNpcPerks();
+            updateFestivalBannerUi();
 
             // animals
             if (p.getProperty("animal.count") != null) {
@@ -1252,7 +1322,11 @@ public class InGameController {
     private long elapsedTimeInDay = 0;
 
     private Color getTimeOverlayColor(double progress) {
-        Color nightColor = Color.rgb(10, 10, 30, 0.6); // slightly less dark for playability
+        boolean fireworksNight = gameManager != null
+                && festivalManager.getFestivalForDay(gameManager.getCurrentDay()) == model.festival.FestivalManager.FestivalType.FIREWORKS_NIGHT;
+        Color nightColor = fireworksNight
+                ? Color.rgb(8, 12, 38, 0.68)
+                : Color.rgb(10, 10, 30, 0.6); // slightly less dark for playability
         Color sunriseColor = Color.rgb(255, 120, 50, 0.3);
         Color morningClear = Color.rgb(255, 120, 50, 0.0);
         Color afternoonClear = Color.rgb(255, 80, 20, 0.0);
@@ -1301,9 +1375,14 @@ public class InGameController {
                     if (rootPane.getParent() == null) {
                         return;
                     }
+                    // Dây chuyền Nhà Máy luôn chạy ngầm theo thời gian thực ngay cả khi người chơi đang làm việc ngoài đồng (hoặc mở Sổ Quản Lý)
+                    if (activeFactoryView == null && !sleepTransitionRunning) {
+                        factoryManager.update(dtSec);
+                    }
                     if (!router.hasOverlay() && !sleepTransitionRunning) {
                         updatePlayerPosition(dtSec, animTimeSec);
                         updateRainEffect(dtSec);
+                        updateFestivalEffectsAndCheckReward(dtSec);
 
                         // Chuyển màu nền thời tiết mượt mà bằng nội suy GPU (không chạm CSS rootPane gây khựng)
                         if (weatherTintRect != null && !currentWeatherTint.equals(targetWeatherTint)) {
@@ -1331,7 +1410,7 @@ public class InGameController {
                             updateTimeDisplay();
                             updateFeedingSchedule();
                         }
-                        updateFlagsAnimation();
+                        updateFlagsAnimation(dtSec);
                     }
                 } catch (Exception e) {
                     System.err.println("EXCEPTION IN ANIMATION TIMER:");
@@ -1359,17 +1438,39 @@ public class InGameController {
         }
     }
 
-    private void updateFlagsAnimation() {
-        if (animatedFlags == null || animatedFlags.isEmpty()) return;
-        int frameCount = 6;
-        int frameIndex = (int) ((System.currentTimeMillis() / 150) % frameCount);
-        for (ImageView flag : animatedFlags) {
-            javafx.scene.image.Image img = flag.getImage();
-            if (img != null) {
-                double frameWidth = img.getWidth() / frameCount;
-                double frameHeight = img.getHeight();
-                javafx.geometry.Rectangle2D viewport = new javafx.geometry.Rectangle2D(frameIndex * frameWidth, 0, frameWidth, frameHeight);
-                flag.setViewport(viewport);
+    private void updateFlagsAnimation(double dtSec) {
+        // 1. Hoạt ảnh Đống Lửa Trại cháy bập bùng (6 frame, 0.12s/frame)
+        if (!animatedCampfires.isEmpty() && Assets.CAMPFIRE_FRAMES != null && Assets.CAMPFIRE_FRAMES.length == 6) {
+            campfireAnimTimer += dtSec;
+            if (campfireAnimTimer >= 0.12) {
+                campfireAnimTimer -= 0.12;
+                campfireAnimFrame = (campfireAnimFrame + 1) % 6;
+                javafx.scene.image.Image fireImg = Assets.CAMPFIRE_FRAMES[campfireAnimFrame];
+                if (fireImg != null) {
+                    for (ImageView fireView : animatedCampfires) {
+                        fireView.setImage(fireImg);
+                    }
+                }
+            }
+        }
+
+        // 2. Hoạt ảnh Cờ bay theo gió (6 frame; trời nắng/khô 0.15s/frame, trời mưa/gió mạnh 0.09s/frame)
+        if (animatedFlags != null && !animatedFlags.isEmpty()
+                && Assets.FLAG_FRAMES != null && Assets.FLAG_FRAMES.length == 6) {
+            boolean windyRain = gameManager != null
+                    && gameManager.getCurrentWeather() != null
+                    && gameManager.getCurrentWeather().getType() == model.weather.WeatherType.RAINY;
+            double frameInterval = windyRain ? 0.09 : 0.15;
+            flagAnimTimer += dtSec;
+            if (flagAnimTimer >= frameInterval) {
+                flagAnimTimer -= frameInterval;
+                flagAnimFrame = (flagAnimFrame + 1) % 6;
+                javafx.scene.image.Image flagImg = Assets.FLAG_FRAMES[flagAnimFrame];
+                if (flagImg != null) {
+                    for (ImageView flag : animatedFlags) {
+                        flag.setImage(flagImg);
+                    }
+                }
             }
         }
     }
@@ -1485,6 +1586,45 @@ public class InGameController {
                     glow.setOpacity(0.72 + 0.18 * Math.sin(timeSec * 9.2 + i));
                 }
             }
+            // Cột đèn đường tự động bật sáng dần từ đúng 18:00 (6h tối) với ánh sáng vàng ấm lung linh
+            if (!streetlampLights.isEmpty()) {
+                double dayProgress = Math.min(1.0, Math.max(0.0, (double) elapsedTimeInDay / DAY_DURATION_MS));
+                double exactHour = 6.0 + dayProgress * 16.0;
+                double lampPower = (exactHour < 18.0) ? 0.0 : Math.min(1.0, (exactHour - 18.0) / 0.35);
+                boolean lit = lampPower > 0.005;
+                for (int i = 0; i < streetlampLights.size(); i++) {
+                    javafx.scene.Node[] parts = streetlampLights.get(i);
+                    double flicker = 0.93 + 0.07 * Math.sin(timeSec * 4.6 + i * 1.7);
+                    double scalePulse = 0.97 + 0.04 * Math.sin(timeSec * 3.2 + i * 1.1);
+                    for (int k = 0; k < parts.length; k++) {
+                        javafx.scene.Node n = parts[k];
+                        n.setVisible(lit);
+                        if (lit) {
+                            n.setOpacity(lampPower * flicker);
+                            if (k == 1) { // quầng sáng trên đầu đèn nhấp nháy nhẹ
+                                n.setScaleX(scalePulse);
+                                n.setScaleY(scalePulse);
+                            }
+                        }
+                    }
+                }
+            }
+            // Vùng chuyển khu vực tự nhiên ngay dưới vòm Cổng Chào Nông Trại Gỗ & Đá
+            if (farmGatePortalBox != null) {
+                double pxGate = playerX + 22.0;
+                double pyGate = playerY + 52.0;
+                boolean inGate = pxGate >= farmGatePortalBox[0] && pxGate <= farmGatePortalBox[2]
+                        && pyGate >= farmGatePortalBox[1] && pyGate <= farmGatePortalBox[3];
+                if (inGate && !playerInsideFarmGateZone) {
+                    playerInsideFarmGateZone = true;
+                    String msg = (facing.equals("LEFT") || facing.equals("DOWN"))
+                            ? "🌾 Khu Vực Nông Trại — 12 Luống Đất Canh Tác"
+                            : "🛤 Lối Ra Đường Lớn & Xưởng Chế Biến";
+                    spawnFloatingText(msg, Color.rgb(254, 240, 138));
+                } else if (!inGate && playerInsideFarmGateZone) {
+                    playerInsideFarmGateZone = false;
+                }
+            }
             if (!campForageSpots.isEmpty()) {
                 for (CampForageSpot spot : campForageSpots) {
                     spot.node.setTranslateY(Math.sin(timeSec * 3.1 + spot.bobPhase) * 2.6);
@@ -1578,8 +1718,10 @@ public class InGameController {
         }
         if (player != null) {
             if (isSunbathing) {
-                player.addHunger(6.5 * deltaRiverSec);
-                player.addThirst(8.0 * deltaRiverSec);
+                // Đặc quyền Hancock >= 3 Tim: nằm thư giãn ở Bể Bơi hồi Đói/Khát nhanh gấp đôi!
+                double hancockBoost = (npcManager != null && npcManager.hasPerkUnlocked("hancock")) ? 2.0 : 1.0;
+                player.addHunger(6.5 * hancockBoost * deltaRiverSec);
+                player.addThirst(8.0 * hancockBoost * deltaRiverSec);
                 hungerGraceTimerSec = HUNGER_FULL_GRACE_SEC;
                 recentLaborStreak = 0;
                 recentLaborDecaySec = 0.0;
@@ -1590,6 +1732,8 @@ public class InGameController {
                 }
                 updateSurvivalHud(timeSec);
             } else {
+                // Đặc quyền Chopper >= 3 Tim: giảm 25% tốc độ tụt Đói/Khát!
+                double chopperDrainFactor = (npcManager != null && npcManager.hasPerkUnlocked("chopper")) ? 0.75 : 1.0;
                 if (recentLaborDecaySec > 0.0) {
                     recentLaborDecaySec = Math.max(0.0, recentLaborDecaySec - deltaRiverSec);
                     if (recentLaborDecaySec <= 0.0) {
@@ -1599,13 +1743,13 @@ public class InGameController {
                 if (hungerGraceTimerSec > 0.0) {
                     hungerGraceTimerSec = Math.max(0.0, hungerGraceTimerSec - deltaRiverSec);
                 } else {
-                    player.addHunger(-0.12 * deltaRiverSec);
+                    player.addHunger(-0.12 * chopperDrainFactor * deltaRiverSec);
                 }
                 WeatherType wType = (gameManager != null && gameManager.getCurrentWeather() != null)
                         ? gameManager.getCurrentWeather().getType()
                         : WeatherType.SUNNY;
                 double thirstDrainRate = (wType == WeatherType.DROUGHT) ? 0.18 : (wType == WeatherType.RAINY ? 0.04 : 0.10);
-                player.addThirst(-thirstDrainRate * deltaRiverSec);
+                player.addThirst(-thirstDrainRate * chopperDrainFactor * deltaRiverSec);
                 updateSurvivalHud(timeSec);
             }
         }
@@ -1721,7 +1865,18 @@ public class InGameController {
                     }
                     continue;
                 }
-                if (idLower.isEmpty() || idLower.contains("flag") || idLower.contains("crop") || idLower.contains("bush") ||
+                if (idLower.equals("farm_gate") || idLower.equals("rustic_farm_gate")) {
+                    // Cổng Chào Nông Trại (FARM_GATE): chỉ chặn 2 trụ đá trái & phải, để trống lối đi giữa vòm cổng
+                    javafx.geometry.Rectangle2D leftPillar  = new javafx.geometry.Rectangle2D(ox + 6.0, oy + oh - 34.0, 28.0, 30.0);
+                    javafx.geometry.Rectangle2D rightPillar = new javafx.geometry.Rectangle2D(ox + ow - 34.0, oy + oh - 34.0, 28.0, 30.0);
+                    if (playerBoxX.intersects(leftPillar) && !oldBox.intersects(leftPillar)) colX_obj = true;
+                    if (playerBoxY.intersects(leftPillar) && !oldBox.intersects(leftPillar)) colY_obj = true;
+                    if (playerBoxX.intersects(rightPillar) && !oldBox.intersects(rightPillar)) colX_obj = true;
+                    if (playerBoxY.intersects(rightPillar) && !oldBox.intersects(rightPillar)) colY_obj = true;
+                    continue;
+                }
+                if (idLower.isEmpty() || idLower.equals("farm_bed_frame") || idLower.startsWith("ground_") ||
+                    idLower.startsWith("wildflowers") || idLower.contains("flag") || idLower.contains("crop") || idLower.contains("bush") ||
                     idLower.contains("pumpkin") || idLower.contains("dirt") || idLower.contains("path") ||
                     idLower.contains("terrain") || idLower.contains("wheat") || idLower.contains("construction") ||
                     idLower.contains("farm_rake") || idLower.contains("farm_hoe") || idLower.contains("farm_shovel") ||
@@ -1783,8 +1938,11 @@ public class InGameController {
                 cy = oy + oh - hh - 2;
             } else if (idLow.contains("rock") || idLow.contains("stump") || idLow.contains("crate") ||
                        idLow.contains("well") || idLow.contains("water_trough") || idLow.contains("wood_plank") ||
-                       idLow.contains("log")) {
-                // Đá, gốc cây, thùng gỗ, giếng, máng nước, khúc gỗ: chặn chắc chắn phần thân
+                       idLow.contains("log") || idLow.equals("mine_anvil")) {
+                if (idLow.equals("mine_rock") && mineManager.isRockBrokenView(objView)) {
+                    continue; // Tảng đá mỏ đã đập vỡ hôm nay -> cho đi qua tự do
+                }
+                // Đá, gốc cây, thùng gỗ, giếng, máng nước, khúc gỗ, đe rèn: chặn chắc chắn phần thân
                 hw = ow * 0.82;
                 hh = oh * 0.68;
                 cx = ox + (ow - hw) / 2;
@@ -2382,6 +2540,7 @@ public class InGameController {
         facingHighlight.setStrokeWidth(3.0);
         facingHighlight.getStrokeDashArray().addAll(5d, 5d);
         facingHighlight.setVisible(false);
+        facingHighlight.setUserData(-480.0);
         entityPane.getChildren().add(facingHighlight);
         entityPane.setMouseTransparent(true); // Để click chuột xuyên qua rơi xuống mapPane
 
@@ -2674,6 +2833,18 @@ public class InGameController {
                     player.addMoney(rewardMoney);
                 }
                 onQuestFishCaught(species);
+                // Kiểm tra tiến độ Giải Thi Câu Cá Bên Sông (Lễ Hội Ngày 7, 21... câu đủ 5 con nhận +$1.000!)
+                int curFestDay = (gameManager != null) ? gameManager.getCurrentDay() : 1;
+                if (festivalManager.recordFishCaught(curFestDay)) {
+                    if (player != null) {
+                        player.addMoney(model.festival.FestivalManager.FISHING_REWARD);
+                    }
+                    spawnFloatingText("🏆 VÔ ĐỊCH LỄ HỘI CÂU CÁ +$" + model.festival.FestivalManager.FISHING_REWARD + "!", Color.rgb(255, 226, 72));
+                    if (particleSystem != null && boatEntity != null) {
+                        particleSystem.spawnFireworkBurst(boatEntity.getBoardedPlayerX() + 22.0, boatEntity.getBoatY() - 36.0);
+                    }
+                }
+                updateFestivalBannerUi();
                 if (particleSystem != null && fishingGame != null) {
                     particleSystem.spawnWaterSplash(fishingGame.getLastBobberX(), fishingGame.getLastBobberY());
                     particleSystem.spawnHarvestSparkles(fishingGame.getLastBobberX(), fishingGame.getLastBobberY() - 8.0);
@@ -2963,6 +3134,8 @@ public class InGameController {
             this::closeGameBook,
             tabIdx
         );
+        syncAllNpcPerks();
+        activeGameBook.setMarketManager(marketManager);
         router.showOverlay(activeGameBook);
         Platform.runLater(activeGameBook::requestFocus);
     }
@@ -3023,6 +3196,18 @@ public class InGameController {
         }
 
         gameManager.advanceDay();
+
+        // Cập nhật Thị Trường Sốt Giá (+50%), Lễ Hội 7 Ngày, Mọc lại Đá Mỏ & Vòi Tưới Tự Động tưới 8 ô xung quanh!
+        int newDayNum = gameManager.getCurrentDay();
+        marketManager.rollForDay(newDayNum, orchardUnlocked);
+        festivalManager.onDayStart(newDayNum);
+        mineManager.respawnAllRocks();
+        int autoWatered = mineManager.waterSurroundingCellsDaily(farmMap, particleSystem);
+        syncAllNpcPerks();
+        updateFestivalBannerUi();
+        if (npcManager != null) {
+            npcManager.setFireworksGathering(false, poolWaterX + poolWaterW * 0.5, poolWaterY + poolWaterH * 0.5);
+        }
         
         // Auto-feed by helper
         if (helperDaysLeft > 0) {
@@ -3149,6 +3334,15 @@ public class InGameController {
         }
 
         if (curTool instanceof Hoe) {
+            double clickWx = cell.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
+            double clickWy = cell.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
+            if (mineManager.tryStrikeRock(clickWx, clickWy, playerX + 22.0, playerY + 52.0,
+                    player, particleSystem, this::spawnFloatingText, this::notify)) {
+                updateSurvivalHud(animTimeSec);
+                triggerToolAnimation("HOE", -1, -1);
+                rootPane.requestFocus();
+                return;
+            }
             if (!isCellInFarmZone(cell)) {
                 notify("Chỉ có thể dùng cuốc trong khu trồng trọt (Farming Zone)!");
                 rootPane.requestFocus();
@@ -3209,6 +3403,14 @@ public class InGameController {
 
     private void togglePause() {
         if (sleepTransitionRunning) return;
+        if (activeFactoryView != null) {
+            activeFactoryView.requestExit();
+            return;
+        }
+        if (activeGiftDialog != null) {
+            closeNpcGiftOverlay();
+            return;
+        }
         if (activeCookingOverlay != null) {
             activeCookingOverlay.closeScreen();
             return;
@@ -3251,8 +3453,13 @@ public class InGameController {
     /** Quét tự động vị trí cửa nhà, đống lửa, Khu Bể Bơi (Nami & Hancock), Sòng Bạc Casino và khởi tạo 4 Bot đi dạo. */
     private void setupHouseAndCampfireInteractions() {
         houseDoorPoints.clear();
+        factoryDoorPoints.clear();
+        orchardUnlockPoints.clear();
         campfirePoints.clear();
         campfireGlows.clear();
+        streetlampLights.clear();
+        animatedCampfires.clear();
+        animatedFlags.clear();
         casinoDoorPoints.clear();
         poolSunbathePoints.clear();
         poolWaveLines.clear();
@@ -3275,26 +3482,227 @@ public class InGameController {
             double ow = objView.getFitWidth();
             double oh = objView.getFitHeight();
 
-            if (idLow.contains("house_main") || idLow.contains("house_small") || idLow.contains("house_bottom")) {
+            if (idLow.contains("house_main") || idLow.contains("house_small")) {
                 double[] door = new double[] { ox + ow * 0.50, oy + oh + 10.0 };
                 if (idLow.contains("house_main")) {
                     mainHouseDoor = door;
                 } else {
                     houseDoorPoints.add(door);
                 }
+            } else if (idLow.equals("barn") || idLow.equals("house_bottom") || idLow.contains("factory")) {
+                // Tòa nhà Nhà Máy Sản Xuất có sẵn trên bản đồ (cửa rộng chính diện)
+                factoryDoorPoints.add(new double[] { ox + ow * 0.50, oy + oh + 12.0 });
+                if (entityPane != null && idLow.equals("barn")) {
+                    Label facSign = new Label("🏭 NHÀ MÁY SẢN XUẤT");
+                    facSign.setMouseTransparent(true);
+                    facSign.setManaged(false);
+                    facSign.setStyle(
+                        "-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;" +
+                        "-fx-text-fill: #FACC15; -fx-background-color: rgba(15, 23, 42, 0.88);" +
+                        "-fx-border-color: #EAB308; -fx-border-width: 1.6px;" +
+                        "-fx-padding: 2 8 2 8; -fx-background-radius: 5px; -fx-border-radius: 5px;"
+                    );
+                    facSign.setLayoutX(ox + ow * 0.50 - 74.0);
+                    facSign.setLayoutY(oy + oh - 58.0);
+                    facSign.setUserData(oy + oh + 6.0);
+                    entityPane.getChildren().add(facSign);
+                }
+            } else if (idLow.equals("orchard_sign")) {
+                orchardUnlockPoints.add(new double[] { ox + ow * 0.50, oy + oh + 6.0 });
+                if (entityPane != null) {
+                    orchardWorldSignLabel = new Label("🔒 VƯỜN CÂY ĂN QUẢ — Mở khóa: $3.000");
+                    orchardWorldSignLabel.setMouseTransparent(true);
+                    orchardWorldSignLabel.setManaged(false);
+                    orchardWorldSignLabel.setStyle(
+                        "-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;" +
+                        "-fx-text-fill: #FEF08A; -fx-background-color: rgba(58, 28, 12, 0.90);" +
+                        "-fx-border-color: #F59E0B; -fx-border-width: 1.6px;" +
+                        "-fx-padding: 3 9 3 9; -fx-background-radius: 6px; -fx-border-radius: 6px;"
+                    );
+                    orchardWorldSignLabel.setLayoutX(ox - 118.0);
+                    orchardWorldSignLabel.setLayoutY(oy - 26.0);
+                    orchardWorldSignLabel.setUserData(oy + oh + 12.0);
+                    entityPane.getChildren().add(orchardWorldSignLabel);
+                }
+            } else if (idLow.equals("mine_sign") && entityPane != null) {
+                Label mineLbl = new Label("⛏ KHU MỎ ĐÁ & ĐÚC VÒI TƯỚI");
+                mineLbl.setMouseTransparent(true);
+                mineLbl.setManaged(false);
+                mineLbl.setStyle(
+                    "-fx-font-family: 'Consolas', monospace; -fx-font-size: 10.5px; -fx-font-weight: bold;" +
+                    "-fx-text-fill: #E0F2FE; -fx-background-color: rgba(15, 23, 42, 0.88);" +
+                    "-fx-border-color: #38BDF8; -fx-border-width: 1.5px;" +
+                    "-fx-padding: 2 8 2 8; -fx-background-radius: 5px; -fx-border-radius: 5px;"
+                );
+                mineLbl.setLayoutX(ox - 54.0);
+                mineLbl.setLayoutY(oy - 24.0);
+                mineLbl.setUserData(oy + oh + 10.0);
+                entityPane.getChildren().add(mineLbl);
+            } else if (idLow.equals("farm_bed_frame") || idLow.startsWith("ground_") || idLow.startsWith("wildflowers")) {
+                if (idLow.startsWith("wildflowers") && Assets.WILDFLOWERS != null) {
+                    objView.setImage(Assets.WILDFLOWERS);
+                }
+                objView.setSmooth(false);
+                objView.setUserData(-492.0);
+            } else if (idLow.startsWith("garden_rock")) {
+                if (Assets.GARDEN_ROCK != null) {
+                    objView.setImage(Assets.GARDEN_ROCK);
+                }
+                objView.setSmooth(false);
+            } else if (idLow.contains("fence") || idLow.startsWith("farm_decor_")) {
+                if (idLow.equals("fence_h") && Assets.FENCE_WOOD != null) {
+                    objView.setImage(Assets.FENCE_WOOD);
+                }
+                objView.setSmooth(false);
+            } else if ((idLow.equals("farm_gate") || idLow.equals("rustic_farm_gate")) && entityPane != null) {
+                if (Assets.FARM_GATE != null) {
+                    objView.setImage(Assets.FARM_GATE);
+                }
+                objView.setSmooth(false);
+                objView.setUserData(oy + oh - 16.0);
+                // Vùng đi qua tự nhiên ngay dưới vòm Cổng Chào Nông Trại
+                farmGatePortalBox = new double[] { ox + 28.0, oy + oh - 34.0, ox + ow - 28.0, oy + oh + 10.0 };
+                // Gắn 2 cụm ánh sáng vàng ấm cho 2 chiếc đèn lồng treo trên cổng (tự bật sáng khi trời tối từ 18:00)
+                double[] lanternXs = { ox + ow * 0.285, ox + ow * 0.725 };
+                double lanternY = oy + oh * 0.455;
+                for (double ltx : lanternXs) {
+                    javafx.scene.paint.RadialGradient coreGrad = new javafx.scene.paint.RadialGradient(
+                        0, 0, 0.5, 0.5, 0.5, true, javafx.scene.paint.CycleMethod.NO_CYCLE,
+                        new javafx.scene.paint.Stop(0.0, Color.rgb(255, 252, 224, 0.96)),
+                        new javafx.scene.paint.Stop(0.45, Color.rgb(255, 218, 96, 0.80)),
+                        new javafx.scene.paint.Stop(1.0, Color.rgb(255, 178, 48, 0.0))
+                    );
+                    javafx.scene.shape.Circle core = new javafx.scene.shape.Circle(0, 0, 12.0);
+                    core.setFill(coreGrad);
+                    core.setBlendMode(javafx.scene.effect.BlendMode.ADD);
+                    core.setManaged(false);
+                    core.setMouseTransparent(true);
+                    core.setLayoutX(ltx);
+                    core.setLayoutY(lanternY);
+                    core.setOpacity(0.0);
+                    core.setVisible(false);
+                    core.setUserData(oy + oh + 8.0);
+
+                    javafx.scene.paint.RadialGradient haloGrad = new javafx.scene.paint.RadialGradient(
+                        0, 0, 0.5, 0.5, 0.5, true, javafx.scene.paint.CycleMethod.NO_CYCLE,
+                        new javafx.scene.paint.Stop(0.0, Color.rgb(255, 214, 102, 0.52)),
+                        new javafx.scene.paint.Stop(0.50, Color.rgb(255, 172, 54, 0.22)),
+                        new javafx.scene.paint.Stop(1.0, Color.rgb(255, 140, 28, 0.0))
+                    );
+                    javafx.scene.shape.Circle halo = new javafx.scene.shape.Circle(0, 0, 44.0);
+                    halo.setFill(haloGrad);
+                    halo.setBlendMode(javafx.scene.effect.BlendMode.ADD);
+                    halo.setManaged(false);
+                    halo.setMouseTransparent(true);
+                    halo.setLayoutX(ltx);
+                    halo.setLayoutY(lanternY);
+                    halo.setOpacity(0.0);
+                    halo.setVisible(false);
+                    halo.setUserData(oy + oh + 7.0);
+
+                    entityPane.getChildren().addAll(halo, core);
+                    streetlampLights.add(new javafx.scene.Node[] { core, halo });
+                }
+            } else if ((idLow.equals("streetlamp") || idLow.startsWith("lantern_post")) && entityPane != null) {
+                if (Assets.LANTERN_POST != null) {
+                    objView.setImage(Assets.LANTERN_POST);
+                    objView.setSmooth(false);
+                    objView.setPreserveRatio(false);
+                    double newW = 76.0;
+                    double newH = 108.0;
+                    objView.setFitWidth(newW);
+                    objView.setFitHeight(newH);
+                    objView.setLayoutX(ox - (newW - ow) * 0.30);
+                    objView.setLayoutY(oy + (oh - newH));
+                    ox = objView.getLayoutX();
+                    oy = objView.getLayoutY();
+                    ow = newW;
+                    oh = newH;
+                }
+                // Cột đèn lồng gỗ cỡ lớn & dày dặn: gắn 3 lớp ánh sáng vàng ấm đúng tâm lồng đèn treo (bật sáng từ 18:00 tối)
+                double lx = ox + ow * 0.72;
+                double headY = oy + oh * 0.36;
+                double baseY = oy + oh * 0.90;
+
+                javafx.scene.paint.RadialGradient coreGrad = new javafx.scene.paint.RadialGradient(
+                    0, 0, 0.5, 0.5, 0.5, true, javafx.scene.paint.CycleMethod.NO_CYCLE,
+                    new javafx.scene.paint.Stop(0.0, Color.rgb(255, 252, 224, 0.98)),
+                    new javafx.scene.paint.Stop(0.45, Color.rgb(255, 218, 96, 0.88)),
+                    new javafx.scene.paint.Stop(1.0, Color.rgb(255, 178, 48, 0.0))
+                );
+                javafx.scene.shape.Circle core = new javafx.scene.shape.Circle(0, 0, 20.0);
+                core.setFill(coreGrad);
+                core.setBlendMode(javafx.scene.effect.BlendMode.ADD);
+                core.setManaged(false);
+                core.setMouseTransparent(true);
+                core.setLayoutX(lx);
+                core.setLayoutY(headY);
+                core.setOpacity(0.0);
+                core.setVisible(false);
+                core.setUserData(oy + oh + 6.0);
+
+                javafx.scene.paint.RadialGradient haloGrad = new javafx.scene.paint.RadialGradient(
+                    0, 0, 0.5, 0.5, 0.5, true, javafx.scene.paint.CycleMethod.NO_CYCLE,
+                    new javafx.scene.paint.Stop(0.0, Color.rgb(255, 214, 102, 0.62)),
+                    new javafx.scene.paint.Stop(0.50, Color.rgb(255, 172, 54, 0.28)),
+                    new javafx.scene.paint.Stop(1.0, Color.rgb(255, 140, 28, 0.0))
+                );
+                javafx.scene.shape.Circle halo = new javafx.scene.shape.Circle(0, 0, 78.0);
+                halo.setFill(haloGrad);
+                halo.setBlendMode(javafx.scene.effect.BlendMode.ADD);
+                halo.setManaged(false);
+                halo.setMouseTransparent(true);
+                halo.setLayoutX(lx);
+                halo.setLayoutY(headY);
+                halo.setOpacity(0.0);
+                halo.setVisible(false);
+                halo.setUserData(oy + oh + 5.0);
+
+                javafx.scene.paint.RadialGradient groundGrad = new javafx.scene.paint.RadialGradient(
+                    0, 0, 0.5, 0.5, 0.5, true, javafx.scene.paint.CycleMethod.NO_CYCLE,
+                    new javafx.scene.paint.Stop(0.0, Color.rgb(255, 208, 92, 0.46)),
+                    new javafx.scene.paint.Stop(0.55, Color.rgb(255, 168, 48, 0.18)),
+                    new javafx.scene.paint.Stop(1.0, Color.rgb(255, 138, 24, 0.0))
+                );
+                javafx.scene.shape.Ellipse groundPool = new javafx.scene.shape.Ellipse(0, 0, 104.0, 58.0);
+                groundPool.setFill(groundGrad);
+                groundPool.setBlendMode(javafx.scene.effect.BlendMode.ADD);
+                groundPool.setManaged(false);
+                groundPool.setMouseTransparent(true);
+                groundPool.setLayoutX(lx);
+                groundPool.setLayoutY(baseY);
+                groundPool.setOpacity(0.0);
+                groundPool.setVisible(false);
+                groundPool.setUserData(oy + oh - 4.0);
+
+                entityPane.getChildren().addAll(groundPool, halo, core);
+                streetlampLights.add(new javafx.scene.Node[] { core, halo, groundPool });
             } else if (idLow.equals("campfire")) {
                 double cx = ox + ow * 0.50;
                 double cy = oy + oh * 0.58;
                 campfirePoints.add(new double[] { cx, cy });
+                if (Assets.CAMPFIRE_FRAMES != null && Assets.CAMPFIRE_FRAMES.length > 0 && Assets.CAMPFIRE_FRAMES[0] != null) {
+                    double bigW = 112.0;
+                    double bigH = 112.0;
+                    objView.setImage(Assets.CAMPFIRE_FRAMES[0]);
+                    objView.setSmooth(false);
+                    objView.setPreserveRatio(false);
+                    objView.setFitWidth(bigW);
+                    objView.setFitHeight(bigH);
+                    // Giữ tâm đáy vòng đá đúng vị trí cũ khi phóng to đống lửa
+                    objView.setLayoutX(ox - (bigW - ow) * 0.5);
+                    objView.setLayoutY(oy - (bigH - oh) + 10.0);
+                    animatedCampfires.add(objView);
+                }
 
                 if (entityPane != null) {
                     javafx.scene.paint.RadialGradient fireGrad = new javafx.scene.paint.RadialGradient(
                         0, 0, 0.5, 0.5, 0.5, true, javafx.scene.paint.CycleMethod.NO_CYCLE,
-                        new javafx.scene.paint.Stop(0.0, Color.rgb(255, 168, 56, 0.42)),
-                        new javafx.scene.paint.Stop(0.55, Color.rgb(255, 114, 32, 0.18)),
+                        new javafx.scene.paint.Stop(0.0, Color.rgb(255, 168, 56, 0.46)),
+                        new javafx.scene.paint.Stop(0.55, Color.rgb(255, 114, 32, 0.20)),
                         new javafx.scene.paint.Stop(1.0, Color.rgb(255, 92, 20, 0.0))
                     );
-                    javafx.scene.shape.Circle glow = new javafx.scene.shape.Circle(0, 0, 86.0);
+                    javafx.scene.shape.Circle glow = new javafx.scene.shape.Circle(0, 0, 112.0);
                     glow.setFill(fireGrad);
                     glow.setManaged(false);
                     glow.setMouseTransparent(true);
@@ -3306,9 +3714,13 @@ public class InGameController {
                     campfireGlows.add(glow);
                 }
             } else if (idLow.equals("swimming_pool")) {
-                poolWaterX = ox + 26.0;
+                if (Assets.POOL_WATER != null) {
+                    objView.setImage(Assets.POOL_WATER);
+                    objView.setSmooth(false);
+                }
+                poolWaterX = ox + 22.0;
                 poolWaterY = oy + 26.0;
-                poolWaterW = Math.max(60.0, ow - 52.0);
+                poolWaterW = Math.max(60.0, ow - 44.0);
                 poolWaterH = Math.max(40.0, oh - 52.0);
 
                 // Cho phép bấm [E] ngay sát mép phải & mép dưới bể bơi (< 75px)
@@ -3345,6 +3757,10 @@ public class InGameController {
                     }
                 }
             } else if (idLow.equals("pool_lounger")) {
+                if (Assets.POOL_CHAIR != null) {
+                    objView.setImage(Assets.POOL_CHAIR);
+                    objView.setSmooth(false);
+                }
                 double lxCenter = ox + ow * 0.50;
                 double lyCenter = oy + oh * 0.55;
                 poolSunbathePoints.add(new double[] { lxCenter, lyCenter });
@@ -3356,6 +3772,16 @@ public class InGameController {
                 if (oy >= sunbatheLoungerY || sunbatheLoungerY <= 0) {
                     sunbatheLoungerX = ox;
                     sunbatheLoungerY = oy;
+                }
+            } else if (idLow.equals("pool_umbrella")) {
+                if (Assets.POOL_UMBRELLA != null) {
+                    objView.setImage(Assets.POOL_UMBRELLA);
+                    objView.setSmooth(false);
+                }
+            } else if (idLow.equals("palm_tree")) {
+                if (Assets.PALM_TREE != null) {
+                    objView.setImage(Assets.PALM_TREE);
+                    objView.setSmooth(false);
                 }
             } else if (idLow.equals("casino_building")) {
                 double doorX = ox + ow * 0.50;
@@ -3448,6 +3874,17 @@ public class InGameController {
         updateQuestTrackerUi();
         spawnDailyCampForageItems();
         registerChoppableTrees();
+        mineManager.registerMapObjects(sceneryObjects, entityPane);
+        if (orchardUnlocked) {
+            applyOrchardUnlockedVisuals();
+        }
+        if (gameManager != null) {
+            marketManager.rollForDay(gameManager.getCurrentDay(), orchardUnlocked);
+            festivalManager.onDayStart(gameManager.getCurrentDay());
+        }
+        syncAllNpcPerks();
+        updateFestivalBannerUi();
+        notify(marketManager.getMorningBannerText());
     }
 
     /** Đăng ký tất cả các cây gỗ xung quanh rìa nông trại thành đối tượng TreeObject có thể chặt (HP=4, mọc lại sau 3 ngày). */
@@ -4014,13 +4451,42 @@ public class InGameController {
                 }
             }
 
-            if (npcManager != null) {
-                view.npc.NpcManager.BotActor nearBot = npcManager.findNearestBot(px, py, 80.0);
-                if (nearBot != null) {
-                    double d = Math.hypot(px - (nearBot.x + 22.0), py - (nearBot.y + 54.0));
+            double[] nearFactory = findNearestPoint(factoryDoorPoints, px, py, 85.0);
+            if (nearFactory != null) {
+                double d = Math.hypot(px - nearFactory[0], py - nearFactory[1]);
+                if (d < bestDist) {
+                    bestDist = d;
+                    promptText = "[E] Vào Nhà Máy Sản Xuất";
+                }
+            }
+
+            if (!orchardUnlocked) {
+                double[] nearOrchard = findNearestPoint(orchardUnlockPoints, px, py, 92.0);
+                if (nearOrchard != null) {
+                    double d = Math.hypot(px - nearOrchard[0], py - nearOrchard[1]);
                     if (d < bestDist) {
                         bestDist = d;
-                        promptText = "[E] Trò chuyện với " + nearBot.name;
+                        promptText = "[E] Mua mở khóa ($3.000)";
+                    }
+                }
+            }
+
+            double[] nearAnvil = findNearestPoint(mineManager.getAnvilPoints(), px, py, 82.0);
+            if (nearAnvil != null) {
+                double d = Math.hypot(px - nearAnvil[0], py - nearAnvil[1]);
+                if (d < bestDist) {
+                    bestDist = d;
+                    promptText = "[E] Đổi 2 Sắt + 1 Vàng ➡ Vòi Tưới Tự Động";
+                }
+            }
+
+            if (npcManager != null) {
+                view.npc.NpcManager.NpcTarget nearNpc = npcManager.findNearestNpc(px, py, 82.0);
+                if (nearNpc != null) {
+                    double d = Math.hypot(px - (nearNpc.x + 22.0), py - (nearNpc.y + 54.0));
+                    if (d < bestDist) {
+                        bestDist = d;
+                        promptText = "[E] Trò chuyện với " + nearNpc.name + "  |  [G] Tặng quà";
                     }
                 }
             }
@@ -4112,9 +4578,9 @@ public class InGameController {
         double py = playerY + 52.0;
 
         double bestDist = Double.MAX_VALUE;
-        int bestAction = 0; // 1=sleep, 2=cook(warn sit), 3=boat, 4=pool, 5=casino, 6=bot, 7=forage
+        int bestAction = 0; // 1=sleep, 2=cook(warn sit), 3=boat, 4=pool, 5=casino, 6=npc, 7=forage, 8=factory, 9=orchardUnlock, 10=anvil
         double[] bestPt = null;
-        view.npc.NpcManager.BotActor bestBot = null;
+        view.npc.NpcManager.NpcTarget bestNpc = null;
         CampForageSpot bestForage = null;
 
         double[] nearDoor = findNearestPoint(houseDoorPoints, px, py, 75.0);
@@ -4175,14 +4641,46 @@ public class InGameController {
             }
         }
 
+        double[] nearFactory = findNearestPoint(factoryDoorPoints, px, py, 85.0);
+        if (nearFactory != null) {
+            double d = Math.hypot(px - nearFactory[0], py - nearFactory[1]);
+            if (d < bestDist) {
+                bestDist = d;
+                bestAction = 8;
+                bestPt = nearFactory;
+            }
+        }
+
+        if (!orchardUnlocked) {
+            double[] nearOrchard = findNearestPoint(orchardUnlockPoints, px, py, 92.0);
+            if (nearOrchard != null) {
+                double d = Math.hypot(px - nearOrchard[0], py - nearOrchard[1]);
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestAction = 9;
+                    bestPt = nearOrchard;
+                }
+            }
+        }
+
+        double[] nearAnvil = findNearestPoint(mineManager.getAnvilPoints(), px, py, 82.0);
+        if (nearAnvil != null) {
+            double d = Math.hypot(px - nearAnvil[0], py - nearAnvil[1]);
+            if (d < bestDist) {
+                bestDist = d;
+                bestAction = 10;
+                bestPt = nearAnvil;
+            }
+        }
+
         if (npcManager != null) {
-            view.npc.NpcManager.BotActor nearBot = npcManager.findNearestBot(px, py, 80.0);
-            if (nearBot != null) {
-                double d = Math.hypot(px - (nearBot.x + 22.0), py - (nearBot.y + 54.0));
+            view.npc.NpcManager.NpcTarget nearNpc = npcManager.findNearestNpc(px, py, 82.0);
+            if (nearNpc != null) {
+                double d = Math.hypot(px - (nearNpc.x + 22.0), py - (nearNpc.y + 54.0));
                 if (d < bestDist) {
                     bestDist = d;
                     bestAction = 6;
-                    bestBot = nearBot;
+                    bestNpc = nearNpc;
                 }
             }
         }
@@ -4196,16 +4694,24 @@ public class InGameController {
             notify("Hãy ấn [C] ngồi xuống bếp lửa trước khi nấu ăn!");
         } else if (bestAction == 7 && bestForage != null) {
             collectCampForageSpot(bestForage);
+        } else if (bestAction == 8) {
+            enterFactoryWithFade();
+        } else if (bestAction == 9) {
+            tryUnlockOrchardZone();
+        } else if (bestAction == 10) {
+            if (view.mine.MineManager.craftAutoSprinkler(player, this::notify)) {
+                spawnFloatingText("+1 Vòi Tưới Tự Động! (Bấm [V] trên ruộng để đặt)", Color.rgb(125, 211, 252));
+            }
         } else if (bestAction == 3 && boatEntity != null) {
             boatEntity.startBoarding(playerX, playerY);
         } else if (bestAction == 4) {
             startSunbathing();
         } else if (bestAction == 5) {
             openCasinoOverlay();
-        } else if (bestAction == 6 && bestBot != null) {
+        } else if (bestAction == 6 && bestNpc != null) {
             int curDay = (gameManager != null) ? gameManager.getCurrentDay() : 1;
-            npcManager.interactWithBot(
-                bestBot,
+            npcManager.interactWithTarget(
+                bestNpc,
                 px,
                 curDay,
                 player,
@@ -4240,15 +4746,17 @@ public class InGameController {
             luffySpriteView.setScaleX(1.0);
             luffySpriteView.setImage(Assets.LUFFY_SUNBATHE);
         }
-        poolRelaxSpeedBuffSec = 120.0;
-        lastRenderedRelaxSec = 120;
+        boolean hancockPerk = (npcManager != null && npcManager.hasPerkUnlocked("hancock"));
+        poolRelaxSpeedBuffSec = hancockPerk ? 240.0 : 120.0;
+        lastRenderedRelaxSec = (int) poolRelaxSpeedBuffSec;
         updateFoodBuffHud();
         view.fx.SoundHook.playHeart();
         if (particleSystem != null) {
             particleSystem.spawnHeartBurst(playerX + 22.0, playerY + 6.0);
         }
-        spawnFloatingText("☀ Thư giãn +20% tốc độ chạy (2 phút)!", Color.rgb(255, 224, 102));
-        notify("☀ Đang nằm tắm nắng cạnh Nami & Hancock! Hồi dần Đói/Khát & nhận Buff +20% tốc độ chạy (2 phút).");
+        String durTxt = hancockPerk ? "4 phút (Đặc quyền Hancock 3❤)!" : "2 phút!";
+        spawnFloatingText("☀ Thư giãn +20% tốc độ chạy (" + durTxt + ")", Color.rgb(255, 224, 102));
+        notify("☀ Đang nằm tắm nắng cạnh Nami & Hancock! Hồi Đói/Khát" + (hancockPerk ? " NHANH GẤP ĐÔI" : "") + " & Buff +20% tốc độ chạy " + durTxt);
     }
 
     private void stopSunbathing() {
@@ -4938,6 +5446,10 @@ public class InGameController {
         } else if (wType == WeatherType.RAINY) {
             thirstCost *= 0.75;
         }
+        if (npcManager != null && npcManager.hasPerkUnlocked("chopper")) {
+            hungerCost *= 0.75;
+            thirstCost *= 0.75;
+        }
 
         player.addHunger(-hungerCost);
         player.addThirst(-thirstCost);
@@ -4984,32 +5496,386 @@ public class InGameController {
         notify("💧 +50 Khát! Mát quá! (Khát: " + (int) Math.round(player.getThirst()) + "/100)");
     }
 
-    /** Ăn nhanh 1 món đã nấu sẵn trong Inventory khi đang đi ngoài đồng bằng phím [Q]. */
+    /** Ăn nhanh 1 món đã nấu sẵn hoặc thành phẩm Nhà Máy trong Inventory bằng phím [Q]. */
     private void tryQuickEatFood() {
         if (player == null) return;
         model.game_item.CookedFoodItem chosen = null;
+        model.game_item.FactoryProductItem chosenFac = null;
         boolean needWater = player.getThirst() < 45.0;
         for (java.util.Map.Entry<Item, Integer> e : player.getInventory().getItems().entrySet()) {
-            if (e.getValue() > 0 && e.getKey() instanceof model.game_item.CookedFoodItem) {
+            if (e.getValue() <= 0) continue;
+            if (e.getKey() instanceof model.game_item.CookedFoodItem) {
                 model.game_item.CookedFoodItem cand = (model.game_item.CookedFoodItem) e.getKey();
-                if (chosen == null) {
+                if (chosen == null || (needWater && cand.getThirstRestore() > chosen.getThirstRestore())) {
                     chosen = cand;
-                } else if (needWater && cand.getThirstRestore() > chosen.getThirstRestore()) {
-                    chosen = cand;
+                }
+            } else if (e.getKey() instanceof model.game_item.FactoryProductItem) {
+                model.game_item.FactoryProductItem fCand = (model.game_item.FactoryProductItem) e.getKey();
+                if (fCand.getHungerRestore() > 0 || fCand.getThirstRestore() > 0) {
+                    if (chosenFac == null || (needWater && fCand.getThirstRestore() > chosenFac.getThirstRestore())) {
+                        chosenFac = fCand;
+                    }
                 }
             }
         }
-        if (chosen == null) {
-            spawnFloatingText("Hết đồ ăn! Hãy nấu tại đống lửa!", Color.rgb(255, 206, 102));
-            notify("Không có món ăn đã nấu trong kho! Hãy tới đống lửa trại để nấu.");
+        if (needWater && chosenFac != null && chosenFac.getThirstRestore() > 0 && (chosen == null || chosen.getThirstRestore() < chosenFac.getThirstRestore())) {
+            if (player.getInventory().removeItem(chosenFac, 1)) {
+                player.addHunger(chosenFac.getHungerRestore());
+                player.addThirst(chosenFac.getThirstRestore());
+                updateSurvivalHud(animTimeSec);
+                view.fx.SoundHook.playPickup();
+                spawnFloatingText("+" + chosenFac.getThirstRestore() + " Khát (" + chosenFac.getName() + ")!", Color.rgb(125, 211, 252));
+                notify("🧃 Đã dùng " + chosenFac.getName() + "!");
+                return;
+            }
+        }
+        if (chosen != null) {
+            if (player.getInventory().removeItem(chosen, 1)) {
+                if (particleSystem != null) {
+                    particleSystem.spawnPickupPop(playerX + 22.0, playerY + 18.0);
+                }
+                applyCookedFoodBuff(chosen);
+            }
             return;
         }
-        if (player.getInventory().removeItem(chosen, 1)) {
-            if (particleSystem != null) {
-                particleSystem.spawnPickupPop(playerX + 22.0, playerY + 18.0);
-            }
-            applyCookedFoodBuff(chosen);
+        if (chosenFac != null && player.getInventory().removeItem(chosenFac, 1)) {
+            player.addHunger(chosenFac.getHungerRestore());
+            player.addThirst(chosenFac.getThirstRestore());
+            hungerGraceTimerSec = HUNGER_FULL_GRACE_SEC;
+            updateSurvivalHud(animTimeSec);
+            view.fx.SoundHook.playPickup();
+            spawnFloatingText("+" + chosenFac.getHungerRestore() + " Đói (" + chosenFac.getName() + ")!", Color.rgb(134, 239, 172));
+            notify("🍽 Đã ăn " + chosenFac.getName() + "!");
+            return;
         }
+        spawnFloatingText("Hết đồ ăn! Hãy nấu tại đống lửa hoặc Nhà Máy!", Color.rgb(255, 206, 102));
+        notify("Không có món ăn/nước ép trong kho! Hãy tới đống lửa hoặc Nhà Máy chế biến.");
+    }
+
+    // ======================== NHÀ MÁY, LỄ HỘI 7 NGÀY, TẶNG QUÀ NPC & MỞ KHÓA VƯỜN CÂY ĂN QUẢ ========================
+
+    /** Chuyển cảnh mượt FadeTransition 0.3s vào giao diện riêng FactoryView (1280x720). */
+    private void enterFactoryWithFade() {
+        if (router == null || router.hasOverlay() || sleepTransitionRunning) return;
+        activeKeys.clear();
+        view.fx.SoundHook.playWoodGateOpen();
+
+        activeFactoryView = new view.ui.FactoryView(
+            player,
+            factoryManager,
+            marketManager,
+            null, // moneyProperty listener đã tự động cộng tiến độ nhiệm vụ kiếm tiền
+            this::notify,
+            this::closeFactoryView
+        );
+        activeFactoryView.setOpacity(0.0);
+        router.showOverlay(activeFactoryView);
+        javafx.animation.FadeTransition ft = new javafx.animation.FadeTransition(javafx.util.Duration.seconds(0.30), activeFactoryView);
+        ft.setFromValue(0.0);
+        ft.setToValue(1.0);
+        ft.play();
+        Platform.runLater(activeFactoryView::requestFocus);
+    }
+
+    private void closeFactoryView() {
+        if (activeFactoryView == null) return;
+        view.ui.FactoryView closing = activeFactoryView;
+        activeFactoryView = null;
+        javafx.animation.FadeTransition ft = new javafx.animation.FadeTransition(javafx.util.Duration.seconds(0.25), closing);
+        ft.setFromValue(1.0);
+        ft.setToValue(0.0);
+        ft.setOnFinished(e -> {
+            if (router != null && router.hasOverlay()) {
+                router.closeOverlay();
+            }
+            activeKeys.clear();
+            if (autosave != null) autosave.run();
+            Platform.runLater(rootPane::requestFocus);
+        });
+        ft.play();
+    }
+
+    /** Mở bảng chọn quà tặng nhanh [G] khi đứng cạnh bất kỳ ai trong 6 NPC. */
+    private void openNpcGiftOverlay(view.npc.NpcManager.NpcTarget target) {
+        if (target == null || router == null || router.hasOverlay() || player == null || npcManager == null) return;
+        int curDay = (gameManager != null) ? gameManager.getCurrentDay() : 1;
+        if (npcManager.hasGiftedToday(target.id, curDay)) {
+            spawnFloatingText("Hôm nay đã tặng quà cho " + target.name + " rồi!", Color.rgb(255, 214, 102));
+            notify("💖 Bạn đã tặng quà cho " + target.name + " hôm nay rồi! Hãy quay lại vào ngày mai.");
+            return;
+        }
+
+        activeKeys.clear();
+        javafx.scene.layout.StackPane scrim = new javafx.scene.layout.StackPane();
+        scrim.setStyle("-fx-background-color: rgba(14, 9, 6, 0.68);");
+        scrim.setAlignment(Pos.CENTER);
+        scrim.setFocusTraversable(true);
+
+        javafx.scene.layout.VBox card = new javafx.scene.layout.VBox(10);
+        card.setMaxSize(540, 440);
+        card.setPrefSize(540, 440);
+        card.setPadding(new javafx.geometry.Insets(16, 18, 16, 18));
+        card.setStyle(
+            "-fx-background-color: linear-gradient(to bottom, #784726, #522E16);" +
+            "-fx-border-color: #2B1407; -fx-border-width: 4px;" +
+            "-fx-background-radius: 14px; -fx-border-radius: 12px;"
+        );
+
+        String heartStr = view.npc.NpcManager.formatHeartBar(npcManager.getHearts(target.id));
+        Label hdr = new Label("🎁 TẶNG QUÀ CHO " + target.name.toUpperCase() + "  " + heartStr);
+        hdr.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #FFE79A;");
+
+        Label perkInfo = new Label("Đặc quyền ≥ 3❤: " + view.npc.NpcManager.getPerkDescription(target.id));
+        perkInfo.setWrapText(true);
+        perkInfo.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 11.5px; -fx-text-fill: #A7F3D0;");
+
+        javafx.scene.layout.VBox listBox = new javafx.scene.layout.VBox(7);
+        listBox.setPadding(new javafx.geometry.Insets(6));
+
+        int count = 0;
+        for (java.util.Map.Entry<Item, Integer> en : player.getInventory().getItems().entrySet()) {
+            Item it = en.getKey();
+            int qty = en.getValue();
+            if (qty <= 0) continue;
+            boolean highGift = (it instanceof model.game_item.CookedFoodItem) || (it instanceof model.game_item.FactoryProductItem);
+            boolean normalGift = (it instanceof model.game_item.HarvestedCropItem) || (it instanceof model.game_item.ForageItem) || (it instanceof model.game_item.FishItem);
+            if (!highGift && !normalGift) continue;
+            count++;
+
+            javafx.scene.layout.HBox row = new javafx.scene.layout.HBox(10);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setPadding(new javafx.geometry.Insets(7, 10, 7, 10));
+            row.setStyle("-fx-background-color: #FFFDF7; -fx-border-color: #C8A273; -fx-border-radius: 8px; -fx-background-radius: 8px;");
+
+            ImageView iv = Assets.imageView(Assets.getShopIcon(it), 30);
+            Label nm = new Label(it.getName() + " (×" + qty + ")  ➡  " + (highGift ? "+1.0 ❤" : "+0.5 ❤"));
+            nm.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: "
+                    + (highGift ? "#BE123C;" : "#3B1E0B;"));
+            javafx.scene.layout.Region sp = new javafx.scene.layout.Region();
+            javafx.scene.layout.HBox.setHgrow(sp, javafx.scene.layout.Priority.ALWAYS);
+
+            javafx.scene.control.Button giveBtn = new javafx.scene.control.Button("🎁 Tặng");
+            giveBtn.setFocusTraversable(false);
+            giveBtn.setStyle(
+                "-fx-font-family: 'Consolas', monospace; -fx-font-size: 11.5px; -fx-font-weight: bold;" +
+                "-fx-text-fill: #FFFFFF; -fx-background-color: #E11D48; -fx-padding: 4 12 4 12; -fx-background-radius: 6px; -fx-cursor: hand;"
+            );
+            giveBtn.setOnAction(ev -> {
+                closeNpcGiftOverlay();
+                npcManager.giveGiftToNpc(
+                    target, it, curDay, player, particleSystem,
+                    this::syncAllNpcPerks,
+                    txt -> spawnFloatingText(txt, Color.rgb(255, 132, 168)),
+                    this::notify
+                );
+            });
+
+            if (iv != null) row.getChildren().add(iv);
+            row.getChildren().addAll(nm, sp, giveBtn);
+            listBox.getChildren().add(row);
+        }
+
+        if (count == 0) {
+            Label empty = new Label("Túi đồ chưa có Món nấu lửa trại, Thành phẩm Nhà Máy (+1 ❤) hoặc Nông sản (+0.5 ❤) để tặng!");
+            empty.setWrapText(true);
+            empty.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 12px; -fx-text-fill: #5C3418; -fx-padding: 12;");
+            listBox.getChildren().add(empty);
+        }
+
+        javafx.scene.control.ScrollPane scroll = new javafx.scene.control.ScrollPane(listBox);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: #F7E8CA; -fx-background-color: #F7E8CA; -fx-border-color: #3A1F0B; -fx-border-radius: 8px;");
+        javafx.scene.layout.VBox.setVgrow(scroll, javafx.scene.layout.Priority.ALWAYS);
+
+        javafx.scene.control.Button cancelBtn = new javafx.scene.control.Button("Đóng [ESC]");
+        cancelBtn.setFocusTraversable(false);
+        cancelBtn.setStyle(
+            "-fx-font-family: 'Consolas', monospace; -fx-font-size: 12px; -fx-font-weight: bold;" +
+            "-fx-text-fill: #FFF4DC; -fx-background-color: #8C4A27; -fx-padding: 6 16 6 16; -fx-background-radius: 7px; -fx-cursor: hand;"
+        );
+        cancelBtn.setOnAction(ev -> closeNpcGiftOverlay());
+
+        card.getChildren().addAll(hdr, perkInfo, scroll, cancelBtn);
+        scrim.getChildren().add(card);
+        scrim.setOnKeyPressed(ev -> {
+            if (ev.getCode() == KeyCode.ESCAPE || ev.getCode() == KeyCode.G) {
+                ev.consume();
+                closeNpcGiftOverlay();
+            }
+        });
+        scrim.setOnMouseClicked(ev -> {
+            if (ev.getTarget() == scrim) closeNpcGiftOverlay();
+        });
+
+        activeGiftDialog = scrim;
+        router.showOverlay(scrim);
+        Platform.runLater(scrim::requestFocus);
+    }
+
+    private void closeNpcGiftOverlay() {
+        if (activeGiftDialog != null) {
+            activeGiftDialog = null;
+            if (router != null && router.hasOverlay()) {
+                router.closeOverlay();
+            }
+            activeKeys.clear();
+            Platform.runLater(rootPane::requestFocus);
+        }
+    }
+
+    /** Đồng bộ toàn bộ đặc quyền ≥ 3 Tim của 6 NPC sang Shop, Môi trường & Sông câu cá. */
+    private void syncAllNpcPerks() {
+        boolean namiPerk = (npcManager != null && npcManager.hasPerkUnlocked("nami"));
+        boolean zoroPerk = (npcManager != null && npcManager.hasPerkUnlocked("zoro"));
+        boolean usoppPerk = (npcManager != null && npcManager.hasPerkUnlocked("usopp"));
+
+        if (shopController != null) {
+            shopController.setNamiDiscountActive(namiPerk);
+            shopController.setOrchardUnlocked(orchardUnlocked);
+        }
+        if (environmentController != null) {
+            environmentController.setZoroPestProtection(zoroPerk);
+        }
+        if (fishShadows != null) {
+            fishShadows.setUsoppRareBoost(usoppPerk);
+        }
+        if (fishingGame != null) {
+            fishingGame.setUsoppRareBoost(usoppPerk);
+        }
+    }
+
+    /** Mua mở khóa Vườn Cây Ăn Quả Lâu Năm ($3.000): xóa sạch hàng rào gỗ và mở bán Cam/Táo/Dừa trong Shop! */
+    private void tryUnlockOrchardZone() {
+        if (orchardUnlocked || player == null) return;
+        final int unlockCost = 3000;
+        if (!player.deductMoney(unlockCost)) {
+            spawnFloatingText("Cần $3.000 để mở khóa Vườn Cây Ăn Quả!", Color.rgb(255, 118, 108));
+            notify("🔒 Chưa đủ $3.000! (Hiện có: $" + player.getMoney() + " / $3.000)");
+            view.fx.SoundHook.playMenuClick();
+            return;
+        }
+        orchardUnlocked = true;
+        applyOrchardUnlockedVisuals();
+        syncAllNpcPerks();
+        view.fx.SoundHook.playPickup();
+        if (particleSystem != null) {
+            particleSystem.spawnFireworkBurst(playerX + 22.0, playerY - 18.0);
+        }
+        spawnFloatingText("🔓 ĐÃ MỞ KHÓA VƯỜN CÂY ĂN QUẢ!", Color.rgb(134, 255, 152));
+        notify("🍊 Đã mở khóa Vườn Cây Ăn Quả! Hãy vào Shop mua hạt giống Cam, Táo, Dừa trồng thu hoạch vĩnh viễn mỗi 3 ngày!");
+        if (autosave != null) autosave.run();
+    }
+
+    private void applyOrchardUnlockedVisuals() {
+        if (sceneryObjects != null) {
+            java.util.List<ImageView> toRemove = new java.util.ArrayList<>();
+            for (ImageView iv : sceneryObjects) {
+                String id = iv.getId();
+                if (id != null && (id.toLowerCase().startsWith("orchard_fence") || id.toLowerCase().equals("orchard_sign"))) {
+                    toRemove.add(iv);
+                }
+            }
+            sceneryObjects.removeAll(toRemove);
+            if (entityPane != null) {
+                entityPane.getChildren().removeAll(toRemove);
+            }
+        }
+        if (orchardWorldSignLabel != null && entityPane != null) {
+            entityPane.getChildren().remove(orchardWorldSignLabel);
+            orchardWorldSignLabel = null;
+        }
+        orchardUnlockPoints.clear();
+    }
+
+    /** Lắp Vòi Tưới Tự Động tại ô đất dưới chân người chơi bằng phím [V]. */
+    private void tryPlaceAutoSprinklerUnderFeet() {
+        int col = (int) ((playerX + 22.0) / Constant.CELL_SIZE);
+        int row = (int) ((playerY + 52.0) / Constant.CELL_SIZE);
+        Cell under = (farmMap != null) ? farmMap.getCell(row, col) : null;
+        if (under == null || !isCellInFarmZone(under)) {
+            notify("Hãy đứng trong Khu Trồng Trọt (hoặc Vườn Cây Ăn Quả đã mở) rồi bấm [V] để lắp Vòi Tưới Tự Động!");
+            return;
+        }
+        if (mineManager.placeSprinklerAt(player, row, col, entityPane, this::notify)) {
+            spawnFloatingText("💧 Đã lắp Vòi Tưới Tự Động!", Color.rgb(125, 211, 252));
+        }
+    }
+
+    /** Cập nhật biểu ngữ Lễ Hội 7 Ngày ở đầu màn hình + hiệu ứng Đêm Pháo Hoa Bể Bơi từ 18:00. */
+    private void updateFestivalEffectsAndCheckReward(double dtSec) {
+        if (gameManager == null) return;
+        int curDay = gameManager.getCurrentDay();
+        int curHour = getCurrentGameHour();
+
+        boolean fireworksNow = festivalManager.isFireworksShowActive(curDay, curHour);
+        double poolCx = poolWaterX + poolWaterW * 0.5;
+        double poolCy = poolWaterY + poolWaterH * 0.5;
+        if (npcManager != null) {
+            npcManager.setFireworksGathering(fireworksNow, poolCx, poolCy);
+        }
+
+        if (fireworksNow) {
+            fireworkBurstTimer += dtSec;
+            if (fireworkBurstTimer >= 0.52) {
+                fireworkBurstTimer = 0.0;
+                if (particleSystem != null) {
+                    double fx = poolCx + (Math.random() - 0.5) * 380.0;
+                    double fy = poolWaterY - 40.0 + (Math.random() - 0.5) * 160.0;
+                    particleSystem.spawnFireworkBurst(fx, fy);
+                }
+            }
+            // Người chơi ghé Khu Bể Bơi tham dự Đêm Pháo Hoa -> nhận ngay +$800 & +0.5 Tim cho toàn bộ 6 NPC!
+            double distToPool = Math.hypot((playerX + 22.0) - poolCx, (playerY + 52.0) - poolCy);
+            if (distToPool <= 290.0 && festivalManager.tryClaimFireworksParticipation(curDay, curHour)) {
+                if (player != null) {
+                    player.addMoney(model.festival.FestivalManager.FIREWORKS_REWARD);
+                }
+                if (npcManager != null) {
+                    npcManager.addHeartsToAll(0.5);
+                    syncAllNpcPerks();
+                }
+                view.fx.SoundHook.playHeart();
+                spawnFloatingText("🎆 THAM DỰ ĐÊM PHÁO HOA: +$800 & +0.5 ❤ TOÀN BỘ NPC!", Color.rgb(255, 224, 96));
+                notify("🎆 Tuyệt vời! Bạn nhận +$800 và +0.5 Tim thân mật với cả 6 NPC khi dự Đêm Hội Pháo Hoa!");
+                updateFestivalBannerUi();
+            }
+        }
+        updateFestivalBannerUi();
+    }
+
+    private void updateFestivalBannerUi() {
+        if (rootPane == null || gameManager == null) return;
+        String text = festivalManager.getTopBannerText(gameManager.getCurrentDay(), getCurrentGameHour());
+        if (text == null || text.isEmpty()) {
+            if (festivalTopBannerLabel != null) {
+                festivalTopBannerLabel.setVisible(false);
+            }
+            return;
+        }
+        if (festivalTopBannerLabel == null) {
+            festivalTopBannerLabel = new Label();
+            festivalTopBannerLabel.setMouseTransparent(true);
+            festivalTopBannerLabel.setManaged(false);
+            festivalTopBannerLabel.setStyle(
+                "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
+                "-fx-font-size: 12.5px; -fx-font-weight: bold; -fx-text-fill: #FEF08A;" +
+                "-fx-background-color: linear-gradient(to right, rgba(124,45,18,0.94), rgba(153,27,27,0.94));" +
+                "-fx-border-color: #FACC15; -fx-border-width: 2px;" +
+                "-fx-padding: 6 16 6 16; -fx-background-radius: 10px; -fx-border-radius: 10px;" +
+                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 10, 0.25, 0, 3);"
+            );
+            rootPane.getChildren().add(festivalTopBannerLabel);
+        }
+        if (!text.equals(festivalTopBannerLabel.getText())) {
+            festivalTopBannerLabel.setText(text);
+            festivalTopBannerLabel.autosize();
+        }
+        double rw = Math.max(960.0, rootPane.getWidth());
+        double bw = festivalTopBannerLabel.getWidth() > 20 ? festivalTopBannerLabel.getWidth() : (text.length() * 7.2 + 32.0);
+        festivalTopBannerLabel.setLayoutX(Math.max(228.0, (rw - 184.0 - bw) * 0.5));
+        festivalTopBannerLabel.setLayoutY(12.0);
+        festivalTopBannerLabel.setVisible(true);
+        festivalTopBannerLabel.toFront();
     }
 
     /** Hiển thị dòng chữ nổi bay nhẹ lên trên đầu nhân vật rồi mờ dần. */
@@ -5650,6 +6516,17 @@ private final class Tile {
             // QUAN TRỌNG: Thêm backgroundView vào đầu tiên để nó nằm dưới cùng (làm nền)
             dirtOverlay.setVisible(false);
             pestMark.setVisible(false);
+            if (cell.getTerrain() == TerrainType.DIRT && tmxMap != null) {
+                javafx.scene.image.Image grassImg = tmxMap.getTileImage(1);
+                if (grassImg != null) {
+                    ImageView grassUnderlay = new ImageView(grassImg);
+                    grassUnderlay.setFitWidth(Constant.CELL_SIZE);
+                    grassUnderlay.setFitHeight(Constant.CELL_SIZE);
+                    grassUnderlay.setSmooth(false);
+                    grassUnderlay.setMouseTransparent(true);
+                    pane.getChildren().add(grassUnderlay);
+                }
+            }
             pane.getChildren().addAll(backgroundView, dirtOverlay, cropView, growthBarGroup, pestMark, waterNeedIcon);
 
             pane.setOnMouseClicked(e -> onCellClick(cell));
@@ -5681,15 +6558,29 @@ void style() {
                 lastTilled = tilled;
                 lastWet = wet;
                 javafx.scene.image.Image img;
-                if (tilled) {
-                    img = wet ? Assets.TILLED_WET_TILE : Assets.TILLED_DRY_TILE;
-                    backgroundView.setScaleX(0.96);
-                    backgroundView.setScaleY(0.96);
-                } else if (gid == 3 && Assets.UNPLOWED_BED_TILE != null) {
-                    img = Assets.UNPLOWED_BED_TILE;
+                if (tilled && Assets.FARM_PLOT != null) {
+                    img = Assets.FARM_PLOT;
+                    backgroundView.setSmooth(false);
                     backgroundView.setScaleX(1.0);
                     backgroundView.setScaleY(1.0);
+                    if (wet) {
+                        backgroundView.setEffect(new javafx.scene.effect.ColorAdjust(0.0, 0.05, -0.22, 0.0));
+                    } else {
+                        backgroundView.setEffect(null);
+                    }
+                } else if (tilled) {
+                    img = wet ? Assets.TILLED_WET_TILE : Assets.TILLED_DRY_TILE;
+                    backgroundView.setScaleX(1.0);
+                    backgroundView.setScaleY(1.0);
+                    backgroundView.setEffect(null);
+                } else if (gid == 3 && Assets.UNPLOWED_BED_TILE != null) {
+                    img = Assets.UNPLOWED_BED_TILE;
+                    backgroundView.setSmooth(false);
+                    backgroundView.setScaleX(1.0);
+                    backgroundView.setScaleY(1.0);
+                    backgroundView.setEffect(null);
                 } else {
+                    backgroundView.setEffect(null);
                     img = (gid > 0 && tmxMap != null) ? tmxMap.getTileImage(gid) : null;
                     backgroundView.setScaleX(1.0);
                     backgroundView.setScaleY(1.0);
@@ -5717,6 +6608,19 @@ void style() {
             if (cropImg != lastCropImg) {
                 lastCropImg = cropImg;
                 cropView.setImage(cropImg);
+            }
+            boolean isBigTree = (crop instanceof model.crop.PerennialFruitTree);
+            if (isBigTree) {
+                cropView.setSmooth(false);
+                cropView.setFitWidth(104.0);
+                cropView.setFitHeight(104.0);
+                cropView.setTranslateY(-34.0);
+                pane.setViewOrder(-1.0 - cell.getY() * 0.001);
+            } else {
+                cropView.setFitWidth(Constant.CELL_SIZE - 4.0);
+                cropView.setFitHeight(Constant.CELL_SIZE - 4.0);
+                cropView.setTranslateY(0.0);
+                pane.setViewOrder(0.0);
             }
             boolean isAliveCrop = (crop != null
                     && crop.getCurrentState() != GrowthState.DEAD
@@ -5807,6 +6711,9 @@ void style() {
 
     private boolean isCellInFarmZone(Cell cell) {
         if (cell == null) return false;
+        if (orchardUnlocked && cell.getY() >= 47 && cell.getY() <= 50 && cell.getX() >= 5 && cell.getX() <= 14) {
+            return true;
+        }
         if (farmZone == null) return true;
         double cx = cell.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;
         double cy = cell.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE / 2.0;

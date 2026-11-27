@@ -229,6 +229,17 @@ public final class SaveManager {
         if (forage != null) {
             return forage;
         }
+        model.game_item.FactoryProductItem facProd = model.game_item.FactoryProductItem.findByName(name);
+        if (facProd != null) {
+            return facProd;
+        }
+        model.game_item.OreItem ore = model.game_item.OreItem.findByName(name);
+        if (ore != null) {
+            return ore;
+        }
+        if (model.game_item.AutoSprinklerItem.ITEM_NAME.equalsIgnoreCase(name)) {
+            return new model.game_item.AutoSprinklerItem();
+        }
         for (ItemManager entry : shop.getCatalog()) {
             Item proto = entry.create();
             if (proto != null && proto.getName().equals(name)) return proto;
@@ -276,9 +287,12 @@ public final class SaveManager {
             case "Corn":      return new Corn();
             case "Potato":    return new Potato();
             case "Sunflower": return new Sunflower();
-            case "Tomato":    return new Tomato();
+            case "Tomato":     return new Tomato();
             case "Water Rice": return new WaterRice();
-            default:          return null;
+            case "Orange":     return new model.crop.OrangeTree();
+            case "Apple":      return new model.crop.AppleTree();
+            case "Coconut":    return new model.crop.CoconutTree();
+            default:           return null;
         }
     }
 }

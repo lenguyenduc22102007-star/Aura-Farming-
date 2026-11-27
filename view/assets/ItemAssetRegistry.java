@@ -15,8 +15,12 @@ public final class ItemAssetRegistry {
         KEYS.put(CornSeed.class, "corn");
         KEYS.put(SunflowerSeed.class, "sunflower");
         KEYS.put(WaterRiceSeed.class, "water_rice");
+        KEYS.put(OrangeSeed.class, "orange");
+        KEYS.put(AppleSeed.class, "apple");
+        KEYS.put(CoconutSeed.class, "coconut");
 
         KEYS.put(StandardFertilizer.class, "standard_fertilizer");
+        KEYS.put(AutoSprinklerItem.class, "auto_sprinkler");
 
         KEYS.put(BabyChickenItem.class, "baby_chicken");
         KEYS.put(BabyPigItem.class, "baby_pig");
@@ -44,6 +48,12 @@ public final class ItemAssetRegistry {
         }
         if (item instanceof ForageItem) {
             return ((ForageItem) item).getForageId();
+        }
+        if (item instanceof FactoryProductItem) {
+            return ((FactoryProductItem) item).getProductId();
+        }
+        if (item instanceof OreItem) {
+            return ((OreItem) item).getOreId();
         }
 
         return KEYS.get(item.getClass());

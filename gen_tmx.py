@@ -191,12 +191,74 @@ def generate_resort_and_casino_sprites() -> dict:
     cas_big = cas.resize((240, 196), Image.Resampling.NEAREST)
     cas_big.save(os.path.join(OBJ_IMG_DIR, "casino_building.png"))
 
+    # 6. ore_rock.png (32x28 px -> 64x56: Tảng đá mỏ quặng lấp lánh mạch vàng/đồng/đá quý)
+    rw, rh = 32, 28
+    rock = Image.new("RGBA", (rw, rh), (0, 0, 0, 0))
+    rd = ImageDraw.Draw(rock)
+    rd.ellipse([2, 19, rw - 3, rh - 1], fill=(20, 26, 20, 105))
+    rd.polygon([(4, 22), (2, 14), (8, 5), (18, 3), (27, 7), (30, 16), (27, 23)],
+               fill=(104, 110, 120, 255), outline=(34, 36, 42, 255))
+    rd.polygon([(7, 20), (6, 13), (11, 7), (19, 6), (24, 11), (22, 19)],
+               fill=(136, 144, 156, 255))
+    # Mạch quặng vàng, đồng và tinh thể đá quý lấp lánh trên thân đá
+    for ox, oy, oc in [
+        (10, 11, (255, 212, 64, 255)), (11, 12, (255, 238, 128, 255)),
+        (19, 10, (82, 226, 255, 255)), (20, 11, (186, 250, 255, 255)),
+        (14, 16, (232, 132, 68, 255)), (15, 17, (255, 176, 108, 255)),
+        (22, 16, (255, 206, 58, 255))
+    ]:
+        rd.rectangle([ox, oy, ox + 1, oy + 1], fill=oc)
+    rock_big = rock.resize((64, 56), Image.Resampling.NEAREST)
+    rock_big.save(os.path.join(OBJ_IMG_DIR, "ore_rock.png"))
+
+    # 7. mine_anvil.png (32x28 px -> 64x56: Đe rèn đúc Vòi Tưới Tự Động tại cửa khu mỏ)
+    aw, ah = 32, 28
+    anv = Image.new("RGBA", (aw, ah), (0, 0, 0, 0))
+    ad = ImageDraw.Draw(anv)
+    ad.ellipse([4, 20, aw - 4, ah - 1], fill=(20, 24, 20, 110))
+    ad.rectangle([8, 17, 23, 24], fill=(122, 74, 36, 255), outline=(42, 22, 10, 255))
+    ad.polygon([(3, 10), (28, 10), (25, 14), (20, 14), (21, 17), (10, 17), (11, 14), (6, 14)],
+               fill=(82, 90, 104, 255), outline=(28, 32, 38, 255))
+    ad.line([(5, 11), (26, 11)], fill=(184, 198, 214, 255), width=1)
+    anv_big = anv.resize((64, 56), Image.Resampling.NEAREST)
+    anv_big.save(os.path.join(OBJ_IMG_DIR, "mine_anvil.png"))
+
+    # Đồng bộ các asset tách từ sheet_farm_gate / sheet_farm_props / sheet_main_house / sheet_pool_resort vào objects/
+    props_dir = os.path.join(ROOT_DIR, "view", "assets", "props")
+    prop_copies = {
+        "farm_gate.png":     "farm_gate.png",
+        "farm_plot.png":     "farm_plot.png",
+        "fence_wood.png":    "fence_wood.png",
+        "lantern_post.png":  "lantern_post.png",
+        "garden_rock.png":   "garden_rock.png",
+        "wildflowers.png":   "wildflowers.png",
+        "main_house.png":    "main_house.png",
+        "pool_water.png":    "swimming_pool.png",
+        "pool_chair.png":    "pool_lounger.png",
+        "pool_umbrella.png": "pool_umbrella.png",
+        "palm_tree.png":     "palm_tree.png",
+    }
+    for src_fn, dst_fn in prop_copies.items():
+        src_p = os.path.join(props_dir, src_fn)
+        if os.path.isfile(src_p):
+            shutil.copy2(src_p, os.path.join(OBJ_IMG_DIR, dst_fn))
+    fence_wood_src = os.path.join(props_dir, "fence_wood.png")
+    if os.path.isfile(fence_wood_src):
+        shutil.copy2(fence_wood_src, os.path.join(OBJ_IMG_DIR, "fence_h.png"))
+
     return {
-        "swimming_pool": ("objects/swimming_pool.png", 240, 140),
-        "pool_lounger": ("objects/pool_lounger.png", 60, 38),
-        "pool_umbrella": ("objects/pool_umbrella.png", 76, 80),
-        "palm_tree": ("objects/palm_tree.png", 96, 136),
+        "swimming_pool": ("objects/swimming_pool.png", 168, 238),
+        "pool_lounger": ("objects/pool_lounger.png", 52, 72),
+        "pool_umbrella": ("objects/pool_umbrella.png", 72, 72),
+        "palm_tree": ("objects/palm_tree.png", 96, 120),
         "casino_building": ("objects/casino_building.png", 240, 196),
+        "ore_rock": ("objects/ore_rock.png", 64, 56),
+        "mine_anvil": ("objects/mine_anvil.png", 64, 56),
+        "farm_gate": ("objects/farm_gate.png", 144, 118),
+        "fence_wood": ("objects/fence_wood.png", 48, 48),
+        "lantern_post": ("objects/lantern_post.png", 48, 72),
+        "garden_rock": ("objects/garden_rock.png", 48, 48),
+        "wildflowers": ("objects/wildflowers.png", 48, 48),
     }
 
 
@@ -312,12 +374,37 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
     for c in range(27, 30):
         set_tile_gid(42, c, GID_PATH, rows_csv)
 
+    # 2b. Quy hoạch VƯỜN CÂY ĂN QUẢ LÂU NĂM MỞ RỘNG (OrchardZone: rows 45..51, cols 3..17 -> 8 ô trồng cây lớn giãn cách 3 ô = 120px chống đè tán!)
+    for r in range(45, 52):
+        for c in range(3, 17):
+            set_tile_gid(r, c, GID_GRASS, rows_csv)
+    # 2 hàng x 4 cột = 8 vị trí trồng cây ăn quả rộng rãi (cách nhau 3 ô = 120px cả ngang lẫn dọc, không bao giờ đè tán!)
+    for r in (47, 50):
+        for c in (5, 8, 11, 14):
+            set_tile_gid(r, c, GID_DIRT, rows_csv)
+    # Lối đá nhỏ dẫn từ phía Bắc vào Cổng Vườn Cây Ăn Quả (cols 9..10, rows 44..46)
+    for r in (44, 45, 46):
+        set_tile_gid(r, 9, GID_PATH, rows_csv)
+        set_tile_gid(r, 10, GID_PATH, rows_csv)
+
+    # 2c. Mặt bằng KHU MỎ ĐÁ MINI (MineZone: rows 47..50, cols 23..33 — đường đá dẫn xuống mỏ ở col 25)
+    for r in range(46, 51):
+        for c in range(23, 34):
+            set_tile_gid(r, c, GID_GRASS, rows_csv)
+    set_tile_gid(46, 25, GID_PATH, rows_csv)
+
     if rows_csv is not None:
         data_elem.text = "\n" + ",\n".join(",".join(map(str, row)) for row in rows_csv) + "\n"
 
-    # 3. Dọn các công trường cũ / vật thể chồng lấn ở khu vực Bể bơi & Casino + xóa bản sao npc_zoro tĩnh (vì Zoro nay đi dạo bằng NpcManager)
+    # 3. Dọn các công trường cũ / vật thể chồng lấn ở khu vực Bể bơi, Casino, Vườn Cây Ăn Quả & Khu Mỏ Đá
     managed_names = {
-        "swimming_pool", "pool_lounger", "pool_umbrella", "palm_tree", "casino_building"
+        "swimming_pool", "pool_lounger", "pool_umbrella", "palm_tree", "casino_building",
+        "orchard_fence_h", "orchard_fence_v", "orchard_sign", "mine_rock", "mine_anvil", "mine_sign",
+        "rustic_farm_gate", "farm_bed_frame", "ground_clovers", "ground_daisies",
+        "ground_yellow_flowers", "ground_tuft", "ground_pebbles", "farm_decor_bush", "farm_decor_rock",
+        "farm_gate", "lantern_post_road", "garden_rock_decor", "wildflowers_decor",
+        "lantern_post_orchard", "garden_rock_orchard", "wildflowers_orchard",
+        "orchard_gate", "fence_orchard_perm_h", "fence_orchard_perm_v"
     }
     for og in root.findall("objectgroup"):
         if og.attrib.get("name") == "Objects":
@@ -325,6 +412,14 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
                 name = (obj.attrib.get("name") or "").lower()
                 ox = float(obj.attrib.get("x", "0"))
                 oy = float(obj.attrib.get("y", "0"))
+                # Thay thế biển hiệu cũ ở góc trên phải khu ruộng (x=555, y=688) bằng Cổng Chào Gỗ & Đá nằm dọc
+                if name == "signpost_left" and 530 <= ox <= 620 and 640 <= oy <= 740:
+                    og.remove(obj)
+                    continue
+                # Dịch cột đèn id=145 (x=612, y=668) ra sát lề đường phải một chút để không đụng vòm cổng dọc
+                if name == "streetlamp" and 595 <= ox <= 635 and 640 <= oy <= 700:
+                    obj.attrib["x"] = "646"
+                    continue
                 # Căn chuẩn cây cầu vòm chập giữa 2 đầu đường đá (cols 17..20, tâm x=760; sông y=1280..1480)
                 if name == "bridge":
                     obj.attrib["x"] = "637"
@@ -336,37 +431,141 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
                 if "wheat" in name and fz_x0 <= ox <= fz_x1 and fz_y0 <= oy <= fz_y1:
                     og.remove(obj)
                     continue
-                # Dọn object cũ của Pool/Casino để script idempotent mỗi lần chạy lại
+                # Dọn object quản lý tự động để script idempotent mỗi lần chạy lại
                 if name in managed_names or "construction_site" in name or name == "npc_zoro":
                     og.remove(obj)
                     continue
-                # Dọn giếng/bụi hoa/cột đèn nằm trùng mặt bằng Pool Zone (x=110..560, y=1510..1710) hoặc Casino (x=990..1270, y=1500..1715)
+                # Dọn vật cản nằm trùng mặt bằng Pool, Casino, OrchardZone (x=190..605, y=1840..2090) hoặc MineZone (x=910..1380, y=1840..2090)
                 if (110 <= ox <= 565 and 1510 <= oy <= 1720) or (990 <= ox <= 1275 and 1500 <= oy <= 1720):
                     if name in ("well", "dirt_spot_md", "flower_patch", "streetlamp"):
                         og.remove(obj)
+                        continue
+                if (120 <= ox <= 690 and 1800 <= oy <= 2095) or (910 <= ox <= 1380 and 1840 <= oy <= 2095):
+                    og.remove(obj)
+                    continue
 
             # Bổ sung quần thể BỂ BƠI NGHỈ DƯỠNG (Pool Zone: x=115..565, y=1520..1705) & SÒNG BẠC CASINO (x=940..1310, y=1510..1710)
             new_objects = [
-                # --- KHU BỂ BƠI (POOL ZONE - Phía Tây bên kia cầu) ---
-                ("swimming_pool", gid_map["swimming_pool"], 168, 1682, 236, 138),
-                # 3 chiếc ghế dài tắm nắng bên phải hồ bơi
-                ("pool_lounger",  gid_map["pool_lounger"],  420, 1584, 58, 36),
-                ("pool_lounger",  gid_map["pool_lounger"],  420, 1632, 58, 36),
-                ("pool_lounger",  gid_map["pool_lounger"],  420, 1680, 58, 36),
-                # 2 chiếc dù che nắng rực rỡ
-                ("pool_umbrella", gid_map["pool_umbrella"], 482, 1608, 72, 76),
-                ("pool_umbrella", gid_map["pool_umbrella"], 482, 1682, 72, 76),
-                # 4 cây dừa nhiệt đới trang trí quanh bể bơi
-                ("palm_tree",     gid_map["palm_tree"],     96,  1596, 90, 128),
-                ("palm_tree",     gid_map["palm_tree"],     96,  1702, 90, 128),
-                ("palm_tree",     gid_map["palm_tree"],     542, 1596, 90, 128),
-                ("palm_tree",     gid_map["palm_tree"],     542, 1704, 90, 128),
+                # --- KHU BỂ BƠI RESORT (POOL ZONE - Phía Tây bên kia cầu) ---
+                ("swimming_pool", gid_map["swimming_pool"], 168, 1766, 168, 238),
+                # 3 chiếc ghế dài tắm nắng (POOL_CHAIR) xếp ngay ngắn cạnh hồ bơi
+                ("pool_lounger",  gid_map["pool_lounger"],  364, 1648, 52, 72),
+                ("pool_lounger",  gid_map["pool_lounger"],  426, 1648, 52, 72),
+                ("pool_lounger",  gid_map["pool_lounger"],  426, 1732, 52, 72),
+                # 2 dù che nắng sọc xanh trắng (POOL_UMBRELLA) che phía trên ghế tắm nắng
+                ("pool_umbrella", gid_map["pool_umbrella"], 392, 1626, 72, 72),
+                ("pool_umbrella", gid_map["pool_umbrella"], 470, 1706, 72, 72),
+                # 3 cây dừa nhiệt đới (PALM_TREE) bao quanh khu resort
+                ("palm_tree",     gid_map["palm_tree"],     74,  1618, 96, 120),
+                ("palm_tree",     gid_map["palm_tree"],     74,  1762, 96, 120),
+                ("palm_tree",     gid_map["palm_tree"],     526, 1676, 96, 120),
 
                 # --- SÒNG BẠC LỚN (CASINO - Phía Đông bên kia cầu) ---
                 ("casino_building", gid_map["casino_building"], 1012, 1708, 240, 196),
                 ("palm_tree",       gid_map["palm_tree"],       928,  1704, 90,  128),
                 ("palm_tree",       gid_map["palm_tree"],       1256, 1704, 90,  128),
+
+                # --- KHU VƯỜN CÂY ĂN QUẢ MỞ RỘNG (x=136..664, y=1836..2068) CÓ CỔNG CHÀO + HÀNG RÀO VĨNH VIỄN ---
+                # Cổng Chào Vườn Cây Ăn Quả ở giữa cạnh Bắc (x=330, y=1864 -> lối đi rộng giữa x=364..440)
+                ("farm_gate", gid_map["farm_gate"], 330, 1864, 144, 118),
+                # Rào khóa tạm ngay cửa cổng (chỉ biến mất khi mua mở khóa $3.000)
+                ("orchard_fence_h", gid_map["fence_wood"], 358, 1858, 48, 44),
+                ("orchard_fence_h", gid_map["fence_wood"], 406, 1858, 48, 44),
+                ("orchard_sign",    58,                    302, 1854, 34, 42),
+
+                # Hàng rào gỗ vĩnh viễn bao quanh khu vườn (Bắc trái & phải cổng, Nam, Tây, Đông)
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 142, 1846, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 190, 1846, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 238, 1846, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 286, 1846, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 470, 1846, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 518, 1846, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 566, 1846, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 614, 1846, 48, 44),
+
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 142, 2070, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 190, 2070, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 238, 2070, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 286, 2070, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 334, 2070, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 382, 2070, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 430, 2070, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 478, 2070, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 526, 2070, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 574, 2070, 48, 44),
+                ("fence_orchard_perm_h", gid_map["fence_wood"], 618, 2070, 48, 44),
+
+                ("fence_orchard_perm_v", 43, 134, 1916, 20, 72),
+                ("fence_orchard_perm_v", 43, 134, 1988, 20, 72),
+                ("fence_orchard_perm_v", 43, 134, 2060, 20, 72),
+                ("fence_orchard_perm_v", 43, 656, 1916, 20, 72),
+                ("fence_orchard_perm_v", 43, 656, 1988, 20, 72),
+                ("fence_orchard_perm_v", 43, 656, 2060, 20, 72),
+
+                # --- KHU KHAI KHOÁNG MINI (7 Tảng Đá Mỏ Quặng + Đe Đúc Vòi Tưới Tự Động) ---
+                ("mine_anvil", gid_map["mine_anvil"], 986,  1886, 56, 48),
+                ("mine_sign",  58,                    942,  1882, 34, 42),
+                ("mine_rock",  gid_map["ore_rock"],   1072, 1916, 62, 54),
+                ("mine_rock",  gid_map["ore_rock"],   1166, 1906, 62, 54),
+                ("mine_rock",  gid_map["ore_rock"],   1264, 1920, 62, 54),
+                ("mine_rock",  gid_map["ore_rock"],   1036, 1998, 62, 54),
+                ("mine_rock",  gid_map["ore_rock"],   1134, 2012, 62, 54),
+                ("mine_rock",  gid_map["ore_rock"],   1232, 2002, 62, 54),
+                ("mine_rock",  gid_map["ore_rock"],   1318, 1966, 62, 54),
+
+                # --- CỔNG CHÀO NÔNG TRẠI (FARM_GATE) NGAY LỐI VÀO GÓC TRÊN PHẢI KHU RUỘNG ---
+                ("farm_gate", gid_map["farm_gate"], 560, 718, 144, 118),
+
+                # --- 2 CỘT ĐÈN LỒNG GỖ (LANTERN_POST) DỌC CON ĐƯỜNG ĐÁ BÊN PHẢI ---
+                ("lantern_post_road", gid_map["lantern_post"], 652, 856, 48, 72),
+                ("lantern_post_road", gid_map["lantern_post"], 652, 1018, 48, 72),
+
+                # --- CỤM ĐÁ VƯỜN (GARDEN_ROCK) VEN HÀNG RÀO & ĐƯỜNG ĐÁ (KHÔNG CHẶN LỐI ĐI / Ô ĐẤT) ---
+                ("garden_rock_decor", gid_map["garden_rock"], 424, 622, 42, 42),
+                ("garden_rock_decor", gid_map["garden_rock"], 612, 996, 44, 44),
+                ("garden_rock_decor", gid_map["garden_rock"], 112, 622, 40, 40),
             ]
+            # Rải hoa dại & cỏ 3 lá (WILDFLOWERS) tự nhiên trên các khoảng cỏ trống giữa 12 luống đất & chân rào
+            wildflower_spots = [
+                (200, 704, 40, 40),
+                (320, 704, 40, 40),
+                (440, 704, 40, 40),
+                (140, 756, 40, 40),
+                (260, 756, 40, 40),
+                (380, 756, 40, 40),
+                (200, 824, 40, 40),
+                (320, 824, 40, 40),
+                (440, 824, 40, 40),
+                (140, 876, 40, 40),
+                (260, 876, 40, 40),
+                (380, 876, 40, 40),
+                (500, 876, 40, 40),
+                (200, 944, 40, 40),
+                (320, 944, 40, 40),
+                (440, 944, 40, 40),
+                (614, 816, 42, 42),
+                (614, 926, 42, 42),
+            ]
+            for wx, wy, ww, wh in wildflower_spots:
+                new_objects.append(("wildflowers_decor", gid_map["wildflowers"], wx, wy, ww, wh))
+
+            # Trang trí VƯỜN CÂY ĂN QUẢ MỞ RỘNG (x=136..664, y=1840..2068):
+            # 2 cột đèn lồng gỗ hai bên cổng + đá vườn + hoa dại & cỏ 3 lá rải đều giữa các khoảng cỏ 120px
+            orchard_extras = [
+                ("lantern_post_orchard", gid_map["lantern_post"], 264, 1852, 48, 72),
+                ("lantern_post_orchard", gid_map["lantern_post"], 494, 1852, 48, 72),
+                ("garden_rock_orchard",  gid_map["garden_rock"],  606, 1892, 42, 42),
+                ("garden_rock_orchard",  gid_map["garden_rock"],  154, 2028, 42, 42),
+                ("wildflowers_orchard",  gid_map["wildflowers"],  262, 1948, 40, 40),
+                ("wildflowers_orchard",  gid_map["wildflowers"],  382, 1948, 40, 40),
+                ("wildflowers_orchard",  gid_map["wildflowers"],  502, 1948, 40, 40),
+                ("wildflowers_orchard",  gid_map["wildflowers"],  262, 2036, 40, 40),
+                ("wildflowers_orchard",  gid_map["wildflowers"],  382, 2036, 40, 40),
+                ("wildflowers_orchard",  gid_map["wildflowers"],  502, 2036, 40, 40),
+                ("wildflowers_orchard",  gid_map["wildflowers"],  158, 1952, 40, 40),
+                ("wildflowers_orchard",  gid_map["wildflowers"],  604, 1986, 40, 40),
+            ]
+            new_objects.extend(orchard_extras)
             base_obj_id = 1300
             for idx, (oname, ogid, ox, oy, ow, oh) in enumerate(new_objects):
                 ET.SubElement(og, "object", {
@@ -381,7 +580,7 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
 
         elif og.attrib.get("name") == "GameplayZones":
             for obj in list(og.findall("object")):
-                if obj.attrib.get("name") in ("PoolZone", "CasinoZone"):
+                if obj.attrib.get("name") in ("PoolZone", "CasinoZone", "OrchardZone", "MineZone"):
                     og.remove(obj)
             ET.SubElement(og, "object", {
                 "id": "506", "name": "PoolZone", "type": "zone",
@@ -390,6 +589,14 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
             ET.SubElement(og, "object", {
                 "id": "507", "name": "CasinoZone", "type": "zone",
                 "x": "995", "y": "1505", "width": "275", "height": "215"
+            })
+            ET.SubElement(og, "object", {
+                "id": "508", "name": "OrchardZone", "type": "zone",
+                "x": "136", "y": "1836", "width": "528", "height": "234"
+            })
+            ET.SubElement(og, "object", {
+                "id": "509", "name": "MineZone", "type": "zone",
+                "x": "935", "y": "1850", "width": "445", "height": "205"
             })
 
     root.attrib["nextobjectid"] = "1400"

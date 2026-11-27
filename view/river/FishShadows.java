@@ -40,9 +40,14 @@ public class FishShadows {
     private double lureX, lureY;
     private FishShadow attractedFish = null;
     private boolean rareFishBuff = false;
+    private boolean usoppRareBoost = false;
 
     public void setRareFishBuff(boolean enabled) {
         this.rareFishBuff = enabled;
+    }
+
+    public void setUsoppRareBoost(boolean enabled) {
+        this.usoppRareBoost = enabled;
     }
 
     private static class FishShadow {
@@ -271,6 +276,8 @@ public class FishShadows {
 
     private int rollRandomShadowTier() {
         double r = rng.nextDouble();
+        if (rareFishBuff) r += 0.12;
+        if (usoppRareBoost) r += 0.20; // Usopp >= 3 Tim: +20% tỉ lệ cá hiếm / khổng lồ!
         if (r < 0.28) return 1;
         if (r < 0.56) return 2;
         if (r < 0.80) return 3;

@@ -13,11 +13,42 @@ public class ShopController extends BaseController {
     private final List<ItemManager> catalog = new ArrayList<>();
     private String lastMessage = "";
     private final Player player;
+    private boolean namiDiscountActive = false;
+    private boolean orchardUnlocked = false;
 
     public ShopController(Player player, GameManager gameManager) {
         super(gameManager);
         this.player = player;
         seedCatalog();
+    }
+
+    public void setNamiDiscountActive(boolean active) {
+        this.namiDiscountActive = active;
+    }
+
+    public boolean isNamiDiscountActive() {
+        return namiDiscountActive;
+    }
+
+    public void setOrchardUnlocked(boolean unlocked) {
+        this.orchardUnlocked = unlocked;
+    }
+
+    public boolean isOrchardUnlocked() {
+        return orchardUnlocked;
+    }
+
+    public static boolean isOrchardTreeSeed(Item proto) {
+        return proto instanceof OrangeSeed || proto instanceof AppleSeed || proto instanceof CoconutSeed;
+    }
+
+    public int getEffectiveUnitPrice(Item prototype) {
+        if (prototype == null) return 0;
+        int base = prototype.getPrice();
+        if (namiDiscountActive && base > 1) {
+            return Math.max(1, (int) Math.round(base * 0.85));
+        }
+        return base;
     }
 
     private void seedCatalog() {
@@ -26,6 +57,12 @@ public class ShopController extends BaseController {
         catalog.add(new SeedItem("Potato Seed", PotatoSeed::new));
         catalog.add(new SeedItem("Corn Seed", CornSeed::new));
         catalog.add(new SeedItem("Water Rice Seed", WaterRiceSeed::new));
+
+        // Cây ăn quả lâu năm (mở khóa khi mua Vườn Cây Ăn Quả $3.000)
+        catalog.add(new SeedItem("Orange Seed", OrangeSeed::new));
+        catalog.add(new SeedItem("Apple Seed", AppleSeed::new));
+        catalog.add(new SeedItem("Coconut Seed", CoconutSeed::new));
+
         catalog.add(new FertilizerItem("Standard Fertilizer", StandardFertilizer::new));
         catalog.add(new AnimalShopItem("Củi khô (Firewood)", ForageItem::firewood));
         
@@ -64,10 +101,15 @@ public class ShopController extends BaseController {
             lastMessage = "This item is currently unavailable.";
             return false;
         }
+        if (isOrchardTreeSeed(prototype) && !orchardUnlocked) {
+            lastMessage = "🔒 Hãy mua mở khóa Vườn Cây Ăn Quả ($3.000) trên bản đồ trước!";
+            return false;
+        }
 
+        int unitCost = getEffectiveUnitPrice(prototype);
         int totalCost;
         try {
-            totalCost = Math.multiplyExact(prototype.getPrice(), quantity);
+            totalCost = Math.multiplyExact(unitCost, quantity);
         } catch (ArithmeticException overflow) {
             lastMessage = "That quantity is too large to purchase.";
             return false;

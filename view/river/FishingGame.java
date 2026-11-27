@@ -117,6 +117,11 @@ public class FishingGame {
     private int fakeNibblesRemaining = 0;
     private double nextNibbleTimer = 0.0;
     private double nibbleBobberAnim = 0.0; // > 0 khi phao đang rung nhẹ sau 1 cú nhấp giả
+    private boolean usoppRareBoost = false;
+
+    public void setUsoppRareBoost(boolean enabled) {
+        this.usoppRareBoost = enabled;
+    }
 
     // Giai đoạn 2: Cửa sổ phản xạ cắn thật
     private double reactionWindowSec = 0.90;
@@ -480,9 +485,12 @@ public class FishingGame {
 
         WeatherType w = (callbacks != null) ? callbacks.getCurrentWeather() : WeatherType.SUNNY;
         int hr = (callbacks != null) ? callbacks.getCurrentHour() : 8;
-        FishSpecies species = FishSpecies.rollForShadowSize(currentShadowSize, w, hr, rng);
+        int effectiveShadow = (usoppRareBoost && currentShadowSize < 5 && rng.nextDouble() < 0.20)
+                ? (currentShadowSize + 1)
+                : currentShadowSize;
+        FishSpecies species = FishSpecies.rollForShadowSize(effectiveShadow, w, hr, rng);
         double sizeCm = species.rollSizeCm(rng);
-        boolean isCrown = species.isCrownSize(sizeCm);
+        boolean isCrown = species.isCrownSize(sizeCm) || (usoppRareBoost && rng.nextDouble() < 0.20);
         int rewardMoney = species.computeReward(isCrown);
 
         // Hiệu ứng cá nhảy vòng cung từ sông vào tay nhân vật
