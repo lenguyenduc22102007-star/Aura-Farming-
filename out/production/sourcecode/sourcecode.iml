@@ -10,11 +10,11 @@
     <orderEntry type="module-library" exported="">
       <library>
         <CLASSES>
-          <root url="file://$MODULE_DIR$/../javafx-sdk-27/lib" />
+          <root url="file://$MODULE_DIR$/lib/javafx/lib" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
-        <jarDirectory url="file://$MODULE_DIR$/../javafx-sdk-27/lib" recursive="false" />
+        <jarDirectory url="file://$MODULE_DIR$/lib/javafx/lib" recursive="false" />
       </library>
     </orderEntry>
   </component>

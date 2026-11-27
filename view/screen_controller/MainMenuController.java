@@ -306,8 +306,10 @@ public final class MainMenuController {
         transitionCurtain.setVisible(false);
         transitionCurtain.setOpacity(0.0);
         splashLayer.setVisible(false);
+        splashLayer.setMouseTransparent(true);
         splashLayer.setOpacity(0.0);
         modalOverlayLayer.setVisible(false);
+        modalOverlayLayer.setMouseTransparent(true);
         modalOverlayLayer.setOpacity(0.0);
         dashboardLayer.setVisible(true);
         dashboardLayer.setOpacity(1.0);
@@ -824,17 +826,23 @@ public final class MainMenuController {
         SoundHook.playMenuClick();
         SoundHook.startMenuBgm();
 
+        // Mở khóa click ngay lập tức để splashLayer không bao giờ che nút trên dashboardLayer
+        splashLayer.setMouseTransparent(true);
         dashboardLayer.setVisible(true);
         dashboardLayer.setOpacity(0.0);
 
         FadeTransition fadeOutSplash = new FadeTransition(Duration.millis(280), splashLayer);
         fadeOutSplash.setFromValue(1.0); fadeOutSplash.setToValue(0.0);
-        fadeOutSplash.setOnFinished(ev -> splashLayer.setVisible(false));
 
         FadeTransition fadeInDash = new FadeTransition(Duration.millis(340), dashboardLayer);
         fadeInDash.setFromValue(0.0); fadeInDash.setToValue(1.0);
 
-        new ParallelTransition(fadeOutSplash, fadeInDash).play();
+        ParallelTransition pt = new ParallelTransition(fadeOutSplash, fadeInDash);
+        pt.setOnFinished(ev -> {
+            splashLayer.setVisible(false);
+            splashLayer.setOpacity(0.0);
+        });
+        pt.play();
     }
 
     // ==================== 2, 3, 4. DASHBOARD CHÍNH (BẢNG GỖ 7 NÚT + SỰ KIỆN 7d + CHÀO MỪNG + PROFILE) ====================
@@ -1517,6 +1525,7 @@ public final class MainMenuController {
 
     private void showModalNode(Node content) {
         modalOverlayLayer.getChildren().setAll(content);
+        modalOverlayLayer.setMouseTransparent(false);
         modalOverlayLayer.setVisible(true);
         modalOverlayLayer.setOpacity(0.0);
         FadeTransition ft = new FadeTransition(Duration.millis(180), modalOverlayLayer);
@@ -1526,6 +1535,7 @@ public final class MainMenuController {
 
     private void closeModal() {
         modalOverlayLayer.setVisible(false);
+        modalOverlayLayer.setMouseTransparent(true);
         modalOverlayLayer.setOpacity(0.0);
         Platform.runLater(rootStack::requestFocus);
     }
@@ -1542,12 +1552,12 @@ public final class MainMenuController {
         transitionCurtain.setOpacity(0.0);
         transitionCurtain.toFront();
 
-        FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.8), transitionCurtain);
+        FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.45), transitionCurtain);
         fadeOut.setFromValue(0.0); fadeOut.setToValue(1.0);
         fadeOut.setOnFinished(e -> {
             try {
                 if (onComplete != null) onComplete.run();
-            } catch (Exception ex) {
+            } catch (Throwable ex) {
                 ex.printStackTrace();
             } finally {
                 transitionRunning = false;
@@ -1668,12 +1678,12 @@ public final class MainMenuController {
 
     @FXML
     private void onContinue() {
-        if (launcher != null && continueEnabled && !transitionRunning) {
+        if (launcher != null && !transitionRunning && (continueEnabled || controller.lifecyclemanager.SaveManager.exists())) {
             playGateFadeAndRun(() -> {
                 try {
                     launcher.continueFarm();
-                } catch (Exception e) {
-                    e.printStackTrace();
+                } catch (Throwable t) {
+                    t.printStackTrace();
                 }
             });
         }

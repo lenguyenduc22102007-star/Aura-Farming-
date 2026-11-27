@@ -252,6 +252,7 @@ public class MineManager {
         }
         placedSprinklers.add(key);
         addSprinklerVisual(row, col, entityPane);
+        sprinklerSprayTimer = Math.max(sprinklerSprayTimer, 4.5); // Phun nước thử ngay 4.5 giây khi vừa lắp
         SoundHook.playPickup();
         if (notifyCb != null) {
             notifyCb.accept("💧 Đã lắp Vòi Tưới Tự Động tại ô (" + col + ", " + row + ")! Mỗi sáng sẽ tự tưới ướt 8 ô xung quanh.");
@@ -259,7 +260,11 @@ public class MineManager {
         return true;
     }
 
-    /** Mỗi sáng thức dậy: tự động tưới đẫm nước cho 8 ô xung quanh (kể cả tâm) của mọi Vòi Tưới Tự Động. */
+    private double sprinklerSprayTimer = 0.0;
+    private double sprinklerSpinAngle = 0.0;
+    private double sprinklerPulseAccum = 0.0;
+
+    /** Mỗi sáng thức dậy: tự động tưới đẫm nước cho 8 ô xung quanh (kể cả tâm) và kích hoạt phun nước xoay 360° trong 7 giây. */
     public int waterSurroundingCellsDaily(FarmMap map, ParticleSystem particles) {
         if (map == null || placedSprinklers.isEmpty()) return 0;
         int wateredCount = 0;
@@ -280,10 +285,42 @@ public class MineManager {
             if (particles != null) {
                 double wx = c * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
                 double wy = r * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
-                particles.spawnWaterSplash(wx, wy);
+                particles.spawnSprinklerSprayPulse(wx, wy, sprinklerSpinAngle);
             }
         }
+        // Duy trì hiệu ứng phun nước dày đặc & xoay đều 360° trong 7 giây đầy đủ mỗi buổi sáng
+        sprinklerSprayTimer = 7.0;
+        sprinklerPulseAccum = 0.0;
         return wateredCount;
+    }
+
+    /** Gọi mỗi khung hình trong AnimationTimer để xoay đầu vòi và phun nước dày lan tỏa ra toàn bộ 8 ô xung quanh. */
+    public void updateSprinklerEffects(double dtSec, ParticleSystem particles) {
+        if (sprinklerSprayTimer <= 0.0 || placedSprinklers.isEmpty()) return;
+        sprinklerSprayTimer = Math.max(0.0, sprinklerSprayTimer - dtSec);
+        sprinklerSpinAngle += dtSec * 5.8; // Xoay nhanh mượt gần 1 vòng/giây
+        sprinklerPulseAccum += dtSec;
+
+        // Xoay thanh ngang vòi phun trên từng sprite vòi tưới
+        double deg = Math.toDegrees(sprinklerSpinAngle);
+        for (Group g : sprinklerVisuals) {
+            if (g.getChildren().size() >= 4) {
+                g.getChildren().get(3).setRotate(deg);
+            }
+        }
+
+        if (particles != null && sprinklerPulseAccum >= 0.055) {
+            sprinklerPulseAccum = 0.0;
+            for (String key : placedSprinklers) {
+                String[] parts = key.split(",");
+                if (parts.length < 2) continue;
+                int r = Integer.parseInt(parts[0]);
+                int c = Integer.parseInt(parts[1]);
+                double wx = c * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
+                double wy = r * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
+                particles.spawnSprinklerSprayPulse(wx, wy, sprinklerSpinAngle);
+            }
+        }
     }
 
     private void clearSprinklerNodes(Pane entityPane) {

@@ -1630,6 +1630,7 @@ public class InGameController {
                     spot.node.setTranslateY(Math.sin(timeSec * 3.1 + spot.bobPhase) * 2.6);
                 }
             }
+            mineManager.updateSprinklerEffects(deltaRiverSec, particleSystem);
             particleSystem.update(deltaRiverSec);
         }
         if (droppedItemSystem != null) {
@@ -6425,6 +6426,7 @@ private final class Tile {
         final ImageView pestMark = Assets.imageView(Assets.BEETLE_ICON, 20);
         final javafx.scene.shape.Rectangle dirtOverlay = new javafx.scene.shape.Rectangle(Constant.CELL_SIZE + 1.5, Constant.CELL_SIZE + 1.5, Color.rgb(0, 0, 0, 0.2));
         final ImageView cropView = new ImageView();
+        private ImageView entityTreeView = null; // Cây ăn quả lâu năm vẽ trực tiếp trên entityPane để không bị ô gạch cạnh cắt tán & xếp lớp 2.5D chuẩn với cột cổng/rào/Luffy
         final ImageView waterNeedIcon = new ImageView(Assets.WATER_NEED_ICON != null ? Assets.WATER_NEED_ICON : Assets.WATER_ICON);
         // Thanh lực báo quá trình lớn lên & chín (34x5 px, nền tối viền đen mỏng + chấm sao vàng khi chín 100%)
         final javafx.scene.layout.HBox growthBarGroup = new javafx.scene.layout.HBox(2);
@@ -6605,18 +6607,46 @@ void style() {
 
             // Hiển thị cây trồng 4 giai đoạn & thanh lực báo lớn/chín (34x5 px)
             Image cropImg = (crop == null) ? null : Assets.getCropSprite(crop);
-            if (cropImg != lastCropImg) {
-                lastCropImg = cropImg;
-                cropView.setImage(cropImg);
-            }
             boolean isBigTree = (crop instanceof model.crop.PerennialFruitTree);
-            if (isBigTree) {
-                cropView.setSmooth(false);
-                cropView.setFitWidth(104.0);
-                cropView.setFitHeight(104.0);
-                cropView.setTranslateY(-34.0);
-                pane.setViewOrder(-1.0 - cell.getY() * 0.001);
+            if (isBigTree && entityPane != null && cropImg != null) {
+                // Vẽ cây ăn quả cỡ lớn (132x132) trực tiếp trên entityPane:
+                // - Không bao giờ bị ô cỏ/đường đá bên cạnh cắt mất tán lá
+                // - Xếp lớp 2.5D chuẩn theo trục Y (nằm TRƯỚC hàng rào & trụ cổng phía sau, Luffy đi trước/sau tán cây tự nhiên)
+                if (cropView.getImage() != null) {
+                    cropView.setImage(null);
+                }
+                if (entityTreeView == null) {
+                    entityTreeView = new ImageView();
+                    entityTreeView.setSmooth(false);
+                    entityTreeView.setPreserveRatio(false);
+                    entityTreeView.setManaged(false);
+                    entityTreeView.setMouseTransparent(true);
+                    double treeSize = 132.0;
+                    entityTreeView.setFitWidth(treeSize);
+                    entityTreeView.setFitHeight(treeSize);
+                    entityTreeView.setLayoutX(cell.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5 - treeSize * 0.5);
+                    entityTreeView.setLayoutY(cell.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.72 - treeSize);
+                    entityTreeView.setUserData(cell.getY() * Constant.CELL_SIZE + 34.0);
+                    entityPane.getChildren().add(entityTreeView);
+                } else if (!entityPane.getChildren().contains(entityTreeView)) {
+                    entityPane.getChildren().add(entityTreeView);
+                }
+                if (cropImg != lastCropImg) {
+                    lastCropImg = cropImg;
+                    entityTreeView.setImage(cropImg);
+                }
+                pane.setViewOrder(0.0);
             } else {
+                if (entityTreeView != null) {
+                    if (entityPane != null) {
+                        entityPane.getChildren().remove(entityTreeView);
+                    }
+                    entityTreeView = null;
+                }
+                if (cropImg != lastCropImg) {
+                    lastCropImg = cropImg;
+                    cropView.setImage(cropImg);
+                }
                 cropView.setFitWidth(Constant.CELL_SIZE - 4.0);
                 cropView.setFitHeight(Constant.CELL_SIZE - 4.0);
                 cropView.setTranslateY(0.0);

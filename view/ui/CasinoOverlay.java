@@ -68,8 +68,11 @@ public class CasinoOverlay extends StackPane {
     private Button tabBlackjackBtn;
     private Button tabHighLowBtn;
     private Button tabSlotBtn;
+    private Button tabAviatorBtn;
+    private BorderPane casinoBoard;
+    private AviatorView aviatorView;
     private StackPane gameBodyPane;
-    private int activeMode = 0; // 0 = Blackjack, 1 = High-Low, 2 = Slot Machine
+    private int activeMode = 0; // 0 = Blackjack, 1 = High-Low, 2 = Slot Machine, 3 = Aviator
 
     // Trạng thái mức cược đang chọn (-1 = ALL-IN)
     private int selectedBetOption = 100;
@@ -165,7 +168,7 @@ public class CasinoOverlay extends StackPane {
         setAlignment(Pos.CENTER);
         setFocusTraversable(true);
 
-        BorderPane casinoBoard = new BorderPane();
+        casinoBoard = new BorderPane();
         casinoBoard.setMaxSize(960, 635);
         casinoBoard.setPrefSize(960, 635);
         casinoBoard.setPadding(new Insets(14, 24, 16, 24));
@@ -192,7 +195,17 @@ public class CasinoOverlay extends StackPane {
         BorderPane.setMargin(gameBodyPane, new Insets(10, 0, 0, 0));
         casinoBoard.setCenter(gameBodyPane);
 
-        getChildren().add(casinoBoard);
+        aviatorView = new AviatorView(
+            player,
+            onNetProfit,
+            notifier,
+            this::refreshMoneyHeader,
+            () -> switchMode(0)
+        );
+        aviatorView.setVisible(false);
+        aviatorView.setManaged(false);
+
+        getChildren().addAll(casinoBoard, aviatorView);
 
         switchMode(0);
         refreshMoneyHeader();
@@ -262,10 +275,10 @@ public class CasinoOverlay extends StackPane {
     }
 
     private HBox buildTabRow() {
-        tabBlackjackBtn = new Button("🃏 XÌ DÁCH (BLACKJACK 21)");
+        tabBlackjackBtn = new Button("🃏 XÌ DÁCH (21)");
         tabBlackjackBtn.setFocusTraversable(false);
         lockNoEllipsis(tabBlackjackBtn);
-        tabBlackjackBtn.setPrefWidth(285);
+        tabBlackjackBtn.setPrefWidth(210);
         tabBlackjackBtn.setOnAction(e -> {
             if (hlRoundActive || slotSpinning) {
                 notifyMsg("Hãy hoàn tất lượt chơi hiện tại trước khi đổi bàn!");
@@ -275,10 +288,10 @@ public class CasinoOverlay extends StackPane {
             switchMode(0);
         });
 
-        tabHighLowBtn = new Button("🎲 ĐOÁN BÀI CAO / THẤP");
+        tabHighLowBtn = new Button("🎲 CAO / THẤP");
         tabHighLowBtn.setFocusTraversable(false);
         lockNoEllipsis(tabHighLowBtn);
-        tabHighLowBtn.setPrefWidth(285);
+        tabHighLowBtn.setPrefWidth(210);
         tabHighLowBtn.setOnAction(e -> {
             if (bjRoundActive || slotSpinning) {
                 notifyMsg("Hãy hoàn tất lượt chơi hiện tại trước khi đổi bàn!");
@@ -288,10 +301,10 @@ public class CasinoOverlay extends StackPane {
             switchMode(1);
         });
 
-        tabSlotBtn = new Button("🎰 MÁY XÈNG (SLOT)");
+        tabSlotBtn = new Button("🎰 MÁY XÈNG");
         tabSlotBtn.setFocusTraversable(false);
         lockNoEllipsis(tabSlotBtn);
-        tabSlotBtn.setPrefWidth(285);
+        tabSlotBtn.setPrefWidth(210);
         tabSlotBtn.setOnAction(e -> {
             if (bjRoundActive || hlRoundActive) {
                 notifyMsg("Hãy hoàn tất ván bài hiện tại trước khi qua Máy Xèng!");
@@ -301,7 +314,20 @@ public class CasinoOverlay extends StackPane {
             switchMode(2);
         });
 
-        HBox tabRow = new HBox(14, tabBlackjackBtn, tabHighLowBtn, tabSlotBtn);
+        tabAviatorBtn = new Button("✈ AVIATOR (MÁY BAY)");
+        tabAviatorBtn.setFocusTraversable(false);
+        lockNoEllipsis(tabAviatorBtn);
+        tabAviatorBtn.setPrefWidth(225);
+        tabAviatorBtn.setOnAction(e -> {
+            if (bjRoundActive || hlRoundActive || slotSpinning) {
+                notifyMsg("Hãy hoàn tất lượt chơi hiện tại trước khi mở Aviator!");
+                return;
+            }
+            SoundHook.playMenuClick();
+            switchMode(3);
+        });
+
+        HBox tabRow = new HBox(10, tabBlackjackBtn, tabHighLowBtn, tabSlotBtn, tabAviatorBtn);
         tabRow.setAlignment(Pos.CENTER);
         return tabRow;
     }
@@ -345,6 +371,21 @@ public class CasinoOverlay extends StackPane {
 
     public void switchMode(int mode) {
         this.activeMode = mode;
+        boolean inAviator = (mode == 3);
+        if (casinoBoard != null) {
+            casinoBoard.setVisible(!inAviator);
+            casinoBoard.setManaged(!inAviator);
+        }
+        if (aviatorView != null) {
+            aviatorView.setVisible(inAviator);
+            aviatorView.setManaged(inAviator);
+            if (inAviator) {
+                javafx.application.Platform.runLater(aviatorView::requestFocus);
+            } else {
+                refreshMoneyHeader();
+                javafx.application.Platform.runLater(this::requestFocus);
+            }
+        }
         blackjackView.setVisible(mode == 0);
         blackjackView.setManaged(mode == 0);
         highLowView.setVisible(mode == 1);
@@ -366,6 +407,14 @@ public class CasinoOverlay extends StackPane {
         tabBlackjackBtn.setStyle(mode == 0 ? activeTabStyle : idleTabStyle);
         tabHighLowBtn.setStyle(mode == 1 ? activeTabStyle : idleTabStyle);
         tabSlotBtn.setStyle(mode == 2 ? activeTabStyle : idleTabStyle);
+        if (tabAviatorBtn != null) {
+            tabAviatorBtn.setStyle(
+                "-fx-font-family: 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: bold;" +
+                "-fx-text-fill: #FFF1F2; -fx-background-color: linear-gradient(to bottom, #E11D48, #9F1239);" +
+                "-fx-border-color: #FDA4AF; -fx-border-width: 1.8px; -fx-padding: 7 14 7 14;" +
+                "-fx-background-radius: 8px; -fx-border-radius: 8px; -fx-cursor: hand;"
+            );
+        }
     }
 
     private void refreshBetButtonStyles() {
@@ -1214,6 +1263,9 @@ public class CasinoOverlay extends StackPane {
     }
 
     public void requestSafeClose() {
+        if (aviatorView != null) {
+            aviatorView.stopAndCleanupSafe();
+        }
         if (slotSpinTimeline != null) {
             slotSpinTimeline.stop();
             slotSpinTimeline = null;

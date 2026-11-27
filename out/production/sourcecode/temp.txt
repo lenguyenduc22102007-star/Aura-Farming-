@@ -1,0 +1,21 @@
+101: private ImageView weaponView; // Vũ khí cầm tay
+379: if (weaponView != null) weaponView.setScaleX(-1);
+382: if (weaponView != null) weaponView.setScaleX(1);
+413: if (weaponView != null) {
+439: weaponView.setTranslateX(weaponBaseX);
+440: weaponView.setTranslateY(weaponBaseY);
+443: weaponView.setRotate(weaponRotation);
+662: if (weaponView == null) {
+663: weaponView = new ImageView();
+664: weaponView.setFitWidth(30);
+665: weaponView.setFitHeight(30);
+666: weaponView.setPreserveRatio(true);
+667: weaponView.setManaged(false);
+668: mapPane.getChildren().add(weaponView);
+694: if (weaponView != null) {
+695: if (cur instanceof Hoe) weaponView.setImage(Assets.HOE_ICON);
+696: else if (cur instanceof WateringCan) weaponView.setImage(Assets.WATER_ICON);
+697: else if (cur instanceof Hand) weaponView.setImage(Assets.HAND_ICON);
+698: else if (cur instanceof SeedBag) weaponView.setImage(Assets.SEED_ICON);
+699: else if (cur instanceof FertilizerBag) weaponView.setImage(Assets.FERTILIZER_ICON);
+700: else weaponView.setImage(null);

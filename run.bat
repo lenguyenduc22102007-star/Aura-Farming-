@@ -8,7 +8,7 @@ set OUT_DIR=%~dp0out\production\sourcecode
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
 
 echo [1/3] Compiling Java sources...
-powershell -NoProfile -Command "$files = Get-ChildItem -Recurse -Filter *.java | Where-Object { $_.FullName -notmatch '\\out\\' } | Select-Object -ExpandProperty FullName; javac --module-path '%FX_LIB%' --add-modules javafx.controls,javafx.fxml -encoding UTF-8 -d '%OUT_DIR%' $files"
+powershell -NoProfile -Command "$files = Get-ChildItem -Recurse -Filter *.java | Where-Object { $_.FullName -notmatch '\\out\\' } | Select-Object -ExpandProperty FullName; javac --release 21 --module-path '%FX_LIB%' --add-modules javafx.controls,javafx.fxml -encoding UTF-8 -d '%OUT_DIR%' $files"
 if errorlevel 1 (
     echo Compile failed!
     pause

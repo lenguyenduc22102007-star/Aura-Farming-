@@ -228,6 +228,59 @@ public class ParticleSystem {
         }
     }
 
+    /**
+     * Hiệu ứng phun nước xoay 360° cực dày và tỏa rộng của Vòi Tưới Tự Động:
+     * 4 tia nước lớn xoay tròn bắn xa 65–75px phủ kín toàn bộ 8 ô đất xung quanh (3x3 = 120x120px) + vòng sóng nước lan tỏa.
+     */
+    public void spawnSprinklerSprayPulse(double worldX, double worldY, double spinAngleRad) {
+        // 4 cánh tia nước xoay quanh tâm vòi (mỗi cánh gồm 3 giọt gần-giữa-xa tạo thành dải nước dày đặc)
+        for (int arm = 0; arm < 4; arm++) {
+            double baseAngle = spinAngleRad + arm * (Math.PI * 0.5);
+            for (int tier = 0; tier < 3; tier++) {
+                double jitter = (rng.nextDouble() - 0.5) * 0.22;
+                double a = baseAngle + jitter;
+                double speed = 82.0 + tier * 36.0 + rng.nextDouble() * 22.0; // bay xa tới 65..78px phủ trọn 8 ô xung quanh
+                double sz = 4.8 + rng.nextDouble() * 3.0;
+
+                Circle drop = new Circle(sz * 0.58);
+                Color fill = (tier == 0)
+                        ? Color.rgb(224, 248, 255, 0.96)
+                        : ((tier == 1) ? Color.rgb(96, 212, 255, 0.92) : Color.rgb(42, 168, 246, 0.88));
+                drop.setFill(fill);
+                drop.setStroke(Color.rgb(18, 96, 162, 0.55));
+                drop.setStrokeWidth(0.9);
+
+                addParticle(new Particle(
+                    drop,
+                    worldX + Math.cos(a) * 6.0,
+                    worldY - 10.0 + Math.sin(a) * 4.0,
+                    Math.cos(a) * speed,
+                    Math.sin(a) * speed * 0.86 - 16.0,
+                    95.0, 0.97, 0.0,
+                    0.0, 0.0,
+                    0.48 + tier * 0.08 + rng.nextDouble() * 0.12,
+                    1.15, 0.55
+                ));
+            }
+        }
+
+        // Vòng sương nước mảnh lan rộng trên vùng đất 3x3 xung quanh vòi
+        if (rng.nextDouble() < 0.42) {
+            Circle ring = new Circle(22.0 + rng.nextDouble() * 14.0, Color.TRANSPARENT);
+            ring.setStroke(Color.rgb(165, 236, 255, 0.55));
+            ring.setStrokeWidth(2.6);
+            addParticle(new Particle(
+                ring,
+                worldX, worldY,
+                0.0, 0.0,
+                0.0, 1.0, 0.0,
+                0.0, 0.0,
+                0.55,
+                0.45, 2.35
+            ));
+        }
+    }
+
     /** Thu hoạch: bắn ra lá xanh xoay nhẹ + tia sáng vàng lấp lánh tại ô đất. */
     public void spawnHarvestSparkles(double worldX, double worldY) {
         // 6 chiếc lá xanh pixel bung tỏa
