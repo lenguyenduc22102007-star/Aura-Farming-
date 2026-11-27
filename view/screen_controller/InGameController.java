@@ -1690,26 +1690,26 @@ public class InGameController {
             if (objId != null) {
                 String idLower = objId.toLowerCase();
                 if (idLower.contains("bridge")) {
-                    // Chi tiết hóa Collision THÀNH CẦU khớp chuẩn cầu gỗ vòm bridge.png (200x190, phần cầu gỗ x=16%..84%):
+                    // Chi tiết hóa Collision THÀNH CẦU khớp chuẩn cầu gỗ vòm bridge.png (252x371, 2 đầu cột cắm vào đất liền):
                     double leftRailX  = ox + ow * 0.155;
-                    double leftRailW  = ow * 0.085;
-                    double rightRailX = ox + ow * 0.760;
-                    double rightRailW = ow * 0.085;
+                    double leftRailW  = ow * 0.092;
+                    double rightRailX = ox + ow * 0.753;
+                    double rightRailW = ow * 0.092;
 
                     javafx.geometry.Rectangle2D[] bridgeBlockers = new javafx.geometry.Rectangle2D[] {
                         // 1. Hai lan can gỗ vòm chạy dọc toàn thân cầu trái & phải
-                        new javafx.geometry.Rectangle2D(leftRailX,  oy + oh * 0.02, leftRailW,  oh * 0.96),
-                        new javafx.geometry.Rectangle2D(rightRailX, oy + oh * 0.02, rightRailW, oh * 0.96),
-                        // 2. Bốn trụ gỗ đầu cầu bắc & đầu cầu nam
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.150, oy,             ow * 0.100, oh * 0.15),
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.150, oy + oh * 0.80, ow * 0.100, oh * 0.20),
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.750, oy,             ow * 0.100, oh * 0.15),
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.750, oy + oh * 0.80, ow * 0.100, oh * 0.20)
+                        new javafx.geometry.Rectangle2D(leftRailX,  oy + oh * 0.04, leftRailW,  oh * 0.90),
+                        new javafx.geometry.Rectangle2D(rightRailX, oy + oh * 0.04, rightRailW, oh * 0.90),
+                        // 2. Hai trụ gỗ đầu cầu Bắc & cụm bốn trụ gỗ đầu cầu Nam cắm vào đất liền
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.150, oy,             ow * 0.100, oh * 0.20),
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.750, oy,             ow * 0.100, oh * 0.20),
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.045, oy + oh * 0.77, ow * 0.202, oh * 0.20),
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.753, oy + oh * 0.77, ow * 0.202, oh * 0.20)
                     };
 
                     // Sàn ván gỗ đi được (lọt lòng giữa 2 thành cầu, mở rộng 28px hai đầu bắc/nam để bước lên mượt)
-                    double deckLeft = ox + ow * 0.240;
-                    double deckWidth = ow * 0.520;
+                    double deckLeft = ox + ow * 0.250;
+                    double deckWidth = ow * 0.500;
                     javafx.geometry.Rectangle2D walkableDeck = new javafx.geometry.Rectangle2D(deckLeft, oy - 28, deckWidth, oh + 56);
 
                     if (playerBoxX.intersects(walkableDeck)) onBridgeX = true;
@@ -3832,17 +3832,17 @@ public class InGameController {
         double oh = bridgeObj.getFitHeight();
         if (ow <= 0 || oh <= 0) return;
 
-        // Tỉ lệ phần gỗ thực của bridge.png cầu vòm mới (đã cắt sạch nền hồng): x = 16.0% .. 84.0%
-        final double leftFrac = 0.160;
-        final double rightFrac = 0.840;
+        // Tỉ lệ phần gỗ thực qua sông của bridge.png (252x371, 2 đầu cột cắm vào bờ): x = 15.0% .. 85.0%
+        final double leftFrac = 0.150;
+        final double rightFrac = 0.850;
         bridgeWoodLeftX = ox + ow * leftFrac;
         bridgeWoodRightX = ox + ow * rightFrac;
 
-        // Lưu vùng sàn gỗ đi bộ của cầu vòm (đầu ván Bắc y=12.0%, cuối ván Nam y=94.8%) để xử lý độ cong lên/xuống
-        bridgeDeckLeftX = ox + ow * 0.200;
-        bridgeDeckRightX = ox + ow * 0.800;
-        bridgeDeckTopY = oy + oh * 0.120;
-        bridgeDeckBotY = oy + oh * 0.948;
+        // Lưu vùng sàn gỗ đi bộ của cầu vòm (đầu ván Bắc y=9.5%, cuối ván Nam y=92.0%) để xử lý độ cong lên/xuống
+        bridgeDeckLeftX = ox + ow * 0.240;
+        bridgeDeckRightX = ox + ow * 0.760;
+        bridgeDeckTopY = oy + oh * 0.095;
+        bridgeDeckBotY = oy + oh * 0.920;
 
         Image src = bridgeObj.getImage();
         if (src != null && src.getPixelReader() != null) {
@@ -3850,11 +3850,13 @@ public class InGameController {
             int imgH = (int) src.getHeight();
             int sx0 = Math.max(0, (int) Math.round(imgW * leftFrac));
             int sx1 = Math.min(imgW, (int) Math.round(imgW * rightFrac));
+            int sy0 = Math.max(0, (int) Math.floor(((riverTopY - oy) / oh) * imgH));
+            int sy1 = Math.min(imgH, (int) Math.ceil(((riverBotY - oy) / oh) * imgH));
             int cw = Math.max(1, sx1 - sx0);
             javafx.scene.image.WritableImage canopyImg = new javafx.scene.image.WritableImage(cw, imgH);
             javafx.scene.image.PixelReader pr = src.getPixelReader();
             javafx.scene.image.PixelWriter pw = canopyImg.getPixelWriter();
-            for (int y = 0; y < imgH; y++) {
+            for (int y = sy0; y < sy1; y++) {
                 for (int x = 0; x < cw; x++) {
                     Color col = pr.getColor(sx0 + x, y);
                     pw.setColor(x, y, col);
