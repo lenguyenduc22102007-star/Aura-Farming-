@@ -4,26 +4,27 @@
 <?import javafx.scene.shape.*?>
 
 <StackPane fx:id="rootStack" prefHeight="720.0" prefWidth="1280.0"
+           maxWidth="Infinity" maxHeight="Infinity"
            style="-fx-background-color: #0E8AA8;"
            xmlns="http://javafx.com/javafx/17.0.12"
            xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="view.screen_controller.MainMenuController">
     <children>
-        <!-- 1. Toàn cảnh nông trại 2D Pixel Art động -->
-        <Pane fx:id="sceneryLayer" prefHeight="720.0" prefWidth="1280.0" />
+        <!-- 1. Toàn cảnh nông trại 2D Pixel Art động (tự động scale phủ kín mọi kích thước cửa sổ) -->
+        <Pane fx:id="sceneryLayer" prefHeight="720.0" prefWidth="1280.0" maxWidth="Infinity" maxHeight="Infinity" />
 
         <!-- 2. Giao diện Menu Chính (Bảng gỗ 7 nút trái + Hồ sơ & Bảng tin phải) -->
-        <AnchorPane fx:id="dashboardLayer" prefHeight="720.0" prefWidth="1280.0" visible="false" opacity="0.0" />
+        <AnchorPane fx:id="dashboardLayer" prefHeight="720.0" prefWidth="1280.0" maxWidth="Infinity" maxHeight="Infinity" visible="false" opacity="0.0" />
 
         <!-- 3. Màn hình Tiêu đề mở đầu (Logo 3D SMART FARM + Nhấn Enter/Click) -->
-        <StackPane fx:id="splashLayer" prefHeight="720.0" prefWidth="1280.0" />
+        <StackPane fx:id="splashLayer" prefHeight="720.0" prefWidth="1280.0" maxWidth="Infinity" maxHeight="Infinity" />
 
         <!-- 4. Lớp hộp thoại phụ (Tạo tên nông trại / Tìm / Tùy chỉnh / Cài đặt / Thêm) -->
-        <StackPane fx:id="modalOverlayLayer" prefHeight="720.0" prefWidth="1280.0"
+        <StackPane fx:id="modalOverlayLayer" prefHeight="720.0" prefWidth="1280.0" maxWidth="Infinity" maxHeight="Infinity"
                    style="-fx-background-color: rgba(14, 18, 22, 0.64);"
                    visible="false" opacity="0.0" />
 
-        <!-- 5. Màn đen chuyển cảnh FadeOut 0.8s -->
+        <!-- 5. Màn đen chuyển cảnh FadeOut 0.8s (bind theo kích thước cửa sổ) -->
         <Rectangle fx:id="transitionCurtain" width="1280.0" height="720.0"
                    fill="#06080C" mouseTransparent="true" visible="false" opacity="0.0" />
     </children>

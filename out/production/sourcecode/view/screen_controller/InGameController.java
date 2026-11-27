@@ -140,6 +140,7 @@ public class InGameController {
     private double sittingFireX = 0.0, sittingFireY = 0.0;
     private final java.util.List<CampForageSpot> campForageSpots = new java.util.ArrayList<>();
     private final java.util.List<TreeObject> choppableTrees = new java.util.ArrayList<>();
+    private boolean pendingAxeChopFelled = false;
 
     /** Đối tượng cây gỗ có thể chặt bằng Rìu quanh nông trại (HP=4, rớt +4 Củi khô, mọc lại sau 3 ngày). */
     private static final class TreeObject {
@@ -202,6 +203,7 @@ public class InGameController {
     private double campfireEmberTimer = 0.0;
     private Label interactPromptLabel = null;
     private Label survivalWarningLabel = null;
+    private javafx.scene.layout.Pane hudOverlayPane = null;
     private javafx.scene.layout.VBox survivalHudBox = null;
     private Label hungerValueLabel = null;
     private javafx.scene.shape.Rectangle hungerBarFill = null;
@@ -227,7 +229,9 @@ public class InGameController {
     private final javafx.scene.effect.ColorAdjust underBridgePlayerShade = new javafx.scene.effect.ColorAdjust();
     private double lastPlayerBridgeShade = 0.0;
     private long lastFishLaborMs = 0L;
-    private static final double HUNGER_FULL_GRACE_SEC = 135.0 * 4.0 / 16.0; // ~33.75s thực = đúng 4 tiếng trong game mới bắt đầu đói
+    private static final long DAY_DURATION_MS = 405_000L; // 405 giây/ngày (dài gấp 3 lần bản 135 giây trước đây)
+    private static final double DAY_DURATION_SEC = DAY_DURATION_MS / 1000.0;
+    private static final double HUNGER_FULL_GRACE_SEC = DAY_DURATION_SEC * 4.0 / 16.0; // đúng 4 tiếng trong game mới bắt đầu đói
     private double hungerGraceTimerSec = HUNGER_FULL_GRACE_SEC;
     private int recentLaborStreak = 0;
     private double recentLaborDecaySec = 0.0;
@@ -1039,7 +1043,7 @@ public class InGameController {
             updateSurvivalHud(animTimeSec);
             updateQuestTrackerUi();
             lastFrameTime = System.currentTimeMillis();
-            resetFeedingSchedule(elapsedTimeInDay / 135000.0);
+            resetFeedingSchedule((double) elapsedTimeInDay / DAY_DURATION_MS);
             int tc = Integer.parseInt(p.getProperty("trough.count", "0"));
             for (int i = 0; i < tc && i < troughs.size(); i++) {
                 troughs.get(i).add(Integer.parseInt(p.getProperty("trough." + i, "0")));
@@ -1312,14 +1316,14 @@ public class InGameController {
                             weatherTintRect.setFill(currentWeatherTint);
                         }
                         
-                        // Tự động qua ngày sau mỗi 135 giây (135000 ms)
+                        // Tự động qua ngày sau mỗi 405 giây (405000 ms — gấp 3 lần bản 135 giây trước đây)
                         elapsedTimeInDay += delta;
-                        if (elapsedTimeInDay >= 135000) {
+                        if (elapsedTimeInDay >= DAY_DURATION_MS) {
                             onNextDay();
                         } else {
                             // Nội suy mượt màu sáng/trưa/chiều/tối mỗi frame
                             if (timeOverlayRect != null) {
-                                double progress = elapsedTimeInDay / 135000.0;
+                                double progress = (double) elapsedTimeInDay / DAY_DURATION_MS;
                                 Color targetTime = getTimeOverlayColor(progress);
                                 currentTimeTint = currentTimeTint.interpolate(targetTime, Math.min(1.0, dtSec * 5.0));
                                 timeOverlayRect.setFill(currentTimeTint);
@@ -1342,7 +1346,7 @@ public class InGameController {
 
     private void updateTimeDisplay() {
         if (dayField == null || gameManager == null) return;
-        double progress = Math.min(1.0, Math.max(0.0, elapsedTimeInDay / 135000.0));
+        double progress = Math.min(1.0, Math.max(0.0, (double) elapsedTimeInDay / DAY_DURATION_MS));
         // Giả lập từ 06:00 đến 22:00 (16 tiếng một ngày)
         int totalMins = (int) (progress * 16 * 60);
         int hour = 6 + totalMins / 60;
@@ -1849,17 +1853,22 @@ public class InGameController {
             luffyToolFlip.setX(luffyFacingLeft ? -1.0 : 1.0);
         }
 
-        // Sprite Animation đầy đủ (Đứng yên + Chạy bộ + Làm việc) cho Cuốc (Hoe) và Bình tưới (WateringCan)
+        // Sprite Animation đầy đủ (Đứng yên + Chạy bộ + Làm việc) cho Cuốc (Hoe), Rìu (Axe) và Bình tưới (WateringCan)
         ToolStrategy activeTool = (playerController != null) ? playerController.getCurrentTool() : null;
         boolean hasHoeFrames = (Assets.LUFFY_HOE_FRAMES != null && Assets.LUFFY_HOE_FRAMES.length == 4 && Assets.LUFFY_HOE_FRAMES[0] != null);
         boolean hasHoeRunFrames = (Assets.LUFFY_HOE_RUN_FRAMES != null && Assets.LUFFY_HOE_RUN_FRAMES.length == 4 && Assets.LUFFY_HOE_RUN_FRAMES[0] != null);
+        boolean hasAxeFrames = (Assets.LUFFY_AXE_FRAMES != null && Assets.LUFFY_AXE_FRAMES.length == 4 && Assets.LUFFY_AXE_FRAMES[0] != null);
         boolean hasWaterFrames = (Assets.LUFFY_WATER_FRAMES != null && Assets.LUFFY_WATER_FRAMES.length == 3 && Assets.LUFFY_WATER_FRAMES[0] != null);
         boolean hasWaterRunFrames = (Assets.LUFFY_WATER_RUN_FRAMES != null && Assets.LUFFY_WATER_RUN_FRAMES.length == 4 && Assets.LUFFY_WATER_RUN_FRAMES[0] != null);
         boolean usingNativeHoe = !lockedOnBoat && !isSitting && (activeTool instanceof Hoe) && hasHoeFrames;
+        boolean usingNativeAxe = !lockedOnBoat && !isSitting && (activeTool instanceof Axe) && hasAxeFrames;
         boolean usingNativeWater = !lockedOnBoat && !isSitting && (activeTool instanceof WateringCan) && hasWaterFrames;
-        boolean usingNativeActionTool = usingNativeHoe || usingNativeWater;
+        boolean usingNativeActionTool = usingNativeHoe || usingNativeAxe || usingNativeWater;
+        if (weaponView != null && usingNativeActionTool) {
+            weaponView.setVisible(false);
+        }
 
-        // Cập nhật timer hành động công cụ (khóa đổi frame chạy trong suốt thời gian vung cuốc / tưới nước)
+        // Cập nhật timer hành động công cụ (khóa đổi frame chạy trong suốt thời gian bổ cuốc / chặt rìu / tưới nước)
         boolean nativeActionPlaying = false;
         if (usingNativeActionTool && toolActionTimer >= 0.0) {
             toolActionTimer += deltaRiverSec;
@@ -1885,9 +1894,11 @@ public class InGameController {
                 luffySpriteView.setImage(Assets.LUFFY_SUNBATHE);
                 bobbing = Math.sin(timeSec * 2.2) * 0.9;
             } else if (usingNativeActionTool) {
-                boolean isSideSheet = nativeActionPlaying || "side".equals(dirKey);
+                boolean isSideSheet = nativeActionPlaying
+                        || (usingNativeAxe && !isWalking)
+                        || (!usingNativeAxe && "side".equals(dirKey));
                 if (isSideSheet) {
-                    // Sheet 72x72 (ngang & bổ cuốc / tưới nước): scale 120x120 cho chiều cao cơ thể 90px khớp sprite 8 hướng
+                    // Sheet 72x72 (ngang & bổ cuốc / chặt rìu / tưới nước): scale 120x120 cho chiều cao cơ thể ~90px khớp sprite 8 hướng
                     if (luffySpriteView.getFitWidth() != 120.0) {
                         luffySpriteView.setFitWidth(120.0);
                         luffySpriteView.setFitHeight(120.0);
@@ -1895,7 +1906,7 @@ public class InGameController {
                         luffySpriteView.setY(-50.0);
                     }
                 } else {
-                    // Sprite 8 hướng cầm công cụ (down / up / down_right / up_right): đúng kích thước 108x108 đồng bộ tuyệt đối
+                    // Sprite 8 hướng (down / up / down_right / up_right hoặc chạy bộ cầm rìu): đúng kích thước 108x108 đồng bộ tuyệt đối
                     if (luffySpriteView.getFitWidth() != 108.0) {
                         luffySpriteView.setFitWidth(108.0);
                         luffySpriteView.setFitHeight(108.0);
@@ -1931,6 +1942,38 @@ public class InGameController {
                                 ? Assets.LUFFY_HOE_IDLE_BY_DIR.getOrDefault(dirKey, Assets.LUFFY_HOE_FRAMES[0])
                                 : Assets.LUFFY_HOE_FRAMES[0];
                         luffySpriteView.setImage(dirIdle != null ? dirIdle : Assets.LUFFY_HOE_FRAMES[0]);
+                    }
+                } else if (usingNativeAxe) {
+                    if (nativeActionPlaying && "AXE".equals(toolActionKind)) {
+                        // Bấm Space chặt cây: chạy tuần tự 0 -> 1 -> 2 -> 3 (0.08s/frame, tổng 0.32s), khóa frame chạy, bắn vụn gỗ đúng frame 2
+                        int fIdx = Math.min(3, (int) (toolActionTimer / 0.08));
+                        if (!toolImpactFired && fIdx >= 2) {
+                            toolImpactFired = true;
+                            if (particleSystem != null && toolTargetWorldX >= 0) {
+                                particleSystem.spawnWoodChipBurst(toolTargetWorldX, toolTargetWorldY - 16.0, pendingAxeChopFelled);
+                            }
+                        }
+                        luffySpriteView.setImage(Assets.LUFFY_AXE_FRAMES[fIdx]);
+                    } else if (isWalking && luffyRunByDir != null) {
+                        // Đang chạy bộ cầm Rìu: giữ mượt animation chạy 8 hướng
+                        Image[] arr = luffyRunByDir.getOrDefault(dirKey, luffyRunByDir.get("side"));
+                        long nowAnim = System.currentTimeMillis();
+                        if (isWalking != luffyWasWalking || !dirKey.equals(luffyLastDirKey)) {
+                            luffyWasWalking = isWalking;
+                            luffyLastDirKey = dirKey;
+                            luffyAnimFrame = 0;
+                            lastLuffyAnimTick = nowAnim;
+                            if (arr != null && arr[0] != null) luffySpriteView.setImage(arr[0]);
+                        } else if (arr != null && arr.length > 0 && nowAnim - lastLuffyAnimTick >= 95L) {
+                            lastLuffyAnimTick = nowAnim;
+                            luffyAnimFrame = (luffyAnimFrame + 1) % arr.length;
+                            if (arr[luffyAnimFrame] != null) luffySpriteView.setImage(arr[luffyAnimFrame]);
+                        }
+                    } else {
+                        // Đứng yên cầm Rìu: hiển thị LUFFY_AXE_FRAMES[3] sắc nét, đồng bộ hướng lật scaleX (phải=1, trái=-1)
+                        walkSwayTime = 0.0;
+                        luffyWasWalking = false;
+                        luffySpriteView.setImage(Assets.LUFFY_AXE_FRAMES[3]);
                     }
                 } else {
                     if (nativeActionPlaying && "WATER".equals(toolActionKind)) {
@@ -2913,7 +2956,7 @@ public class InGameController {
                     ? gameManager.getCurrentWeather().getType()
                     : WeatherType.SUNNY,
             this::getCurrentGameHour,
-            () -> clockText(Math.min(1.0, Math.max(0.0, elapsedTimeInDay / 135000.0))),
+            () -> clockText(Math.min(1.0, Math.max(0.0, (double) elapsedTimeInDay / DAY_DURATION_MS))),
             fishCaughtCounts,
             fishMaxCm,
             this::onClaimQuestReward,
@@ -3476,7 +3519,16 @@ public class InGameController {
         double trunkX = bestTree.trunkCenterX();
         double trunkY = bestTree.trunkCenterY();
 
-        // Vung rìu + trừ thể lực (-2 Đói, -2 Khát)
+        // Tự động xoay mặt Luffy hướng về phía thân cây (trái/phải) để nhát bổ rìu 4 frame ăn khớp 100%
+        if (Math.abs(trunkX - footX) > 6.0) {
+            facing = (trunkX >= footX) ? "RIGHT" : "LEFT";
+        }
+
+        bestTree.hp = Math.max(0, bestTree.hp - 1);
+        boolean felled = (bestTree.hp <= 0);
+        pendingAxeChopFelled = felled;
+
+        // Vung rìu 4 frame (0 -> 1 -> 2 -> 3 trong 0.32s, bắn hạt vụn gỗ ngay tại frame 2) + trừ -2 Đói, -2 Khát
         triggerToolAnimation("AXE", trunkX, trunkY);
         if (player != null) {
             player.addHunger(-2.0);
@@ -3484,12 +3536,9 @@ public class InGameController {
             updateSurvivalHud(animTimeSec);
         }
 
-        bestTree.hp = Math.max(0, bestTree.hp - 1);
-        boolean felled = (bestTree.hp <= 0);
-
-        // Rung cây nhẹ bằng TranslateTransition + bắn hạt vụn gỗ màu nâu
+        // Rung cây nhẹ bằng TranslateTransition (hạt vụn gỗ màu nâu sẽ bắn bung ngay tại frame bổ xuống = frame 2)
         shakeTreeView(bestTree.view);
-        if (particleSystem != null) {
+        if ((Assets.LUFFY_AXE_FRAMES == null || Assets.LUFFY_AXE_FRAMES[0] == null) && particleSystem != null) {
             particleSystem.spawnWoodChipBurst(trunkX, trunkY - 16.0, felled);
         }
 
@@ -4665,12 +4714,38 @@ public class InGameController {
 
     // ======================== HỆ THỐNG SINH TỒN: ĐÓI & KHÁT ========================
 
+    private javafx.scene.layout.Pane ensureHudOverlayPane() {
+        if (rootPane == null) return null;
+        if (hudOverlayPane == null) {
+            hudOverlayPane = new javafx.scene.layout.Pane();
+            hudOverlayPane.setMouseTransparent(true);
+            hudOverlayPane.setPickOnBounds(false);
+            hudOverlayPane.setManaged(false);
+            hudOverlayPane.setLayoutX(0);
+            hudOverlayPane.setLayoutY(0);
+            double w = rootPane.getWidth() > 0 ? rootPane.getWidth() : 1280.0;
+            double h = rootPane.getHeight() > 0 ? rootPane.getHeight() : 720.0;
+            hudOverlayPane.resize(w, h);
+            rootPane.widthProperty().addListener((obs, ov, nv) -> hudOverlayPane.resize(nv.doubleValue(), rootPane.getHeight()));
+            rootPane.heightProperty().addListener((obs, ov, nv) -> hudOverlayPane.resize(rootPane.getWidth(), nv.doubleValue()));
+        }
+        if (!rootPane.getChildren().contains(hudOverlayPane)) {
+            rootPane.getChildren().add(hudOverlayPane);
+        }
+        hudOverlayPane.toFront();
+        if (dayFadeRect != null && rootPane.getChildren().contains(dayFadeRect)) {
+            dayFadeRect.toFront();
+        }
+        return hudOverlayPane;
+    }
+
     /** Khởi tạo khung HUD gỗ/pixel 2 thanh ĐÓI & NƯỚC có tiêu đề rõ ràng + icon vẽ nét (không dùng emoji lỗi font). */
     private void setupSurvivalHud() {
-        if (rootPane == null) return;
+        javafx.scene.layout.Pane hud = ensureHudOverlayPane();
+        if (hud == null) return;
         if (survivalHudBox != null) {
-            if (!rootPane.getChildren().contains(survivalHudBox)) {
-                rootPane.getChildren().add(survivalHudBox);
+            if (!hud.getChildren().contains(survivalHudBox)) {
+                hud.getChildren().add(survivalHudBox);
             }
             survivalHudBox.toFront();
             return;
@@ -4777,10 +4852,11 @@ public class InGameController {
 
         survivalHudBox = new javafx.scene.layout.VBox(4, survivalHeaderTitle, divider, hungerRow, hungerTrack, thirstRow, thirstTrack);
         survivalHudBox.setPadding(new javafx.geometry.Insets(7, 11, 9, 11));
+        survivalHudBox.setMinWidth(226.0);
         survivalHudBox.setPrefWidth(226.0);
+        survivalHudBox.setMaxWidth(226.0);
         survivalHudBox.setMouseTransparent(true);
-        survivalHudBox.setManaged(false);
-        survivalHudBox.setLayoutX(16.0);
+        survivalHudBox.setLayoutX(14.0);
         survivalHudBox.setLayoutY(12.0);
         survivalHudBox.setStyle(
             "-fx-background-color: linear-gradient(to bottom, rgba(114, 68, 34, 0.93), rgba(74, 42, 20, 0.95));" +
@@ -4790,7 +4866,7 @@ public class InGameController {
             "-fx-border-radius: 10px;" +
             "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.48), 8, 0.2, 0, 2);"
         );
-        rootPane.getChildren().add(survivalHudBox);
+        hud.getChildren().add(survivalHudBox);
         survivalHudBox.toFront();
     }
 
@@ -4998,10 +5074,11 @@ public class InGameController {
             if (foodBuffHudPill != null) foodBuffHudPill.setVisible(false);
             return;
         }
+        javafx.scene.layout.Pane hud = ensureHudOverlayPane();
+        if (hud == null) return;
         if (foodBuffHudPill == null) {
             foodBuffHudPill = new Label();
             foodBuffHudPill.setMouseTransparent(true);
-            foodBuffHudPill.setManaged(false);
             foodBuffHudPill.setStyle(
                 "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
                 "-fx-font-size: 11.5px;" +
@@ -5014,11 +5091,11 @@ public class InGameController {
                 "-fx-background-radius: 9px;" +
                 "-fx-border-radius: 9px;"
             );
-            rootPane.getChildren().add(foodBuffHudPill);
+            hud.getChildren().add(foodBuffHudPill);
         }
         foodBuffHudPill.setText("BUFF: " + summary);
-        foodBuffHudPill.setLayoutX(16.0);
-        foodBuffHudPill.setLayoutY(130.0);
+        foodBuffHudPill.setLayoutX(14.0);
+        foodBuffHudPill.setLayoutY(128.0);
         foodBuffHudPill.setVisible(true);
         foodBuffHudPill.toFront();
     }
@@ -5034,15 +5111,17 @@ public class InGameController {
      */
     private void showFishCatchCard(model.game_item.FishSpecies species, double sizeCm,
                                    boolean isCrown, boolean isNewRecord, int rewardMoney) {
-        if (rootPane == null) return;
+        javafx.scene.layout.Pane hud = ensureHudOverlayPane();
+        if (hud == null) return;
         if (fishCatchCard == null) {
             fishCatchCard = new javafx.scene.layout.VBox(4);
             fishCatchCard.setAlignment(Pos.CENTER);
             fishCatchCard.setMouseTransparent(true);
-            fishCatchCard.setManaged(false);
+            fishCatchCard.setMinWidth(420);
             fishCatchCard.setPrefWidth(420);
+            fishCatchCard.setMaxWidth(420);
             fishCatchCard.setPadding(new javafx.geometry.Insets(10, 18, 10, 18));
-            rootPane.getChildren().add(fishCatchCard);
+            hud.getChildren().add(fishCatchCard);
         }
 
         // Màu sắc chuẩn theo độ hiếm: Trắng (Thường) / Xanh dương (Hiếm) / Tím (Cực hiếm) / Vàng kim (Siêu hiếm)
@@ -5124,7 +5203,7 @@ public class InGameController {
     }
 
     private int getCurrentGameHour() {
-        double progress = Math.min(1.0, Math.max(0.0, elapsedTimeInDay / 135000.0));
+        double progress = Math.min(1.0, Math.max(0.0, (double) elapsedTimeInDay / DAY_DURATION_MS));
         int totalMins = (int) (progress * 16 * 60);
         return (6 + totalMins / 60) % 24;
     }
@@ -5133,7 +5212,8 @@ public class InGameController {
     private void updateBoatHintBanner(boolean show) {
         if (show == boatHintVisible) return;
         boatHintVisible = show;
-        if (rootPane == null) return;
+        javafx.scene.layout.Pane hud = ensureHudOverlayPane();
+        if (hud == null) return;
         if (boatHintBanner == null) {
             boatHintBanner = new Label("[E] Lên/Xuống thuyền  |  [A/D] Chèo  |  [Space] Câu cá  |  [G] Xem Sổ Cá");
             boatHintBanner.setStyle(
@@ -5149,10 +5229,11 @@ public class InGameController {
                 "-fx-border-radius: 8px;"
             );
             boatHintBanner.setMouseTransparent(true);
-            boatHintBanner.setManaged(false);
+            boatHintBanner.setMinWidth(560);
             boatHintBanner.setPrefWidth(560);
+            boatHintBanner.setMaxWidth(560);
             boatHintBanner.setAlignment(Pos.CENTER);
-            rootPane.getChildren().add(boatHintBanner);
+            hud.getChildren().add(boatHintBanner);
         }
         boatHintBanner.setVisible(show);
         if (show) {
@@ -5334,6 +5415,7 @@ public class InGameController {
         if (soilStatusPanel != null && (inFarm != lastSoilPanelVisible || soilStatusPanel.isVisible() != inFarm)) {
             lastSoilPanelVisible = inFarm;
             soilStatusPanel.setVisible(inFarm);
+            soilStatusPanel.setManaged(inFarm);
         }
         if (inFarm) {
             Cell inspectCell = isCellInFarmZone(facingCell) ? facingCell : null;
@@ -5357,6 +5439,7 @@ public class InGameController {
         if (!isPlayerInFarmZone() || !isCellInFarmZone(cell)) {
             if (soilStatusPanel != null && !isPlayerInFarmZone()) {
                 soilStatusPanel.setVisible(false);
+                soilStatusPanel.setManaged(false);
                 lastSoilPanelVisible = false;
             }
             return;
@@ -5364,6 +5447,7 @@ public class InGameController {
         hovered = cell;
         if (soilStatusPanel != null && !soilStatusPanel.isVisible()) {
             soilStatusPanel.setVisible(true);
+            soilStatusPanel.setManaged(true);
             lastSoilPanelVisible = true;
         }
         cellLabel.setText("CELL : " + cell.getY() + "," + cell.getX());
@@ -5892,7 +5976,7 @@ void style() {
 
     private void updateFeedingSchedule() {
         if (troughs.isEmpty()) return;
-        double p = elapsedTimeInDay / 135000.0;
+        double p = (double) elapsedTimeInDay / DAY_DURATION_MS;
         long now = System.currentTimeMillis();
 
         for (int i = 0; i < MEAL_TIMES.length; i++) {
@@ -5940,7 +6024,8 @@ void style() {
 
     private void showToast(String msg) {
         notify(msg);
-        if (rootPane == null) return;
+        javafx.scene.layout.Pane hud = ensureHudOverlayPane();
+        if (hud == null) return;
         if (toastLabel == null) {
             toastLabel = new Label();
             toastLabel.getStyleClass().add("npc-name");
@@ -5949,10 +6034,11 @@ void style() {
             toastLabel.setAlignment(Pos.CENTER);
             toastLabel.setStyle("-fx-font-size: 16px;");
             toastLabel.setMouseTransparent(true);
-            toastLabel.setManaged(false);
+            toastLabel.setMinWidth(620);
             toastLabel.setPrefWidth(620);
+            toastLabel.setMaxWidth(620);
             toastLabel.setLayoutY(80);
-            rootPane.getChildren().add(toastLabel);
+            hud.getChildren().add(toastLabel);
         }
         toastLabel.setText(msg);
         toastLabel.setLayoutX(Math.max(0, (rootPane.getWidth() - 620) / 2));

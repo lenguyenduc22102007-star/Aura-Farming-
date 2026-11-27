@@ -140,6 +140,7 @@ public class InGameController {
     private double sittingFireX = 0.0, sittingFireY = 0.0;
     private final java.util.List<CampForageSpot> campForageSpots = new java.util.ArrayList<>();
     private final java.util.List<TreeObject> choppableTrees = new java.util.ArrayList<>();
+    private boolean pendingAxeChopFelled = false;
 
     /** Đối tượng cây gỗ có thể chặt bằng Rìu quanh nông trại (HP=4, rớt +4 Củi khô, mọc lại sau 3 ngày). */
     private static final class TreeObject {
@@ -1852,17 +1853,22 @@ public class InGameController {
             luffyToolFlip.setX(luffyFacingLeft ? -1.0 : 1.0);
         }
 
-        // Sprite Animation đầy đủ (Đứng yên + Chạy bộ + Làm việc) cho Cuốc (Hoe) và Bình tưới (WateringCan)
+        // Sprite Animation đầy đủ (Đứng yên + Chạy bộ + Làm việc) cho Cuốc (Hoe), Rìu (Axe) và Bình tưới (WateringCan)
         ToolStrategy activeTool = (playerController != null) ? playerController.getCurrentTool() : null;
         boolean hasHoeFrames = (Assets.LUFFY_HOE_FRAMES != null && Assets.LUFFY_HOE_FRAMES.length == 4 && Assets.LUFFY_HOE_FRAMES[0] != null);
         boolean hasHoeRunFrames = (Assets.LUFFY_HOE_RUN_FRAMES != null && Assets.LUFFY_HOE_RUN_FRAMES.length == 4 && Assets.LUFFY_HOE_RUN_FRAMES[0] != null);
+        boolean hasAxeFrames = (Assets.LUFFY_AXE_FRAMES != null && Assets.LUFFY_AXE_FRAMES.length == 4 && Assets.LUFFY_AXE_FRAMES[0] != null);
         boolean hasWaterFrames = (Assets.LUFFY_WATER_FRAMES != null && Assets.LUFFY_WATER_FRAMES.length == 3 && Assets.LUFFY_WATER_FRAMES[0] != null);
         boolean hasWaterRunFrames = (Assets.LUFFY_WATER_RUN_FRAMES != null && Assets.LUFFY_WATER_RUN_FRAMES.length == 4 && Assets.LUFFY_WATER_RUN_FRAMES[0] != null);
         boolean usingNativeHoe = !lockedOnBoat && !isSitting && (activeTool instanceof Hoe) && hasHoeFrames;
+        boolean usingNativeAxe = !lockedOnBoat && !isSitting && (activeTool instanceof Axe) && hasAxeFrames;
         boolean usingNativeWater = !lockedOnBoat && !isSitting && (activeTool instanceof WateringCan) && hasWaterFrames;
-        boolean usingNativeActionTool = usingNativeHoe || usingNativeWater;
+        boolean usingNativeActionTool = usingNativeHoe || usingNativeAxe || usingNativeWater;
+        if (weaponView != null && usingNativeActionTool) {
+            weaponView.setVisible(false);
+        }
 
-        // Cập nhật timer hành động công cụ (khóa đổi frame chạy trong suốt thời gian vung cuốc / tưới nước)
+        // Cập nhật timer hành động công cụ (khóa đổi frame chạy trong suốt thời gian bổ cuốc / chặt rìu / tưới nước)
         boolean nativeActionPlaying = false;
         if (usingNativeActionTool && toolActionTimer >= 0.0) {
             toolActionTimer += deltaRiverSec;
@@ -1888,9 +1894,11 @@ public class InGameController {
                 luffySpriteView.setImage(Assets.LUFFY_SUNBATHE);
                 bobbing = Math.sin(timeSec * 2.2) * 0.9;
             } else if (usingNativeActionTool) {
-                boolean isSideSheet = nativeActionPlaying || "side".equals(dirKey);
+                boolean isSideSheet = nativeActionPlaying
+                        || (usingNativeAxe && !isWalking)
+                        || (!usingNativeAxe && "side".equals(dirKey));
                 if (isSideSheet) {
-                    // Sheet 72x72 (ngang & bổ cuốc / tưới nước): scale 120x120 cho chiều cao cơ thể 90px khớp sprite 8 hướng
+                    // Sheet 72x72 (ngang & bổ cuốc / chặt rìu / tưới nước): scale 120x120 cho chiều cao cơ thể ~90px khớp sprite 8 hướng
                     if (luffySpriteView.getFitWidth() != 120.0) {
                         luffySpriteView.setFitWidth(120.0);
                         luffySpriteView.setFitHeight(120.0);
@@ -1898,7 +1906,7 @@ public class InGameController {
                         luffySpriteView.setY(-50.0);
                     }
                 } else {
-                    // Sprite 8 hướng cầm công cụ (down / up / down_right / up_right): đúng kích thước 108x108 đồng bộ tuyệt đối
+                    // Sprite 8 hướng (down / up / down_right / up_right hoặc chạy bộ cầm rìu): đúng kích thước 108x108 đồng bộ tuyệt đối
                     if (luffySpriteView.getFitWidth() != 108.0) {
                         luffySpriteView.setFitWidth(108.0);
                         luffySpriteView.setFitHeight(108.0);
@@ -1934,6 +1942,38 @@ public class InGameController {
                                 ? Assets.LUFFY_HOE_IDLE_BY_DIR.getOrDefault(dirKey, Assets.LUFFY_HOE_FRAMES[0])
                                 : Assets.LUFFY_HOE_FRAMES[0];
                         luffySpriteView.setImage(dirIdle != null ? dirIdle : Assets.LUFFY_HOE_FRAMES[0]);
+                    }
+                } else if (usingNativeAxe) {
+                    if (nativeActionPlaying && "AXE".equals(toolActionKind)) {
+                        // Bấm Space chặt cây: chạy tuần tự 0 -> 1 -> 2 -> 3 (0.08s/frame, tổng 0.32s), khóa frame chạy, bắn vụn gỗ đúng frame 2
+                        int fIdx = Math.min(3, (int) (toolActionTimer / 0.08));
+                        if (!toolImpactFired && fIdx >= 2) {
+                            toolImpactFired = true;
+                            if (particleSystem != null && toolTargetWorldX >= 0) {
+                                particleSystem.spawnWoodChipBurst(toolTargetWorldX, toolTargetWorldY - 16.0, pendingAxeChopFelled);
+                            }
+                        }
+                        luffySpriteView.setImage(Assets.LUFFY_AXE_FRAMES[fIdx]);
+                    } else if (isWalking && luffyRunByDir != null) {
+                        // Đang chạy bộ cầm Rìu: giữ mượt animation chạy 8 hướng
+                        Image[] arr = luffyRunByDir.getOrDefault(dirKey, luffyRunByDir.get("side"));
+                        long nowAnim = System.currentTimeMillis();
+                        if (isWalking != luffyWasWalking || !dirKey.equals(luffyLastDirKey)) {
+                            luffyWasWalking = isWalking;
+                            luffyLastDirKey = dirKey;
+                            luffyAnimFrame = 0;
+                            lastLuffyAnimTick = nowAnim;
+                            if (arr != null && arr[0] != null) luffySpriteView.setImage(arr[0]);
+                        } else if (arr != null && arr.length > 0 && nowAnim - lastLuffyAnimTick >= 95L) {
+                            lastLuffyAnimTick = nowAnim;
+                            luffyAnimFrame = (luffyAnimFrame + 1) % arr.length;
+                            if (arr[luffyAnimFrame] != null) luffySpriteView.setImage(arr[luffyAnimFrame]);
+                        }
+                    } else {
+                        // Đứng yên cầm Rìu: hiển thị LUFFY_AXE_FRAMES[3] sắc nét, đồng bộ hướng lật scaleX (phải=1, trái=-1)
+                        walkSwayTime = 0.0;
+                        luffyWasWalking = false;
+                        luffySpriteView.setImage(Assets.LUFFY_AXE_FRAMES[3]);
                     }
                 } else {
                     if (nativeActionPlaying && "WATER".equals(toolActionKind)) {
@@ -3479,7 +3519,16 @@ public class InGameController {
         double trunkX = bestTree.trunkCenterX();
         double trunkY = bestTree.trunkCenterY();
 
-        // Vung rìu + trừ thể lực (-2 Đói, -2 Khát)
+        // Tự động xoay mặt Luffy hướng về phía thân cây (trái/phải) để nhát bổ rìu 4 frame ăn khớp 100%
+        if (Math.abs(trunkX - footX) > 6.0) {
+            facing = (trunkX >= footX) ? "RIGHT" : "LEFT";
+        }
+
+        bestTree.hp = Math.max(0, bestTree.hp - 1);
+        boolean felled = (bestTree.hp <= 0);
+        pendingAxeChopFelled = felled;
+
+        // Vung rìu 4 frame (0 -> 1 -> 2 -> 3 trong 0.32s, bắn hạt vụn gỗ ngay tại frame 2) + trừ -2 Đói, -2 Khát
         triggerToolAnimation("AXE", trunkX, trunkY);
         if (player != null) {
             player.addHunger(-2.0);
@@ -3487,12 +3536,9 @@ public class InGameController {
             updateSurvivalHud(animTimeSec);
         }
 
-        bestTree.hp = Math.max(0, bestTree.hp - 1);
-        boolean felled = (bestTree.hp <= 0);
-
-        // Rung cây nhẹ bằng TranslateTransition + bắn hạt vụn gỗ màu nâu
+        // Rung cây nhẹ bằng TranslateTransition (hạt vụn gỗ màu nâu sẽ bắn bung ngay tại frame bổ xuống = frame 2)
         shakeTreeView(bestTree.view);
-        if (particleSystem != null) {
+        if ((Assets.LUFFY_AXE_FRAMES == null || Assets.LUFFY_AXE_FRAMES[0] == null) && particleSystem != null) {
             particleSystem.spawnWoodChipBurst(trunkX, trunkY - 16.0, felled);
         }
 

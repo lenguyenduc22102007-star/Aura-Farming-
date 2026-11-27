@@ -126,6 +126,7 @@ public class Assets {
     public static Image LUFFY_SUNBATHE;
     public static Image[] LUFFY_HOE_FRAMES;
     public static Image[] LUFFY_HOE_RUN_FRAMES;
+    public static Image[] LUFFY_AXE_FRAMES;
     public static Image[] LUFFY_WATER_FRAMES;
     public static Image[] LUFFY_WATER_RUN_FRAMES;
     public static Map<String, Image[]> LUFFY_HOE_RUN_BY_DIR;
@@ -271,9 +272,11 @@ public class Assets {
         LUFFY_SUNBATHE = safeLoadPixelImage("/view/assets/player/luffy_sunbathe.png", 112, 68);
         LUFFY_HOE_FRAMES = new Image[4];
         LUFFY_HOE_RUN_FRAMES = new Image[4];
+        LUFFY_AXE_FRAMES = new Image[4];
         for (int i = 0; i < 4; i++) {
             LUFFY_HOE_FRAMES[i] = safeLoadPixelImage("/view/assets/player_actions/luffy_hoe_" + i + ".png", 144, 144);
             LUFFY_HOE_RUN_FRAMES[i] = safeLoadPixelImage("/view/assets/player_actions/luffy_hoe_run_" + i + ".png", 144, 144);
+            LUFFY_AXE_FRAMES[i] = safeLoadPixelImage("/view/assets/player_actions/luffy_axe_" + i + ".png", 144, 144);
         }
         LUFFY_WATER_FRAMES = new Image[3];
         for (int i = 0; i < 3; i++) {

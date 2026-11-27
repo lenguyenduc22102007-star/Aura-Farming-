@@ -94,6 +94,15 @@ public final class MainMenuController {
     private TextField farmNameInput;
     private StackPane createFarmModalCard;
 
+    // Thành phần hỗ trợ co giãn mượt theo mọi độ phân giải cửa sổ (1280x720 -> Full HD / Maximized)
+    private Pane sceneryCanvas;
+    private javafx.scene.transform.Scale sceneryBgScale;
+    private Rectangle sceneryClip;
+    private Node dashProfileNode;
+    private Node dashLeftMenuNode;
+    private Node dashRightPanelNode;
+    private Node splashLogoNode;
+
     private boolean continueEnabled = false;
     private boolean splashDismissed = false;
     private boolean transitionRunning = false;
@@ -173,9 +182,30 @@ public final class MainMenuController {
     private void initialize() {
         rootStack.setFocusTraversable(true);
 
-        populateScenicFarmBackdrop(sceneryLayer);
+        // Khung nền 1280x720 đặt bên trong sceneryLayer + scale theo gốc (0,0) để phủ kín 100% không bị lệch khi mây/lá trôi
+        sceneryCanvas = new Pane();
+        sceneryCanvas.setPrefSize(W, H);
+        sceneryCanvas.setMinSize(W, H);
+        sceneryCanvas.setMaxSize(W, H);
+        sceneryBgScale = new javafx.scene.transform.Scale(1.0, 1.0, 0.0, 0.0);
+        sceneryCanvas.getTransforms().add(sceneryBgScale);
+        sceneryLayer.getChildren().setAll(sceneryCanvas);
+
+        sceneryClip = new Rectangle(W, H);
+        sceneryClip.widthProperty().bind(rootStack.widthProperty());
+        sceneryClip.heightProperty().bind(rootStack.heightProperty());
+        sceneryLayer.setClip(sceneryClip);
+
+        transitionCurtain.widthProperty().bind(rootStack.widthProperty());
+        transitionCurtain.heightProperty().bind(rootStack.heightProperty());
+
+        populateScenicFarmBackdrop(sceneryCanvas);
         populateTitleSplashLayer(splashLayer);
         populateDashboardLayer(dashboardLayer);
+
+        rootStack.widthProperty().addListener((obs, ov, nv) -> updateResponsiveLayout());
+        rootStack.heightProperty().addListener((obs, ov, nv) -> updateResponsiveLayout());
+        Platform.runLater(this::updateResponsiveLayout);
 
         modalOverlayLayer.setAlignment(Pos.CENTER);
         modalOverlayLayer.setOnMouseClicked(e -> {
@@ -685,6 +715,7 @@ public final class MainMenuController {
         layer.setOnMouseClicked(e -> enterDashboardFromSplash());
 
         Group logo3D = buildFarmTogetherLogo();
+        splashLogoNode = logo3D;
         StackPane.setAlignment(logo3D, Pos.CENTER);
         StackPane.setMargin(logo3D, new Insets(0, 0, 42, 0));
 
@@ -813,20 +844,67 @@ public final class MainMenuController {
 
         // 4. Góc trên phải: Hồ sơ Người chơi / Luffy thanh mảnh + Sao lấp lánh + Avatar cận mặt
         HBox profileRibbon = buildTopRightProfileBadge();
-        AnchorPane.setTopAnchor(profileRibbon, 18.0);
-        AnchorPane.setRightAnchor(profileRibbon, 22.0);
+        dashProfileNode = profileRibbon;
+        Group profileWrap = new Group(profileRibbon);
+        AnchorPane.setTopAnchor(profileWrap, 18.0);
+        AnchorPane.setRightAnchor(profileWrap, 24.0);
 
         // 2. Bên trái: Bảng gỗ pixel lớn chứa 7 nút chức năng
         StackPane leftWoodBoard = buildLeftWoodMenuBoard();
-        AnchorPane.setBottomAnchor(leftWoodBoard, 20.0);
-        AnchorPane.setLeftAnchor(leftWoodBoard, 22.0);
+        dashLeftMenuNode = leftWoodBoard;
+        Group leftWrap = new Group(leftWoodBoard);
+        AnchorPane.setBottomAnchor(leftWrap, 22.0);
+        AnchorPane.setLeftAnchor(leftWrap, 24.0);
 
         // 3. Bên phải: Bảng Sự Kiện ("7d" trồi mép phải) phía trên + Bảng Chào Mừng cuộn mượt phía dưới
         VBox rightPanels = buildRightAnnouncementPanels();
-        AnchorPane.setBottomAnchor(rightPanels, 20.0);
-        AnchorPane.setRightAnchor(rightPanels, 20.0);
+        dashRightPanelNode = rightPanels;
+        Group rightWrap = new Group(rightPanels);
+        AnchorPane.setBottomAnchor(rightWrap, 22.0);
+        AnchorPane.setRightAnchor(rightWrap, 24.0);
 
-        pane.getChildren().addAll(profileRibbon, leftWoodBoard, rightPanels);
+        pane.getChildren().addAll(profileWrap, leftWrap, rightWrap);
+    }
+
+    /**
+     * Tự động co giãn nền nông trại (chế độ COVER phủ kín 100% không lộ viền trống khi phóng to cửa sổ)
+     * và phóng cân đối nhẹ các bảng giao diện bên ngoài theo kích thước màn hình.
+     */
+    private void updateResponsiveLayout() {
+        if (rootStack == null) return;
+        double vw = rootStack.getWidth();
+        double vh = rootStack.getHeight();
+        if (vw < 100 || vh < 100) {
+            vw = W;
+            vh = H;
+        }
+
+        if (sceneryCanvas != null && sceneryBgScale != null) {
+            double bgScale = Math.max(vw / W, vh / H);
+            sceneryBgScale.setX(bgScale);
+            sceneryBgScale.setY(bgScale);
+            sceneryCanvas.setLayoutX((vw - W * bgScale) * 0.5);
+            sceneryCanvas.setLayoutY((vh - H * bgScale) * 0.5);
+        }
+
+        double fitScale = Math.min(vw / W, vh / H);
+        double uiScale = Math.max(0.85, Math.min(1.22, fitScale));
+        if (dashProfileNode != null) {
+            dashProfileNode.setScaleX(uiScale);
+            dashProfileNode.setScaleY(uiScale);
+        }
+        if (dashLeftMenuNode != null) {
+            dashLeftMenuNode.setScaleX(uiScale);
+            dashLeftMenuNode.setScaleY(uiScale);
+        }
+        if (dashRightPanelNode != null) {
+            dashRightPanelNode.setScaleX(uiScale);
+            dashRightPanelNode.setScaleY(uiScale);
+        }
+        if (splashLogoNode != null) {
+            splashLogoNode.setScaleX(uiScale);
+            splashLogoNode.setScaleY(uiScale);
+        }
     }
 
     private HBox buildTopRightProfileBadge() {
