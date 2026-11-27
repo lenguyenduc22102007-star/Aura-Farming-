@@ -225,11 +225,50 @@ public final class SaveManager {
         if (cooked != null) {
             return cooked;
         }
+        model.game_item.ForageItem forage = model.game_item.ForageItem.findByName(name);
+        if (forage != null) {
+            return forage;
+        }
         for (ItemManager entry : shop.getCatalog()) {
             Item proto = entry.create();
             if (proto != null && proto.getName().equals(name)) return proto;
         }
         return null;
+    }
+
+    /** Lưu trạng thái các cây gỗ đã chặt (hoặc bị chặt dở) và số ngày mọc lại vào Properties. */
+    public static void saveTreeStates(Properties p, Map<String, int[]> treeStates) {
+        if (p == null || treeStates == null) return;
+        int idx = 0;
+        for (Map.Entry<String, int[]> e : treeStates.entrySet()) {
+            int[] st = e.getValue();
+            if (st == null || st.length < 3) continue;
+            // Format: key|hp|regrowDays|chopped(1/0)
+            p.setProperty("tree." + (idx++), e.getKey() + "|" + st[0] + "|" + st[1] + "|" + st[2]);
+        }
+        p.setProperty("tree.count", Integer.toString(idx));
+    }
+
+    /** Đọc lại trạng thái cây đã chặt & số ngày mọc lại từ Properties (key -> [hp, regrowDays, chopped]). */
+    public static Map<String, int[]> loadTreeStates(Properties p) {
+        Map<String, int[]> out = new java.util.LinkedHashMap<>();
+        if (p == null) return out;
+        int count = Integer.parseInt(p.getProperty("tree.count", "0"));
+        for (int i = 0; i < count; i++) {
+            String raw = p.getProperty("tree." + i);
+            if (raw == null || raw.isEmpty()) continue;
+            String[] parts = raw.split("\\|");
+            if (parts.length >= 4) {
+                try {
+                    out.put(parts[0], new int[] {
+                        Integer.parseInt(parts[1]),
+                        Integer.parseInt(parts[2]),
+                        Integer.parseInt(parts[3])
+                    });
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return out;
     }
 
     private static Crop createCrop(String name) {

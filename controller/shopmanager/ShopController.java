@@ -27,6 +27,7 @@ public class ShopController extends BaseController {
         catalog.add(new SeedItem("Corn Seed", CornSeed::new));
         catalog.add(new SeedItem("Water Rice Seed", WaterRiceSeed::new));
         catalog.add(new FertilizerItem("Standard Fertilizer", StandardFertilizer::new));
+        catalog.add(new AnimalShopItem("Củi khô (Firewood)", ForageItem::firewood));
         
         // Thú vật non
         catalog.add(new AnimalShopItem("Baby Chicken", BabyChickenItem::new));

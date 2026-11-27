@@ -325,6 +325,13 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
                 name = (obj.attrib.get("name") or "").lower()
                 ox = float(obj.attrib.get("x", "0"))
                 oy = float(obj.attrib.get("y", "0"))
+                # Căn chuẩn cây cầu vòm chập giữa 2 đầu đường đá (cols 17..20, tâm x=760; sông y=1280..1480)
+                if name == "bridge":
+                    obj.attrib["x"] = "637"
+                    obj.attrib["y"] = "1508"
+                    obj.attrib["width"] = "248"
+                    obj.attrib["height"] = "276"
+                    continue
                 # Dọn wheat_patch cũ trong FarmZone
                 if "wheat" in name and fz_x0 <= ox <= fz_x1 and fz_y0 <= oy <= fz_y1:
                     og.remove(obj)

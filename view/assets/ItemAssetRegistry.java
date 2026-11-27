@@ -42,6 +42,9 @@ public final class ItemAssetRegistry {
         if (item instanceof CookedFoodItem) {
             return ((CookedFoodItem) item).getRecipeId();
         }
+        if (item instanceof ForageItem) {
+            return ((ForageItem) item).getForageId();
+        }
 
         return KEYS.get(item.getClass());
     }

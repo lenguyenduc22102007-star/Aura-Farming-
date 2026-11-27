@@ -109,6 +109,38 @@ public class ParticleSystem {
         }
     }
 
+    /** Chặt cây: bắn bung 8-11 mảnh vụn gỗ nâu sắc cạnh (wood chips) bay ra từ thân cây và rơi xuống. */
+    public void spawnWoodChipBurst(double worldX, double worldY, boolean felled) {
+        int count = felled ? 16 : 9;
+        for (int i = 0; i < count; i++) {
+            double w = 3.2 + rng.nextDouble() * 3.8;
+            double h = 2.0 + rng.nextDouble() * 2.2;
+            Rectangle chip = new Rectangle(w, h);
+            chip.setArcWidth(1.2);
+            chip.setArcHeight(1.2);
+            Color fill = (i % 3 == 0)
+                    ? Color.rgb(196, 134, 72)
+                    : (i % 3 == 1 ? Color.rgb(138, 80, 38) : Color.rgb(94, 52, 24));
+            chip.setFill(fill);
+            chip.setStroke(Color.rgb(42, 22, 10, 0.85));
+            chip.setStrokeWidth(0.9);
+
+            double angle = -Math.PI * (0.08 + rng.nextDouble() * 0.84);
+            double speed = (felled ? 85.0 : 62.0) + rng.nextDouble() * (felled ? 115.0 : 88.0);
+            addParticle(new Particle(
+                chip,
+                worldX + (rng.nextDouble() - 0.5) * 26.0,
+                worldY + (rng.nextDouble() - 0.5) * 18.0,
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed - (felled ? 62.0 : 42.0),
+                480.0, 0.96, (rng.nextDouble() - 0.5) * 460.0,
+                0.0, 0.0,
+                (felled ? 0.58 : 0.42) + rng.nextDouble() * 0.25,
+                1.15, 0.45
+            ));
+        }
+    }
+
     /** Tưới nước: bắn ra 11 giọt nước xanh nhỏ rơi xuống theo trọng lực. */
     public void spawnWaterSplash(double worldX, double worldY) {
         for (int i = 0; i < 11; i++) {

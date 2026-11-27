@@ -50,6 +50,7 @@ public class InGameController {
 
     // --- tool hotbar ---
     @FXML private ToggleButton hoeTool;
+    @FXML private ToggleButton axeTool;
     @FXML private ToggleButton waterTool;
     @FXML private ToggleButton seedTool;
     @FXML private ToggleButton handTool;
@@ -98,6 +99,7 @@ public class InGameController {
     
     // tool strategy instances
     private Hoe hoe;
+    private Axe axe;
     private WateringCan wateringCan;
     private SeedBag seedBag;
     private Hand hand;
@@ -129,11 +131,59 @@ public class InGameController {
     private final java.util.Map<model.game_item.FishSpecies, Double> fishMaxCm = new java.util.EnumMap<>(model.game_item.FishSpecies.class);
     private view.ui.FishingGuideOverlay activeFishingGuide = null;
     private view.ui.GameBookOverlay activeGameBook = null;
-    private view.ui.CampfireCookingOverlay activeCookingOverlay = null;
+    private view.ui.CookingCraftView activeCookingOverlay = null;
     private view.ui.CasinoOverlay activeCasinoOverlay = null;
     private view.npc.NpcManager npcManager = null;
     private javafx.scene.layout.StackPane activeSleepDialog = null;
     private boolean sleepTransitionRunning = false;
+    private boolean isSitting = false;
+    private double sittingFireX = 0.0, sittingFireY = 0.0;
+    private final java.util.List<CampForageSpot> campForageSpots = new java.util.ArrayList<>();
+    private final java.util.List<TreeObject> choppableTrees = new java.util.ArrayList<>();
+
+    /** Đối tượng cây gỗ có thể chặt bằng Rìu quanh nông trại (HP=4, rớt +4 Củi khô, mọc lại sau 3 ngày). */
+    private static final class TreeObject {
+        final String key;
+        final ImageView view;
+        final Image fullTreeImage;
+        final double fullX;
+        final double fullY;
+        final double fullW;
+        final double fullH;
+        int hp = 4;
+        int regrowDays = 0;
+        boolean chopped = false;
+
+        TreeObject(String key, ImageView view, Image fullTreeImage,
+                   double fullX, double fullY, double fullW, double fullH) {
+            this.key = key;
+            this.view = view;
+            this.fullTreeImage = fullTreeImage;
+            this.fullX = fullX;
+            this.fullY = fullY;
+            this.fullW = fullW;
+            this.fullH = fullH;
+        }
+
+        double trunkCenterX() { return fullX + fullW * 0.50; }
+        double trunkCenterY() { return fullY + fullH * 0.86; }
+    }
+
+    private static final class CampForageSpot {
+        final model.game_item.ForageItem item;
+        final double x;
+        final double y;
+        final javafx.scene.Group node;
+        final double bobPhase;
+
+        CampForageSpot(model.game_item.ForageItem item, double x, double y, javafx.scene.Group node, double bobPhase) {
+            this.item = item;
+            this.x = x;
+            this.y = y;
+            this.node = node;
+            this.bobPhase = bobPhase;
+        }
+    }
     private final java.util.List<double[]> houseDoorPoints = new java.util.ArrayList<>();
     private final java.util.List<double[]> campfirePoints = new java.util.ArrayList<>();
     private final java.util.List<double[]> casinoDoorPoints = new java.util.ArrayList<>();
@@ -165,6 +215,14 @@ public class InGameController {
     private double worldRiverBotY = 37.0 * Constant.CELL_SIZE;
     private double bridgeWoodLeftX = -1.0;
     private double bridgeWoodRightX = -1.0;
+    private double bridgeDeckLeftX = -1.0;
+    private double bridgeDeckRightX = -1.0;
+    private double bridgeDeckTopY = -1.0;
+    private double bridgeDeckBotY = -1.0;
+    private double bridgeArchHeightRatio = 0.0;
+    private double bridgeArchSlope = 0.0;
+    private javafx.scene.transform.Scale luffyBridgeScale = null;
+    private javafx.scene.transform.Scale luffyToolBridgeScale = null;
     private ImageView bridgeCanopyView = null;
     private final javafx.scene.effect.ColorAdjust underBridgePlayerShade = new javafx.scene.effect.ColorAdjust();
     private double lastPlayerBridgeShade = 0.0;
@@ -366,6 +424,7 @@ public class InGameController {
         this.tmxMap           = tmxMap;
 
         this.hoe            = new Hoe();
+        this.axe            = new Axe();
         this.wateringCan    = new WateringCan();
         this.seedBag        = new SeedBag(player);
         this.hand           = new Hand(player);
@@ -399,6 +458,9 @@ public class InGameController {
     // ======================== wiring ========================
     private void wireButtons() {
         hoeTool.setOnAction(e -> selectTool(hoe, hoeTool));
+        if (axeTool != null) {
+            axeTool.setOnAction(e -> selectTool(axe, axeTool));
+        }
         waterTool.setOnAction(e -> selectTool(wateringCan, waterTool));
         seedTool.setOnAction(e -> openSeedPicker());
         handTool.setOnAction(e -> selectTool(hand, handTool));
@@ -417,6 +479,7 @@ public class InGameController {
         Platform.runLater(() -> rootPane.requestFocus());
 
         hoeTool.setFocusTraversable(false);
+        if (axeTool != null) axeTool.setFocusTraversable(false);
         waterTool.setFocusTraversable(false);
         seedTool.setFocusTraversable(false);
         handTool.setFocusTraversable(false);
@@ -450,10 +513,21 @@ public class InGameController {
                 case ESCAPE:  togglePause();   break;
                 case DIGIT1:  openSeedPicker(); break;
                 case DIGIT2:  selectTool(hoe, hoeTool);            break;
-                case DIGIT3:  selectTool(wateringCan, waterTool);  break;
-                case DIGIT4:  selectTool(hand, handTool);          break;
-                case DIGIT5:  selectTool(fertilizerBag, fertilizerTool); break;
-                case DIGIT6:  openFeedBagPicker();                 break;
+                case DIGIT3:  selectTool(axe, axeTool);            break;
+                case DIGIT4:  selectTool(wateringCan, waterTool);  break;
+                case DIGIT5:  selectTool(hand, handTool);          break;
+                case DIGIT6:  selectTool(fertilizerBag, fertilizerTool); break;
+                case DIGIT7:  openFeedBagPicker();                 break;
+                case C:
+                    if (isNewPress && !router.hasOverlay() && !isOnBoat && !isSunbathing) {
+                        trySitAtCampfire();
+                    }
+                    break;
+                case U:
+                    if (isNewPress && !router.hasOverlay() && isSitting) {
+                        standUpFromCampfire();
+                    }
+                    break;
                 case E:
                     if (isNewPress) {
                         handleInteractKeyE();
@@ -471,6 +545,7 @@ public class InGameController {
                     break;
                 case J:       // Nút Action (Cuốc đất, trồng cây / Spam kéo cá khi trên thuyền)
                 case SPACE:
+                    if (isSitting) break;
                     if (isOnBoat) {
                         event.consume();
                         if (isNewPress) {
@@ -650,11 +725,18 @@ public class InGameController {
             }
         }
         
-        // Khóa cuốc đất & tưới nước khi kiệt sức (Đói <= 0 hoặc Khát <= 0)
+        // Khóa cuốc đất, chặt cây & tưới nước khi kiệt sức (Đói <= 0 hoặc Khát <= 0)
         ToolStrategy curToolCheck = playerController.getCurrentTool();
-        if (player != null && player.isExhausted() && (curToolCheck instanceof Hoe || curToolCheck instanceof WateringCan)) {
+        if (player != null && player.isExhausted() && (curToolCheck instanceof Hoe || curToolCheck instanceof Axe || curToolCheck instanceof WateringCan)) {
             spawnFloatingText("Quá đói/khát! Hãy ăn uống trước!", Color.rgb(255, 86, 86));
             notify("Quá đói/khát! Hãy ăn uống trước!");
+            rootPane.requestFocus();
+            return;
+        }
+
+        // Rìu (Axe): chặt các cây gỗ quanh rìa nông trại để thu hoạch Củi khô (HP=4, +4 Củi khô, mọc lại sau 3 ngày)
+        if (curToolCheck instanceof Axe) {
+            tryChopNearestTree(targetX, targetY);
             rootPane.requestFocus();
             return;
         }
@@ -781,6 +863,12 @@ public class InGameController {
                     player.getInventory().addItem(item, 1);
                 }
                 onQuestCropHarvested(harvested.getName());
+                // Nguồn phụ chống thiếu củi: thu hoạch Ngô (Corn) hoặc Lúa nước (WaterRice) tặng kèm +1 Củi khô (rơm/thân khô)
+                if (harvested instanceof model.crop.Corn || harvested instanceof model.crop.WaterRice) {
+                    model.game_item.ForageItem strawWood = model.game_item.ForageItem.firewood();
+                    player.getInventory().addItem(strawWood, 1);
+                    spawnFloatingText("+1 Củi khô (rơm/thân khô)", Color.rgb(255, 224, 118));
+                }
                 return true;
             }
         }
@@ -819,8 +907,8 @@ public class InGameController {
         toolImpactFired = (targetWx < 0); // Không bắn hạt nếu không có ô mục tiêu hợp lệ
         toolTargetWorldX = targetWx;
         toolTargetWorldY = targetWy;
-        if ("HOE".equals(kind)) {
-            toolActionDuration = 0.32;      // 4 frame cuốc đất (0.08s/frame): 0 -> 1 -> 2 -> 3 -> 0
+        if ("HOE".equals(kind) || "AXE".equals(kind)) {
+            toolActionDuration = 0.32;      // 4 frame bổ cuốc / chặt rìu (0.08s/frame)
         } else if ("WATER".equals(kind)) {
             toolActionDuration = 0.40;      // 4 bước tưới nước (0.10s/frame): 0 -> 1 -> 2 -> 1 -> 0
         } else {
@@ -919,6 +1007,15 @@ public class InGameController {
             Animal a = animals.get(i);
             p.setProperty("animal." + i, a.type + "," + a.x + "," + a.y + "," + a.ageDays + "," + a.isFed);
         }
+
+        // Lưu trạng thái các cây gỗ đã chặt & số ngày mọc lại qua SaveManager
+        java.util.Map<String, int[]> treeStates = new java.util.LinkedHashMap<>();
+        for (TreeObject t : choppableTrees) {
+            if (t.chopped || t.hp < 4) {
+                treeStates.put(t.key, new int[] { t.hp, t.regrowDays, t.chopped ? 1 : 0 });
+            }
+        }
+        controller.lifecyclemanager.SaveManager.saveTreeStates(p, treeStates);
     }
 
     /** Restore the state written by {@link #exportViewState}. Call after setGame. */
@@ -964,6 +1061,22 @@ public class InGameController {
                     if (clearedSceneryKeys.contains(sceneryKey(v))) {
                         sceneryObjects.remove(v);
                         if (entityPane != null) entityPane.getChildren().remove(v);
+                    }
+                }
+            }
+
+            // Khôi phục trạng thái các cây gỗ đã chặt & tiến độ mọc lại từ SaveManager
+            java.util.Map<String, int[]> savedTrees = controller.lifecyclemanager.SaveManager.loadTreeStates(p);
+            if (!savedTrees.isEmpty()) {
+                for (TreeObject t : choppableTrees) {
+                    int[] st = savedTrees.get(t.key);
+                    if (st != null) {
+                        t.hp = st[0];
+                        t.regrowDays = st[1];
+                        t.chopped = (st[2] == 1);
+                        if (t.chopped) {
+                            applyStumpVisual(t);
+                        }
                     }
                 }
             }
@@ -1368,6 +1481,11 @@ public class InGameController {
                     glow.setOpacity(0.72 + 0.18 * Math.sin(timeSec * 9.2 + i));
                 }
             }
+            if (!campForageSpots.isEmpty()) {
+                for (CampForageSpot spot : campForageSpots) {
+                    spot.node.setTranslateY(Math.sin(timeSec * 3.1 + spot.bobPhase) * 2.6);
+                }
+            }
             particleSystem.update(deltaRiverSec);
         }
         if (droppedItemSystem != null) {
@@ -1488,14 +1606,24 @@ public class InGameController {
             }
         }
 
-        if (!lockedOnBoat && !isSunbathing) {
+        if (!lockedOnBoat && !isSunbathing && !isSitting) {
             if (dirX != 0 || dirY != 0) {
                 isWalking = true;
                 // Chuẩn hóa tốc độ chạy chéo (8 hướng mượt mà) + Phạt kiệt sức (55%) + Buff Thư giãn bể bơi (+20%)
+                // + Vật lý đi cầu cong thực tế: leo lên dốc cầu hơi nặng chân (~0.76x), đổ xuống dốc cầu bon hơn (~1.18x)
                 double norm = (dirX != 0 && dirY != 0) ? 0.70710678 : 1.0;
                 double exhaustionFactor = (player != null && player.isExhausted()) ? 0.55 : 1.0;
                 double relaxFactor = (poolRelaxSpeedBuffSec > 0.0) ? 1.20 : 1.0;
-                double effectiveSpeed = speed * exhaustionFactor * relaxFactor;
+                double bridgeSlopeFactor = 1.0;
+                if (dirY != 0 && isPlayerOnBridge()) {
+                    double uNow = Math.max(0.0, Math.min(1.0, ((playerY + 54.0) - bridgeDeckTopY) / Math.max(1.0, bridgeDeckBotY - bridgeDeckTopY)));
+                    double slopeNow = Math.cos(uNow * Math.PI); // >0 ở dốc Bắc (leo lên khi đi Nam), <0 ở dốc Nam (đổ xuống khi đi Nam)
+                    double slopeAlign = dirY * slopeNow;        // >0 = đang leo lên đỉnh cầu, <0 = đang đi xuống khỏi đỉnh cầu
+                    bridgeSlopeFactor = (slopeAlign > 0.0)
+                        ? (1.0 - 0.24 * slopeAlign)
+                        : (1.0 + 0.18 * (-slopeAlign));
+                }
+                double effectiveSpeed = speed * exhaustionFactor * relaxFactor * bridgeSlopeFactor;
                 dx = dirX * effectiveSpeed * norm;
                 dy = dirY * effectiveSpeed * norm;
 
@@ -1558,36 +1686,26 @@ public class InGameController {
             if (objId != null) {
                 String idLower = objId.toLowerCase();
                 if (idLower.contains("bridge")) {
-                    // Chi tiết hóa Collision THÀNH CẦU khớp từng pixel của bridge.png (200x190):
-                    // - Hai mép ngoài (0..16% và 85.7..100%) là mặt nước/bờ ngoài cầu, KHÔNG đi xuyên qua thành gỗ
-                    // - Thành cầu trái (16%..24.2%) & thành cầu phải (77.5%..85.7%) + 6 trụ gỗ đầu/giữa/cuối cầu
-                    // - 2 lan can cánh sát bờ dưới (y=83%..100%) hai bên đầu cầu nam
-                    // - Chỉ phần mặt ván gỗ bên trong (24.4%..77.2%) mới cho phép đi băng qua sông
-                    double leftRailX  = ox + ow * 0.160;
-                    double leftRailW  = ow * 0.082;
-                    double rightRailX = ox + ow * 0.775;
-                    double rightRailW = ow * 0.082;
+                    // Chi tiết hóa Collision THÀNH CẦU khớp chuẩn cầu gỗ vòm bridge.png (200x190, phần cầu gỗ x=16%..84%):
+                    double leftRailX  = ox + ow * 0.155;
+                    double leftRailW  = ow * 0.085;
+                    double rightRailX = ox + ow * 0.760;
+                    double rightRailW = ow * 0.085;
 
                     javafx.geometry.Rectangle2D[] bridgeBlockers = new javafx.geometry.Rectangle2D[] {
-                        // 1. Dầm lan can trái & phải chạy dọc toàn thân cầu
+                        // 1. Hai lan can gỗ vòm chạy dọc toàn thân cầu trái & phải
                         new javafx.geometry.Rectangle2D(leftRailX,  oy + oh * 0.02, leftRailW,  oh * 0.96),
                         new javafx.geometry.Rectangle2D(rightRailX, oy + oh * 0.02, rightRailW, oh * 0.96),
-                        // 2. Ba trụ gỗ nhô rộng trên thành cầu trái (đầu cầu bắc, giữa cầu, đầu cầu nam)
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.150, oy,             ow * 0.100, oh * 0.13),
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.150, oy + oh * 0.45, ow * 0.100, oh * 0.17),
+                        // 2. Bốn trụ gỗ đầu cầu bắc & đầu cầu nam
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.150, oy,             ow * 0.100, oh * 0.15),
                         new javafx.geometry.Rectangle2D(ox + ow * 0.150, oy + oh * 0.80, ow * 0.100, oh * 0.20),
-                        // 3. Ba trụ gỗ nhô rộng trên thành cầu phải (đầu cầu bắc, giữa cầu, đầu cầu nam)
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.768, oy,             ow * 0.100, oh * 0.13),
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.768, oy + oh * 0.45, ow * 0.100, oh * 0.17),
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.768, oy + oh * 0.80, ow * 0.100, oh * 0.20),
-                        // 4. Hai thanh lan can cánh nối ngang dọc bờ nam hai bên chân cầu
-                        new javafx.geometry.Rectangle2D(ox,              oy + oh * 0.83, ow * 0.165, oh * 0.17),
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.855, oy + oh * 0.83, ow * 0.145, oh * 0.17)
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.750, oy,             ow * 0.100, oh * 0.15),
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.750, oy + oh * 0.80, ow * 0.100, oh * 0.20)
                     };
 
-                    // Sàn ván gỗ đi được (chỉ nằm lọt lòng giữa 2 thành cầu, mở rộng 28px hai đầu bắc/nam để bước lên mượt)
-                    double deckLeft = ox + ow * 0.244;
-                    double deckWidth = ow * 0.528;
+                    // Sàn ván gỗ đi được (lọt lòng giữa 2 thành cầu, mở rộng 28px hai đầu bắc/nam để bước lên mượt)
+                    double deckLeft = ox + ow * 0.240;
+                    double deckWidth = ow * 0.520;
                     javafx.geometry.Rectangle2D walkableDeck = new javafx.geometry.Rectangle2D(deckLeft, oy - 28, deckWidth, oh + 56);
 
                     if (playerBoxX.intersects(walkableDeck)) onBridgeX = true;
@@ -1705,12 +1823,12 @@ public class InGameController {
             playerY = nextY;
         }
 
-        // Ẩn bóng chân mặt đất & dụng cụ đất liền khi đang ở trong khoang thuyền
+        // Ẩn bóng chân mặt đất & dụng cụ đất liền khi đang ở trong khoang thuyền, nằm tắm nắng hoặc ngồi bếp lửa
         if (luffyShadow != null) {
-            luffyShadow.setVisible(!lockedOnBoat);
+            luffyShadow.setVisible(!lockedOnBoat && !isSunbathing);
         }
         if (weaponView != null) {
-            weaponView.setVisible(!lockedOnBoat && !isSunbathing && weaponView.getImage() != null);
+            weaponView.setVisible(!lockedOnBoat && !isSunbathing && !isSitting && weaponView.getImage() != null);
         }
 
         // Xác định bộ sprite & hướng lật cho đủ 8 hướng chạy/đứng của Luffy
@@ -1737,8 +1855,8 @@ public class InGameController {
         boolean hasHoeRunFrames = (Assets.LUFFY_HOE_RUN_FRAMES != null && Assets.LUFFY_HOE_RUN_FRAMES.length == 4 && Assets.LUFFY_HOE_RUN_FRAMES[0] != null);
         boolean hasWaterFrames = (Assets.LUFFY_WATER_FRAMES != null && Assets.LUFFY_WATER_FRAMES.length == 3 && Assets.LUFFY_WATER_FRAMES[0] != null);
         boolean hasWaterRunFrames = (Assets.LUFFY_WATER_RUN_FRAMES != null && Assets.LUFFY_WATER_RUN_FRAMES.length == 4 && Assets.LUFFY_WATER_RUN_FRAMES[0] != null);
-        boolean usingNativeHoe = !lockedOnBoat && (activeTool instanceof Hoe) && hasHoeFrames;
-        boolean usingNativeWater = !lockedOnBoat && (activeTool instanceof WateringCan) && hasWaterFrames;
+        boolean usingNativeHoe = !lockedOnBoat && !isSitting && (activeTool instanceof Hoe) && hasHoeFrames;
+        boolean usingNativeWater = !lockedOnBoat && !isSitting && (activeTool instanceof WateringCan) && hasWaterFrames;
         boolean usingNativeActionTool = usingNativeHoe || usingNativeWater;
 
         // Cập nhật timer hành động công cụ (khóa đổi frame chạy trong suốt thời gian vung cuốc / tưới nước)
@@ -1755,7 +1873,18 @@ public class InGameController {
         double bobbing = 0;
         if (luffySpriteView != null) {
             luffySpriteView.setSmooth(false);
-            if (usingNativeActionTool) {
+            if (isSunbathing && Assets.LUFFY_SUNBATHE != null) {
+                // Tư thế nằm tắm nắng đặc biệt: dùng đúng sprite Luffy nằm ngửa cởi trần trên ghế bể bơi
+                if (luffySpriteView.getFitWidth() != 104.0 || luffySpriteView.getFitHeight() != 64.0) {
+                    luffySpriteView.setFitWidth(104.0);
+                    luffySpriteView.setFitHeight(64.0);
+                    luffySpriteView.setX(-30.0);
+                    luffySpriteView.setY(2.0);
+                }
+                luffySpriteView.setScaleX(1.0);
+                luffySpriteView.setImage(Assets.LUFFY_SUNBATHE);
+                bobbing = Math.sin(timeSec * 2.2) * 0.9;
+            } else if (usingNativeActionTool) {
                 boolean isSideSheet = nativeActionPlaying || "side".equals(dirKey);
                 if (isSideSheet) {
                     // Sheet 72x72 (ngang & bổ cuốc / tưới nước): scale 120x120 cho chiều cao cơ thể 90px khớp sprite 8 hướng
@@ -1855,7 +1984,12 @@ public class InGameController {
                     lastLuffyAnimTick = nowAnim;
                     if (arr != null && arr[0] != null) luffySpriteView.setImage(arr[0]);
                 } else if (arr != null && arr.length > 0) {
-                    long interval = isWalking ? 95L : 380L;
+                    long walkInterval = 95L;
+                    if (isWalking && dirY != 0 && isPlayerOnBridge()) {
+                        double slopeAlign = dirY * bridgeArchSlope;
+                        walkInterval = (slopeAlign > 0.15) ? 114L : ((slopeAlign < -0.15) ? 80L : 95L);
+                    }
+                    long interval = isWalking ? walkInterval : 380L;
                     if (nowAnim - lastLuffyAnimTick >= interval) {
                         lastLuffyAnimTick = nowAnim;
                         luffyAnimFrame = (luffyAnimFrame + 1) % arr.length;
@@ -1870,9 +2004,33 @@ public class InGameController {
             bobbing = Math.sin(lastMoveTime * 0.4) * 4.0;
         }
 
+        // Hiệu ứng đi lên - đi xuống theo độ cong vòm cầu gỗ (độ cao 3D + tỉ lệ phối cảnh gần camera trên đỉnh cầu)
+        double targetArchH = 0.0;
+        double targetArchSlope = 0.0;
+        if (!lockedOnBoat && !isSunbathing && isPlayerOnBridge()) {
+            double uArch = Math.max(0.0, Math.min(1.0, ((playerY + 54.0) - bridgeDeckTopY) / Math.max(1.0, bridgeDeckBotY - bridgeDeckTopY)));
+            targetArchH = Math.sin(uArch * Math.PI);
+            targetArchSlope = Math.cos(uArch * Math.PI);
+        }
+        double archSmooth = Math.min(1.0, Math.max(0.18, deltaRiverSec * 14.0));
+        bridgeArchHeightRatio += (targetArchH - bridgeArchHeightRatio) * archSmooth;
+        if (bridgeArchHeightRatio < 0.002 && targetArchH == 0.0) {
+            bridgeArchHeightRatio = 0.0;
+        }
+        bridgeArchSlope += (targetArchSlope - bridgeArchSlope) * archSmooth;
+        double bridgeLiftY = -bridgeArchHeightRatio * 24.0;
+        double bridgeScale = 1.0 + bridgeArchHeightRatio * 0.11;
+        if (luffyBridgeScale != null) {
+            luffyBridgeScale.setX(bridgeScale);
+            luffyBridgeScale.setY(bridgeScale);
+        }
+        if (luffyShadow != null && !lockedOnBoat && !isSunbathing) {
+            luffyShadow.setOpacity(1.0 - bridgeArchHeightRatio * 0.22);
+        }
+
         // Cập nhật vị trí nhân vật trên bản đồ (Dùng setTranslate để tối ưu FPS, không làm lag 600 ô đất)
         playerCharacter.setTranslateX(playerX);
-        playerCharacter.setTranslateY(playerY + bobbing);
+        playerCharacter.setTranslateY(playerY + bobbing + bridgeLiftY);
         updateNearbyInteractPrompt(lockedOnBoat);
 
         // Khi chọn Cuốc hoặc Bình tưới (đã có trọn bộ sprite Đứng + Chạy + Làm việc): ẨN HOÀN TOÀN weaponView / armGroup dán đè cũ!
@@ -1899,7 +2057,7 @@ public class InGameController {
                 double pivotX, pivotY;
                 double restToolAngle;
 
-                if (curTool instanceof Hoe) {
+                if (curTool instanceof Hoe || curTool instanceof Axe) {
                     pivotX = 8.0;
                     pivotY = 31.0;
                     restToolAngle = -6.0;
@@ -1927,8 +2085,8 @@ public class InGameController {
                     toolActionTimer += deltaRiverSec;
                     double t = toolActionTimer;
 
-                    if ("HOE".equals(toolActionKind)) {
-                        // Đào đất (0.07s + 0.10s + 0.12s): Giơ -65° sau vai -> Bổ mạnh +55° bắn hạt đất -> Thu mượt về
+                    if ("HOE".equals(toolActionKind) || "AXE".equals(toolActionKind)) {
+                        // Đào đất / Chặt cây (0.07s + 0.10s + 0.12s): Giơ -65° sau vai -> Bổ mạnh +55° -> Thu mượt về
                         if (t < 0.07) {
                             double p = t / 0.07;
                             double ease = 1.0 - (1.0 - p) * (1.0 - p);
@@ -1946,7 +2104,7 @@ public class InGameController {
                             bodyCrouchY = 3.0 * ease;
                             if (!toolImpactFired && p >= 0.78) {
                                 toolImpactFired = true;
-                                if (particleSystem != null && toolTargetWorldX >= 0) {
+                                if ("HOE".equals(toolActionKind) && particleSystem != null && toolTargetWorldX >= 0) {
                                     particleSystem.spawnDirtClods(toolTargetWorldX, toolTargetWorldY);
                                 }
                             }
@@ -2018,17 +2176,28 @@ public class InGameController {
                 armGroup.setLayoutX(29.0 + shoulderShiftX);
                 armGroup.setLayoutY(9.0 + bodyCrouchY + breatheY);
 
+                if (luffyToolBridgeScale == null) {
+                    luffyToolBridgeScale = new javafx.scene.transform.Scale(1.0, 1.0, 22.0, 66.0);
+                    luffyToolRig.getTransforms().add(luffyToolBridgeScale);
+                }
+                luffyToolBridgeScale.setX(bridgeScale);
+                luffyToolBridgeScale.setY(bridgeScale);
                 luffyToolRig.setTranslateX(playerX);
-                luffyToolRig.setTranslateY(playerY + bobbing);
+                luffyToolRig.setTranslateY(playerY + bobbing + bridgeLiftY);
             }
         }
 
-        // Bỏ hiệu ứng nghiêng/nhún giả lập khi dùng sprite hành động gốc (hoặc ngả lưng thư giãn khi tắm nắng!)
+        // Bỏ hiệu ứng nghiêng/nhún giả lập khi dùng sprite hành động gốc (hoặc giữ thẳng ảnh nằm tắm nắng mới / tư thế ngồi cạnh bếp lửa)
         if (luffyBodyRotate != null && luffySpriteView != null) {
             if (isSunbathing) {
-                luffyBodyRotate.setAngle(72.0);
+                luffyBodyRotate.setAngle(Assets.LUFFY_SUNBATHE != null ? 0.0 : 72.0);
                 luffySpriteView.setScaleY(1.0);
-                luffySpriteView.setTranslateY(-6.0);
+                luffySpriteView.setTranslateY(Assets.LUFFY_SUNBATHE != null ? 0.0 : -6.0);
+                if (luffyToolRig != null) luffyToolRig.setVisible(false);
+            } else if (isSitting) {
+                luffyBodyRotate.setAngle(0.0);
+                luffySpriteView.setScaleY(0.82);
+                luffySpriteView.setTranslateY(11.0 + Math.sin(timeSec * 2.4) * 0.8);
                 if (luffyToolRig != null) luffyToolRig.setVisible(false);
             } else {
                 luffyBodyRotate.setAngle(usingNativeActionTool ? 0.0 : bodyLeanAngle);
@@ -2416,6 +2585,12 @@ public class InGameController {
         double bridgeLeftX = worldMapW * 0.41;
         bridgeWoodLeftX = -1.0;
         bridgeWoodRightX = -1.0;
+        bridgeDeckLeftX = -1.0;
+        bridgeDeckRightX = -1.0;
+        bridgeDeckTopY = -1.0;
+        bridgeDeckBotY = -1.0;
+        bridgeArchHeightRatio = 0.0;
+        bridgeArchSlope = 0.0;
         bridgeCanopyView = null;
         for (ImageView objView : sceneryObjects) {
             if (objView.getId() != null && objView.getId().toLowerCase().contains("bridge")) {
@@ -2585,6 +2760,8 @@ public class InGameController {
             luffySpriteView.getTransforms().add(luffyBodyRotate);
 
             playerCharacter.getChildren().addAll(luffyShadow, luffySpriteView);
+            luffyBridgeScale = new javafx.scene.transform.Scale(1.0, 1.0, 22.0, 66.0);
+            playerCharacter.getTransforms().add(luffyBridgeScale);
             playerCharacter.setManaged(false);
             if (entityPane != null) entityPane.getChildren().add(playerCharacter);
         } else if (entityPane != null && !entityPane.getChildren().contains(playerCharacter)) {
@@ -2777,7 +2954,10 @@ public class InGameController {
         }
         elapsedTimeInDay = 0;
         if (isSunbathing) stopSunbathing();
+        if (isSitting) standUpFromCampfire();
         clearFoodBuffs();
+        spawnDailyCampForageItems();
+        regrowChoppedTreesForNewDay();
         updateQuestTrackerUi();
         // Khi qua ngày mới (đi ngủ), đảm bảo chỉ số buổi sáng tối thiểu 60 và giữ no 4 tiếng đầu buổi sáng
         hungerGraceTimerSec = HUNGER_FULL_GRACE_SEC;
@@ -2869,6 +3049,7 @@ public class InGameController {
 
         if (weaponView != null) {
             if (cur instanceof Hoe) weaponView.setImage(Assets.HOE_ICON);
+            else if (cur instanceof Axe) weaponView.setImage(Assets.AXE_ICON);
             else if (cur instanceof WateringCan) weaponView.setImage(Assets.WATER_ICON);
             else if (cur instanceof Hand) weaponView.setImage(null); // Tay không: hiển thị trọn vẹn dáng chạy của Luffy
             else if (cur instanceof SeedBag) weaponView.setImage(Assets.SEED_ICON);
@@ -2908,6 +3089,20 @@ public class InGameController {
                     return;
                 }
             }
+        }
+
+        if (curTool instanceof Axe) {
+            if (player != null && player.isExhausted()) {
+                spawnFloatingText("Quá đói/khát! Hãy ăn uống trước!", Color.rgb(255, 86, 86));
+                notify("Quá đói/khát! Hãy ăn uống trước!");
+                rootPane.requestFocus();
+                return;
+            }
+            double clickX = cell.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
+            double clickY = cell.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
+            tryChopNearestTree(clickX, clickY);
+            rootPane.requestFocus();
+            return;
         }
 
         if (curTool instanceof Hoe) {
@@ -2972,9 +3167,7 @@ public class InGameController {
     private void togglePause() {
         if (sleepTransitionRunning) return;
         if (activeCookingOverlay != null) {
-            if (!activeCookingOverlay.isCookingInProgress()) {
-                closeCookingOverlay();
-            }
+            activeCookingOverlay.closeScreen();
             return;
         }
         if (activeSleepDialog != null) {
@@ -3023,6 +3216,7 @@ public class InGameController {
         poolSparkleDots.clear();
         casinoMarqueeBulbs.clear();
         isSunbathing = false;
+        isSitting = false;
 
         double[] mainHouseDoor = null;
         double topLoungerX = 672.0;
@@ -3209,6 +3403,176 @@ public class InGameController {
         updateSurvivalHud(animTimeSec);
         updateFoodBuffHud();
         updateQuestTrackerUi();
+        spawnDailyCampForageItems();
+        registerChoppableTrees();
+    }
+
+    /** Đăng ký tất cả các cây gỗ xung quanh rìa nông trại thành đối tượng TreeObject có thể chặt (HP=4, mọc lại sau 3 ngày). */
+    private void registerChoppableTrees() {
+        choppableTrees.clear();
+        if (sceneryObjects == null) return;
+        for (ImageView objView : sceneryObjects) {
+            String id = objView.getId();
+            if (id == null) continue;
+            String idLow = id.toLowerCase();
+            // Chấp nhận mọi cây gỗ quanh nông trại (tree, tree_dark, tree_autumn, tree_blossom, tree_pine, tree_small, tree_bush); giữ nguyên cây dừa palm_tree ở bể bơi
+            if (idLow.equals("tree") || idLow.startsWith("tree_")) {
+                TreeObject t = new TreeObject(
+                    sceneryKey(objView),
+                    objView,
+                    objView.getImage(),
+                    objView.getLayoutX(),
+                    objView.getLayoutY(),
+                    objView.getFitWidth(),
+                    objView.getFitHeight()
+                );
+                choppableTrees.add(t);
+            }
+        }
+    }
+
+    /** Chặt cây gỗ gần nhất khi cầm Rìu: -1 HP, rung cây, bắn vụn gỗ nâu, -2 Đói / -2 Khát; HP<=0 -> +4 Củi khô & đổi thành gốc cây cụt. */
+    private void tryChopNearestTree(double targetX, double targetY) {
+        double footX = playerX + 22.0;
+        double footY = playerY + 52.0;
+
+        TreeObject bestTree = null;
+        double bestDist = Double.MAX_VALUE;
+        TreeObject nearStump = null;
+        double bestStumpDist = Double.MAX_VALUE;
+
+        for (TreeObject t : choppableTrees) {
+            double tx = t.trunkCenterX();
+            double ty = t.trunkCenterY();
+            double dTarget = Math.hypot(targetX - tx, targetY - ty);
+            double dPlayer = Math.hypot(footX - tx, footY - ty);
+            double minD = Math.min(dTarget, dPlayer);
+
+            if (!t.chopped) {
+                if (dTarget <= 92.0 || dPlayer <= 104.0) {
+                    if (minD < bestDist) {
+                        bestDist = minD;
+                        bestTree = t;
+                    }
+                }
+            } else if (minD <= 92.0 && minD < bestStumpDist) {
+                bestStumpDist = minD;
+                nearStump = t;
+            }
+        }
+
+        if (bestTree == null) {
+            triggerToolAnimation("AXE", -1, -1);
+            if (nearStump != null) {
+                int leftDays = Math.max(1, 3 - nearStump.regrowDays);
+                spawnFloatingText("Gốc cây đang mọc lại (còn " + leftDays + " ngày)", Color.rgb(236, 206, 134));
+                notify("🪵 Gốc cây này đã chặt — sẽ tự mọc lại sau " + leftDays + " ngày nữa!");
+            } else {
+                notify("🪓 Hãy đi sát các cây gỗ quanh rìa nông trại rồi bấm [Space] để chặt!");
+            }
+            return;
+        }
+
+        double trunkX = bestTree.trunkCenterX();
+        double trunkY = bestTree.trunkCenterY();
+
+        // Vung rìu + trừ thể lực (-2 Đói, -2 Khát)
+        triggerToolAnimation("AXE", trunkX, trunkY);
+        if (player != null) {
+            player.addHunger(-2.0);
+            player.addThirst(-2.0);
+            updateSurvivalHud(animTimeSec);
+        }
+
+        bestTree.hp = Math.max(0, bestTree.hp - 1);
+        boolean felled = (bestTree.hp <= 0);
+
+        // Rung cây nhẹ bằng TranslateTransition + bắn hạt vụn gỗ màu nâu
+        shakeTreeView(bestTree.view);
+        if (particleSystem != null) {
+            particleSystem.spawnWoodChipBurst(trunkX, trunkY - 16.0, felled);
+        }
+
+        if (felled) {
+            bestTree.chopped = true;
+            bestTree.regrowDays = 0;
+            applyStumpVisual(bestTree);
+
+            if (player != null) {
+                player.getInventory().addItem(model.game_item.ForageItem.firewood(), 4);
+            }
+            view.fx.SoundHook.playPickup();
+            spawnFloatingText("+4 Củi khô", Color.rgb(255, 224, 96));
+            notify("🪓 Cây đổ rồi! Nhận +4 Củi khô (cây sẽ tự mọc lại sau 3 ngày).");
+        } else {
+            view.fx.SoundHook.playWoodGateOpen();
+            spawnFloatingText("Chặt! (" + bestTree.hp + "/4 HP)", Color.rgb(255, 204, 132));
+            notify("🪓 Đang chặt cây... (HP cây còn " + bestTree.hp + "/4 | -2 Đói, -2 Khát)");
+        }
+    }
+
+    /** Hiệu ứng rung thân cây bằng TranslateTransition mỗi nhát bổ rìu. */
+    private void shakeTreeView(ImageView treeView) {
+        if (treeView == null) return;
+        treeView.setTranslateX(0.0);
+        javafx.animation.TranslateTransition shake = new javafx.animation.TranslateTransition(javafx.util.Duration.millis(42), treeView);
+        shake.setFromX(-5.0);
+        shake.setToX(5.0);
+        shake.setAutoReverse(true);
+        shake.setCycleCount(4);
+        shake.setOnFinished(e -> treeView.setTranslateX(0.0));
+        shake.play();
+    }
+
+    /** Chuyển hình cây gỗ đã chặt thành gốc cây cụt ngay tại đúng chân gốc cũ. */
+    private void applyStumpVisual(TreeObject t) {
+        if (t == null || t.view == null) return;
+        Image stumpImg = Assets.STUMP_IMAGE;
+        if (stumpImg != null) {
+            t.view.setImage(stumpImg);
+        }
+        double stumpW = Math.min(68.0, Math.max(46.0, t.fullW * 0.42));
+        double stumpH = Math.min(58.0, Math.max(38.0, t.fullH * 0.28));
+        t.view.setFitWidth(stumpW);
+        t.view.setFitHeight(stumpH);
+        t.view.setLayoutX(t.fullX + (t.fullW - stumpW) * 0.5);
+        t.view.setLayoutY(t.fullY + t.fullH - stumpH);
+        t.view.setUserData(t.fullY + t.fullH);
+        t.view.setTranslateX(0.0);
+    }
+
+    /** Khôi phục cây trưởng thành từ gốc cây cụt sau 3 ngày. */
+    private void regrowTreeVisual(TreeObject t) {
+        if (t == null || t.view == null) return;
+        t.chopped = false;
+        t.hp = 4;
+        t.regrowDays = 0;
+        if (t.fullTreeImage != null) {
+            t.view.setImage(t.fullTreeImage);
+        }
+        t.view.setFitWidth(t.fullW);
+        t.view.setFitHeight(t.fullH);
+        t.view.setLayoutX(t.fullX);
+        t.view.setLayoutY(t.fullY);
+        t.view.setUserData(t.fullY + t.fullH);
+        t.view.setTranslateX(0.0);
+    }
+
+    /** Khi sang ngày mới: tăng tiến độ mọc cho mọi gốc cây cụt; đủ 3 ngày tự mọc lại thành cây trưởng thành. */
+    private void regrowChoppedTreesForNewDay() {
+        int regrown = 0;
+        for (TreeObject t : choppableTrees) {
+            if (t.chopped) {
+                t.regrowDays++;
+                if (t.regrowDays >= 3) {
+                    regrowTreeVisual(t);
+                    regrown++;
+                }
+            }
+        }
+        if (regrown > 0) {
+            notify("🌲 " + regrown + " cây gỗ quanh nông trại đã mọc lại trưởng thành!");
+        }
     }
 
     /** Kiểm tra va chạm vật cản tĩnh trên bản đồ cho 4 Bot đi dạo (tránh nhà, hàng rào, bể bơi, cây, đá). */
@@ -3408,8 +3772,8 @@ public class InGameController {
     }
 
     /**
-     * Dựng lớp cầu gỗ che phía trên (chỉ cắt đúng phần gỗ + 2 thành cầu, xóa sạch viền nước ngoài)
-     * và 2 dải bóng râm đổ xuống mặt nước hai bên gầm cầu để tạo cảm giác thuyền chui lọt bên dưới cầu.
+     * Dựng lớp cầu gỗ che phía trên khi thuyền chui gầm cầu (giữ nguyên mặt nước sông đồng nhất 100%,
+     * không vẽ dải chữ nhật tối lệch màu nước hai bên thành cầu) và lưu tọa độ mặt ván vòm để mô phỏng đi lên/xuống cầu.
      */
     private void setupBridgeUnderpassVisuals(ImageView bridgeObj, double riverTopY, double riverBotY) {
         if (bridgeObj == null || entityPane == null) return;
@@ -3419,11 +3783,17 @@ public class InGameController {
         double oh = bridgeObj.getFitHeight();
         if (ow <= 0 || oh <= 0) return;
 
-        // Tỉ lệ phần gỗ thực của bridge.png: x = 15.5% .. 86.2% (trừ sạch nước 2 bên)
-        final double leftFrac = 0.155;
-        final double rightFrac = 0.862;
+        // Tỉ lệ phần gỗ thực của bridge.png cầu vòm mới (đã cắt sạch nền hồng): x = 16.0% .. 84.0%
+        final double leftFrac = 0.160;
+        final double rightFrac = 0.840;
         bridgeWoodLeftX = ox + ow * leftFrac;
         bridgeWoodRightX = ox + ow * rightFrac;
+
+        // Lưu vùng sàn gỗ đi bộ của cầu vòm (đầu ván Bắc y=12.0%, cuối ván Nam y=94.8%) để xử lý độ cong lên/xuống
+        bridgeDeckLeftX = ox + ow * 0.200;
+        bridgeDeckRightX = ox + ow * 0.800;
+        bridgeDeckTopY = oy + oh * 0.120;
+        bridgeDeckBotY = oy + oh * 0.948;
 
         Image src = bridgeObj.getImage();
         if (src != null && src.getPixelReader() != null) {
@@ -3438,14 +3808,7 @@ public class InGameController {
             for (int y = 0; y < imgH; y++) {
                 for (int x = 0; x < cw; x++) {
                     Color col = pr.getColor(sx0 + x, y);
-                    // Xóa các pixel nước xanh sót lại ở 6px mép ngoài 2 thành gỗ để viền cầu sắc nét tuyệt đối
-                    boolean onOuterEdge = (x < 6 || x >= cw - 6);
-                    boolean isBlueWater = (col.getOpacity() > 0.1 && col.getBlue() > col.getRed() + 0.14 && col.getBlue() > 0.50);
-                    if (onOuterEdge && isBlueWater) {
-                        pw.setColor(x, y, Color.TRANSPARENT);
-                    } else {
-                        pw.setColor(x, y, col);
-                    }
+                    pw.setColor(x, y, col);
                 }
             }
 
@@ -3460,31 +3823,15 @@ public class InGameController {
             bridgeCanopyView.setUserData(-999.0);
             entityPane.getChildren().add(bridgeCanopyView);
         }
+    }
 
-        // Dải bóng râm mềm của gầm cầu đổ xuống mặt nước ở hai bên trái & phải cầu
-        double shadowTopY = Math.max(oy + 24.0, riverTopY);
-        double shadowH = Math.max(60.0, Math.min(oy + oh - 14.0, riverBotY) - shadowTopY);
-        javafx.scene.shape.Rectangle leftShadow = new javafx.scene.shape.Rectangle(bridgeWoodLeftX - 28.0, shadowTopY, 34.0, shadowH);
-        leftShadow.setFill(new javafx.scene.paint.LinearGradient(
-            0, 0, 1, 0, true, javafx.scene.paint.CycleMethod.NO_CYCLE,
-            new javafx.scene.paint.Stop(0.0, Color.rgb(6, 18, 28, 0.0)),
-            new javafx.scene.paint.Stop(1.0, Color.rgb(6, 18, 28, 0.48))
-        ));
-        leftShadow.setMouseTransparent(true);
-        leftShadow.setManaged(false);
-        leftShadow.setUserData(-890.0);
-
-        javafx.scene.shape.Rectangle rightShadow = new javafx.scene.shape.Rectangle(bridgeWoodRightX - 6.0, shadowTopY, 34.0, shadowH);
-        rightShadow.setFill(new javafx.scene.paint.LinearGradient(
-            0, 0, 1, 0, true, javafx.scene.paint.CycleMethod.NO_CYCLE,
-            new javafx.scene.paint.Stop(0.0, Color.rgb(6, 18, 28, 0.48)),
-            new javafx.scene.paint.Stop(1.0, Color.rgb(6, 18, 28, 0.0))
-        ));
-        rightShadow.setMouseTransparent(true);
-        rightShadow.setManaged(false);
-        rightShadow.setUserData(-890.0);
-
-        entityPane.getChildren().addAll(leftShadow, rightShadow);
+    /** Kiểm tra bàn chân nhân vật có đang đứng trên mặt ván cầu gỗ vòm hay không. */
+    private boolean isPlayerOnBridge() {
+        if (bridgeDeckBotY <= bridgeDeckTopY) return false;
+        double footX = playerX + 22.0;
+        double footY = playerY + 54.0;
+        return footX >= bridgeDeckLeftX && footX <= bridgeDeckRightX
+                && footY >= bridgeDeckTopY && footY <= bridgeDeckBotY;
     }
 
     private boolean isBoatCenterUnderBridge() {
@@ -3566,6 +3913,8 @@ public class InGameController {
         String promptText = null;
         if (isSunbathing) {
             promptText = "☀ Đang tắm nắng thư giãn... (Bấm phím di chuyển để đứng dậy)";
+        } else if (isSitting) {
+            promptText = "[E] Nấu ăn  |  [U] Đứng dậy";
         } else {
             double px = playerX + 22.0;
             double py = playerY + 52.0;
@@ -3580,12 +3929,21 @@ public class InGameController {
                 }
             }
 
-            double[] nearFire = findNearestPoint(campfirePoints, px, py, 80.0);
+            double[] nearFire = findNearestPoint(campfirePoints, px, py, 85.0);
             if (nearFire != null) {
                 double d = Math.hypot(px - nearFire[0], py - nearFire[1]);
                 if (d < bestDist) {
                     bestDist = d;
-                    promptText = "[E] Nấu ăn tại đống lửa";
+                    promptText = "[C] Ngồi xuống bếp lửa";
+                }
+            }
+
+            CampForageSpot nearForage = findNearestForageSpot(px, py, 76.0);
+            if (nearForage != null) {
+                double d = Math.hypot(px - nearForage.x, py - nearForage.y);
+                if (d < bestDist) {
+                    bestDist = d;
+                    promptText = "[E] Nhặt " + nearForage.item.getName();
                 }
             }
 
@@ -3671,9 +4029,6 @@ public class InGameController {
      */
     private void handleInteractKeyE() {
         if (activeCookingOverlay != null) {
-            if (!activeCookingOverlay.isCookingInProgress()) {
-                closeCookingOverlay();
-            }
             return;
         }
         if (activeCasinoOverlay != null) {
@@ -3684,6 +4039,12 @@ public class InGameController {
 
         if (isSunbathing) {
             stopSunbathing();
+            return;
+        }
+
+        // Đang ngồi cạnh bếp lửa -> mở ngay màn hình Ghép Đồ Ăn kiểu Minecraft!
+        if (isSitting) {
+            openCookingOverlay(sittingFireX, sittingFireY);
             return;
         }
 
@@ -3702,9 +4063,10 @@ public class InGameController {
         double py = playerY + 52.0;
 
         double bestDist = Double.MAX_VALUE;
-        int bestAction = 0; // 1=sleep, 2=cook, 3=boat, 4=pool, 5=casino, 6=bot
+        int bestAction = 0; // 1=sleep, 2=cook(warn sit), 3=boat, 4=pool, 5=casino, 6=bot, 7=forage
         double[] bestPt = null;
         view.npc.NpcManager.BotActor bestBot = null;
+        CampForageSpot bestForage = null;
 
         double[] nearDoor = findNearestPoint(houseDoorPoints, px, py, 75.0);
         if (nearDoor != null) {
@@ -3716,13 +4078,23 @@ public class InGameController {
             }
         }
 
-        double[] nearFire = findNearestPoint(campfirePoints, px, py, 80.0);
+        double[] nearFire = findNearestPoint(campfirePoints, px, py, 85.0);
         if (nearFire != null) {
             double d = Math.hypot(px - nearFire[0], py - nearFire[1]);
             if (d < bestDist) {
                 bestDist = d;
                 bestAction = 2;
                 bestPt = nearFire;
+            }
+        }
+
+        CampForageSpot nearForage = findNearestForageSpot(px, py, 76.0);
+        if (nearForage != null) {
+            double d = Math.hypot(px - nearForage.x, py - nearForage.y);
+            if (d < bestDist) {
+                bestDist = d;
+                bestAction = 7;
+                bestForage = nearForage;
             }
         }
 
@@ -3769,7 +4141,12 @@ public class InGameController {
         if (bestAction == 1 && bestPt != null) {
             openSleepDialog(bestPt[0], bestPt[1]);
         } else if (bestAction == 2 && bestPt != null) {
-            openCookingOverlay(bestPt[0], bestPt[1]);
+            // Ràng buộc bắt buộc: phải bấm [C] ngồi xuống trước khi nấu ăn!
+            spawnFloatingText("Hãy ấn [C] ngồi xuống trước khi nấu ăn!", Color.rgb(255, 224, 72));
+            view.fx.SoundHook.playMenuClick();
+            notify("Hãy ấn [C] ngồi xuống bếp lửa trước khi nấu ăn!");
+        } else if (bestAction == 7 && bestForage != null) {
+            collectCampForageSpot(bestForage);
         } else if (bestAction == 3 && boatEntity != null) {
             boatEntity.startBoarding(playerX, playerY);
         } else if (bestAction == 4) {
@@ -3792,18 +4169,27 @@ public class InGameController {
         }
     }
 
-    /** Nằm tắm nắng cạnh bể bơi cùng Nami & Hancock: hồi Đói/Khát + nhận Buff "Thư giãn +20% tốc độ chạy" trong 2 phút. */
+    /** Nằm tắm nắng cạnh bể bơi cùng Nami & Hancock: đổi sang ảnh Luffy nằm ngửa trên ghế + hồi Đói/Khát + Buff +20% tốc độ chạy (2 phút). */
     private void startSunbathing() {
         isSunbathing = true;
         sunbatheSparkleTimer = 0.0;
         activeKeys.clear();
-        playerX = sunbatheLoungerX + 20.0;
-        playerY = sunbatheLoungerY - 22.0;
-        facing = "LEFT";
-        luffyFacingLeft = true;
+        // Căn chỉnh đúng thân Luffy nằm trọn lên nệm xanh-trắng & gối vàng của ghế tắm nắng
+        playerX = sunbatheLoungerX + 24.0;
+        playerY = sunbatheLoungerY - 14.0;
+        facing = "RIGHT";
+        luffyFacingLeft = false;
         if (playerCharacter != null) {
             playerCharacter.setTranslateX(playerX);
             playerCharacter.setTranslateY(playerY);
+        }
+        if (luffySpriteView != null && Assets.LUFFY_SUNBATHE != null) {
+            luffySpriteView.setFitWidth(104.0);
+            luffySpriteView.setFitHeight(64.0);
+            luffySpriteView.setX(-30.0);
+            luffySpriteView.setY(2.0);
+            luffySpriteView.setScaleX(1.0);
+            luffySpriteView.setImage(Assets.LUFFY_SUNBATHE);
         }
         poolRelaxSpeedBuffSec = 120.0;
         lastRenderedRelaxSec = 120;
@@ -3820,7 +4206,13 @@ public class InGameController {
         if (!isSunbathing) return;
         isSunbathing = false;
         if (luffyBodyRotate != null) luffyBodyRotate.setAngle(0.0);
-        if (luffySpriteView != null) luffySpriteView.setTranslateY(0.0);
+        if (luffySpriteView != null) {
+            luffySpriteView.setFitWidth(108.0);
+            luffySpriteView.setFitHeight(108.0);
+            luffySpriteView.setX(-32.0);
+            luffySpriteView.setY(-38.0);
+            luffySpriteView.setTranslateY(0.0);
+        }
         notify("Đã đứng dậy khỏi ghế tắm nắng! (Buff +20% tốc độ chạy còn " + (int) Math.ceil(poolRelaxSpeedBuffSec) + "s)");
     }
 
@@ -4044,11 +4436,169 @@ public class InGameController {
         fadeOut.play();
     }
 
-    /** Mở bảng Nấu Ăn tại Đống Lửa Trại. */
+    /** Ngồi xuống cạnh đống lửa trại bằng phím [C] (bắt buộc trước khi mở giao diện ghép nấu ăn). */
+    private void trySitAtCampfire() {
+        if (isSitting) {
+            notify("Bạn đang ngồi ở bếp lửa rồi! Bấm [E] để nấu ăn hoặc [U] để đứng dậy.");
+            return;
+        }
+        double px = playerX + 22.0;
+        double py = playerY + 52.0;
+        double[] nearFire = findNearestPoint(campfirePoints, px, py, 85.0);
+        if (nearFire == null) {
+            spawnFloatingText("Hãy lại gần đống lửa trại rồi bấm [C] để ngồi!", Color.rgb(255, 224, 96));
+            return;
+        }
+
+        isSitting = true;
+        sittingFireX = nearFire[0];
+        sittingFireY = nearFire[1];
+        activeKeys.clear();
+
+        // Quay mặt nhân vật hướng thẳng về phía đống lửa cho chân thực
+        double ddx = nearFire[0] - px;
+        double ddy = nearFire[1] - py;
+        if (Math.abs(ddx) > Math.abs(ddy)) {
+            facing = (ddx >= 0) ? "RIGHT" : "LEFT";
+        } else {
+            facing = (ddy >= 0) ? "DOWN" : "UP";
+        }
+        view.fx.SoundHook.playMenuClick();
+        notify("🔥 Đã ngồi xuống bếp lửa! Bấm [E] để mở Bàn Ghép Nấu Ăn hoặc [U] để đứng dậy.");
+    }
+
+    /** Đứng dậy khỏi bếp lửa bằng phím [U], khôi phục tư thế đứng và mở khóa W/A/S/D. */
+    private void standUpFromCampfire() {
+        if (!isSitting) return;
+        isSitting = false;
+        activeKeys.clear();
+        if (luffySpriteView != null) {
+            luffySpriteView.setScaleY(1.0);
+            luffySpriteView.setTranslateY(0.0);
+        }
+        view.fx.SoundHook.playMenuClick();
+        notify("Đã đứng dậy khỏi bếp lửa!");
+    }
+
+    /** Sinh 5 vật phẩm tự nhiên (Củi khô, Nấm dại, Thảo mộc) quanh khu vực trại/đống lửa mỗi ngày. */
+    private void spawnDailyCampForageItems() {
+        if (entityPane == null) return;
+        for (CampForageSpot old : campForageSpots) {
+            entityPane.getChildren().remove(old.node);
+        }
+        campForageSpots.clear();
+        if (campfirePoints.isEmpty()) return;
+
+        double[] fire = campfirePoints.get(0);
+        // 7 vị trí bãi cỏ thoáng xung quanh lều trại & đống lửa (ưu tiên dễ thấy, không chạm lửa/lều)
+        double[][] candidateOffsets = {
+            { -112.0,  58.0 },
+            {  108.0,  54.0 },
+            {  -56.0, 108.0 },
+            {   64.0, 114.0 },
+            { -154.0,  96.0 },
+            {  162.0,  92.0 },
+            {    6.0, 134.0 }
+        };
+        int day = (gameManager != null) ? gameManager.getCurrentDay() : 1;
+        java.util.Random rng = new java.util.Random(day * 7919L + 2026L);
+
+        // Xáo trộn vị trí mỗi ngày nhưng luôn đảm bảo đủ: 2 Củi khô + 1-2 Nấm dại + 1-2 Thảo mộc
+        java.util.List<Integer> order = new java.util.ArrayList<>();
+        for (int i = 0; i < candidateOffsets.length; i++) order.add(i);
+        java.util.Collections.shuffle(order, rng);
+
+        model.game_item.ForageItem[] dailyLoot = new model.game_item.ForageItem[] {
+            model.game_item.ForageItem.firewood(),
+            model.game_item.ForageItem.firewood(),
+            model.game_item.ForageItem.wildMushroom(),
+            model.game_item.ForageItem.herb(),
+            (day % 2 == 0) ? model.game_item.ForageItem.firewood()
+                           : (rng.nextBoolean() ? model.game_item.ForageItem.wildMushroom() : model.game_item.ForageItem.herb())
+        };
+
+        for (int i = 0; i < dailyLoot.length && i < order.size(); i++) {
+            double[] off = candidateOffsets[order.get(i)];
+            double fx = fire[0] + off[0] + (rng.nextDouble() * 18.0 - 9.0);
+            double fy = fire[1] + off[1] + (rng.nextDouble() * 16.0 - 8.0);
+            // Tránh vật cản tĩnh nếu lỡ trùng
+            if (isPointBlockedForBot(fx, fy)) {
+                fy += 32.0;
+            }
+            model.game_item.ForageItem fItem = dailyLoot[i];
+
+            javafx.scene.shape.Ellipse shadow = new javafx.scene.shape.Ellipse(0, 14, 15, 5.5);
+            shadow.setFill(Color.rgb(18, 22, 16, 0.34));
+
+            javafx.scene.shape.Circle glowRing = new javafx.scene.shape.Circle(0, 2, 17);
+            glowRing.setFill(Color.rgb(255, 228, 128, 0.16));
+            glowRing.setStroke(Color.rgb(255, 224, 118, 0.55));
+            glowRing.setStrokeWidth(1.3);
+
+            Image iconImg = Assets.getShopIcon(fItem);
+            ImageView iv = new ImageView(iconImg);
+            iv.setFitWidth(34);
+            iv.setFitHeight(34);
+            iv.setPreserveRatio(true);
+            iv.setSmooth(false);
+            iv.setX(-17);
+            iv.setY(-15);
+
+            javafx.scene.Group spotGroup = new javafx.scene.Group(shadow, glowRing, iv);
+            spotGroup.setManaged(false);
+            spotGroup.setLayoutX(fx);
+            spotGroup.setLayoutY(fy);
+            spotGroup.setUserData(fy + 10.0);
+            spotGroup.setCursor(javafx.scene.Cursor.HAND);
+
+            CampForageSpot spot = new CampForageSpot(fItem, fx, fy, spotGroup, i * 1.15);
+            spotGroup.setOnMouseClicked(ev -> {
+                ev.consume();
+                if (!router.hasOverlay() && !sleepTransitionRunning) {
+                    collectCampForageSpot(spot);
+                }
+            });
+
+            campForageSpots.add(spot);
+            entityPane.getChildren().add(spotGroup);
+        }
+    }
+
+    private CampForageSpot findNearestForageSpot(double px, double py, double maxDist) {
+        CampForageSpot best = null;
+        double bestDistSq = maxDist * maxDist;
+        for (CampForageSpot spot : campForageSpots) {
+            double dx = px - spot.x;
+            double dy = py - spot.y;
+            double d2 = dx * dx + dy * dy;
+            if (d2 <= bestDistSq) {
+                bestDistSq = d2;
+                best = spot;
+            }
+        }
+        return best;
+    }
+
+    private void collectCampForageSpot(CampForageSpot spot) {
+        if (spot == null || player == null || !campForageSpots.contains(spot)) return;
+        campForageSpots.remove(spot);
+        if (entityPane != null) {
+            entityPane.getChildren().remove(spot.node);
+        }
+        player.getInventory().addItem(spot.item, 1);
+        view.fx.SoundHook.playPickup();
+        if (particleSystem != null) {
+            particleSystem.spawnPickupPop(spot.x, spot.y - 6.0);
+        }
+        spawnFloatingText("+1 " + spot.item.getName(), Color.rgb(166, 255, 146));
+        notify("🎒 Đã nhặt 1x " + spot.item.getName() + " quanh khu trại!");
+    }
+
+    /** Mở màn hình Ghép Đồ Ăn kiểu Minecraft (CookingCraftView) khi đang ngồi tại Đống Lửa Trại. */
     private void openCookingOverlay(double fireX, double fireY) {
         if (router == null || router.hasOverlay() || sleepTransitionRunning) return;
         activeKeys.clear();
-        activeCookingOverlay = new view.ui.CampfireCookingOverlay(
+        activeCookingOverlay = new view.ui.CookingCraftView(
             player,
             this::getActiveBuffSummary,
             () -> {
@@ -4077,7 +4627,7 @@ public class InGameController {
         }
     }
 
-    /** Áp dụng hồi Đói/Khát + Buff tỉ lệ câu cá hiếm (nếu có) khi ăn món nấu từ đống lửa (KHÔNG tăng tốc độ chạy). */
+    /** Áp dụng hồi Đói/Khát + Buff tốc độ chạy (nếu có) + Buff tỉ lệ câu cá hiếm khi ăn món nấu từ đống lửa. */
     private void applyCookedFoodBuff(model.game_item.CookedFoodItem dish) {
         if (dish == null) return;
         int hAdd = dish.getHungerRestore();
@@ -4093,6 +4643,10 @@ public class InGameController {
                 recentLaborDecaySec = 0.0;
             }
             updateSurvivalHud(animTimeSec);
+        }
+        if (dish.getSpeedBonusPercent() > 0) {
+            poolRelaxSpeedBuffSec = Math.max(poolRelaxSpeedBuffSec, 150.0);
+            lastRenderedRelaxSec = (int) Math.ceil(poolRelaxSpeedBuffSec);
         }
         if (dish.hasRareFishBoost()) {
             foodRareFishBuff = true;
@@ -4314,9 +4868,9 @@ public class InGameController {
         updateSurvivalHud(animTimeSec);
     }
 
-    /** Kiểm tra nhân vật có đang đứng sát bờ con sông (không ở trên thuyền) để uống nước hay không. */
+    /** Kiểm tra nhân vật có đang đứng sát bờ con sông (không ở trên thuyền và không đứng giữa cầu) để uống nước hay không. */
     private boolean isNearRiverBankForDrink() {
-        if (farmMap == null || isOnBoat) return false;
+        if (farmMap == null || isOnBoat || isPlayerOnBridge()) return false;
         if (boatEntity != null && (boatEntity.isPlayerAboard() || boatEntity.isTransitioning())) return false;
 
         double footX = playerX + 22.0;
@@ -4845,11 +5399,13 @@ public class InGameController {
     // ======================== icons (Giữ nguyên) ========================
     private void setupToolIcons() {
         hoeTool.setText(null);
+        if (axeTool != null) axeTool.setText(null);
         waterTool.setText(null);
         seedTool.setText(null);
         handTool.setText(null);
         fertilizerTool.setText(null);
         hoeTool.setGraphic(Assets.imageView(Assets.HOE_ICON, 48));
+        if (axeTool != null) axeTool.setGraphic(Assets.imageView(Assets.AXE_ICON, 48));
         waterTool.setGraphic(Assets.imageView(Assets.WATER_ICON, 48));
         seedTool.setGraphic(Assets.imageView(Assets.SEED_ICON, 48));
         handTool.setGraphic(Assets.imageView(Assets.HAND_ICON, 48));

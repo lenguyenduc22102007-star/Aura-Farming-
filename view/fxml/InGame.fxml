@@ -220,6 +220,9 @@
             <ToggleButton fx:id="hoeTool" mnemonicParsing="false" prefHeight="70" prefWidth="70" text="HOE" toggleGroup="$toolGroup" />
 
 
+            <ToggleButton fx:id="axeTool" mnemonicParsing="false" prefHeight="70" prefWidth="70" text="AXE" toggleGroup="$toolGroup" />
+
+
             <ToggleButton fx:id="waterTool" mnemonicParsing="false" prefHeight="70" prefWidth="70" text="WATER" toggleGroup="$toolGroup" />
 
 

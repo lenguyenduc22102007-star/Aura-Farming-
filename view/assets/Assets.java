@@ -92,6 +92,13 @@ public class Assets {
     public static Image FOOD_STEAK_ICON;
     public static Image FOOD_HOTPOT_ICON;
 
+    // FORAGING ICONS (Vật phẩm tự nhiên quanh khu trại: Củi khô, Nấm dại, Thảo mộc)
+    public static Image FIREWOOD_ICON;
+    public static Image WILD_MUSHROOM_ICON;
+    public static Image HERB_ICON;
+    public static Image AXE_ICON;
+    public static Image STUMP_IMAGE;
+
     // ICON BÌNH TƯỚI NHẮC NHỞ MÀU XANH DƯƠNG SẮC NÉT (24x24 nổi trên ô cây thiếu nước)
     public static Image WATER_NEED_ICON;
 
@@ -116,6 +123,7 @@ public class Assets {
     public static Image[] NPC_USOPP_IDLE, NPC_USOPP_WALK;
 
     // PLAYER ACTION SPRITE FRAMES (72x72 side/action + 108x108 8-direction run/idle, smooth = false)
+    public static Image LUFFY_SUNBATHE;
     public static Image[] LUFFY_HOE_FRAMES;
     public static Image[] LUFFY_HOE_RUN_FRAMES;
     public static Image[] LUFFY_WATER_FRAMES;
@@ -226,6 +234,18 @@ public class Assets {
         SHOP_ICONS.put(model.game_item.CookedFoodItem.ID_MILK_STEAK, FOOD_STEAK_ICON);
         SHOP_ICONS.put(model.game_item.CookedFoodItem.ID_FARM_HOTPOT, FOOD_HOTPOT_ICON);
 
+        FIREWOOD_ICON = createPixelFirewoodIcon();
+        WILD_MUSHROOM_ICON = createPixelWildMushroomIcon();
+        HERB_ICON = createPixelHerbIcon();
+        AXE_ICON = createPixelAxeIcon();
+        STUMP_IMAGE = safeLoadImage("/view/assets/tiled/objects/stump.png");
+        if (STUMP_IMAGE == null) {
+            STUMP_IMAGE = safeLoadImage("/view/assets/tiled/objects/goccay_tile.png");
+        }
+        SHOP_ICONS.put(model.game_item.ForageItem.ID_FIREWOOD, FIREWOOD_ICON);
+        SHOP_ICONS.put(model.game_item.ForageItem.ID_WILD_MUSHROOM, WILD_MUSHROOM_ICON);
+        SHOP_ICONS.put(model.game_item.ForageItem.ID_HERB, HERB_ICON);
+
         // NPC POOL & ROAMING BOTS (108x108 chuẩn tỉ lệ Luffy + đủ frame Idle cử động thở & Walk 4 frame vung tay sải chân, smooth = false)
         NPC_NAMI    = safeLoadPixelImage("/view/assets/npcs/nami.png", 108, 108);
         NPC_HANCOCK = safeLoadPixelImage("/view/assets/npcs/hancock.png", 108, 108);
@@ -248,6 +268,7 @@ public class Assets {
         NPC_USOPP_WALK   = loadNpcFrames("usopp", "walk", 4, NPC_USOPP);
 
         // PLAYER ACTION & RUN FRAMES (Cuốc đứng/bổ 4 frame, chạy cầm cuốc 4 frame, tưới 3 frame, chạy cầm bình 4 frame; smooth = false)
+        LUFFY_SUNBATHE = safeLoadPixelImage("/view/assets/player/luffy_sunbathe.png", 112, 68);
         LUFFY_HOE_FRAMES = new Image[4];
         LUFFY_HOE_RUN_FRAMES = new Image[4];
         for (int i = 0; i < 4; i++) {
@@ -543,6 +564,110 @@ public class Assets {
             if (ch == 'G') return Color.rgb(104, 198, 72);
             if (ch == 'P') return Color.rgb(92, 86, 98);
             if (ch == 'D') return Color.rgb(62, 56, 68);
+            return null;
+        });
+    }
+
+    /** Icon Củi khô pixel-art (bó củi buộc dây thừng vàng, sắc nét 36x36). */
+    private static Image createPixelFirewoodIcon() {
+        return renderPixelPattern(new String[] {
+            "............",
+            "...oooo.....",
+            "..oLLBBo....",
+            ".oBMBBBBo...",
+            ".oBBYMBBBoo.",
+            "ooBBYMMBBLLo",
+            "oLLBYMBBMBBo",
+            "oBMMYBBBBBBo",
+            ".oBBYMMBBBo.",
+            "..ooYooooo..",
+            "............",
+            "............"
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(42, 22, 12);
+            if (ch == 'B') return Color.rgb(122, 70, 34);
+            if (ch == 'M') return Color.rgb(162, 98, 48);
+            if (ch == 'L') return Color.rgb(218, 174, 114);
+            if (ch == 'Y') return Color.rgb(236, 188, 72);
+            return null;
+        });
+    }
+
+    /** Icon Nấm dại pixel-art (mũ đỏ chấm kem trắng, cuống trắng ngà). */
+    private static Image createPixelWildMushroomIcon() {
+        return renderPixelPattern(new String[] {
+            "....oooo....",
+            "..ooRRRRoo..",
+            ".oRWRRRWRRo.",
+            "oRRRRWRRRRRo",
+            "oRRWRRRRWRRo",
+            "ooRRRRRRRRoo",
+            "..oooooooo..",
+            "...oCCCCo...",
+            "...oCWCCo...",
+            "...oCCCCo...",
+            "..ooCCCCoo..",
+            "..oooooooo.."
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(46, 20, 16);
+            if (ch == 'R') return Color.rgb(216, 56, 44);
+            if (ch == 'W') return Color.rgb(255, 248, 228);
+            if (ch == 'C') return Color.rgb(236, 218, 182);
+            return null;
+        });
+    }
+
+    /** Icon Thảo mộc pixel-art (nhánh lá xanh tươi điểm hoa vàng nhỏ). */
+    private static Image createPixelHerbIcon() {
+        return renderPixelPattern(new String[] {
+            "......oo....",
+            "....ooGYo...",
+            "...oGGLLo...",
+            "..oGLGGo.oo.",
+            ".ooGGGo.oGLo",
+            "oGLLGo.oGGLo",
+            ".ooGGo.oGGo.",
+            "...oGooGGo..",
+            "....oGGoo...",
+            "....oSGo....",
+            "...oSSo.....",
+            "...ooo......"
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(20, 54, 24);
+            if (ch == 'G') return Color.rgb(54, 164, 62);
+            if (ch == 'L') return Color.rgb(138, 226, 98);
+            if (ch == 'S') return Color.rgb(74, 128, 48);
+            if (ch == 'Y') return Color.rgb(255, 222, 86);
+            return null;
+        });
+    }
+
+    /** Icon Rìu chặt cây pixel-art sắc nét (lưỡi thép sáng + cán gỗ nâu ấm, 48x48). */
+    private static Image createPixelAxeIcon() {
+        return renderPixelPattern(new String[] {
+            "......oooo......",
+            ".....oSSLLo.....",
+            "....oSSLLLLo....",
+            "...oSSDDLLLo....",
+            "...oSSDBBLLo....",
+            "....ooDBBSo.....",
+            "......oBBo......",
+            ".....oBMBoo.....",
+            "....oBMBo.......",
+            "...oBMBo........",
+            "..oBMBo.........",
+            ".oBMBo..........",
+            ".oBBo...........",
+            "..oo............",
+            "................",
+            "................"
+        }, 3, ch -> {
+            if (ch == 'o') return Color.rgb(34, 24, 18);
+            if (ch == 'L') return Color.rgb(232, 242, 250);
+            if (ch == 'S') return Color.rgb(162, 178, 194);
+            if (ch == 'D') return Color.rgb(98, 112, 128);
+            if (ch == 'B') return Color.rgb(138, 82, 40);
+            if (ch == 'M') return Color.rgb(186, 118, 62);
             return null;
         });
     }

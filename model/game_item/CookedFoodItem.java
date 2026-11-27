@@ -36,42 +36,42 @@ public class CookedFoodItem extends Item {
             case ID_EGG_FRY:
                 return new CookedFoodItem(
                     ID_EGG_FRY,
-                    "Trứng Ốp La Lửa Trại",
-                    55,
+                    "Gà Nướng Lửa Trại",
+                    60,
                     45, 0,
                     0,
                     false,
-                    "Hồi +45 Đói"
+                    "Hồi +45 Đói | Bán lời x2"
                 );
             case ID_PORK_GRILL:
                 return new CookedFoodItem(
                     ID_PORK_GRILL,
-                    "Thịt Lợn Nướng Than",
-                    90,
-                    65, 0,
-                    0,
+                    "Thịt Nướng Thảo Mộc",
+                    125,
+                    70, 0,
+                    20,
                     false,
-                    "Hồi +65 Đói"
+                    "Hồi +70 Đói | Buff +20% tốc độ chạy"
                 );
             case ID_MILK_STEAK:
                 return new CookedFoodItem(
                     ID_MILK_STEAK,
-                    "Sữa Nóng & Bò Bít Tết",
-                    115,
-                    55, 45,
+                    "Cháo Sữa Nóng",
+                    130,
+                    55, 50,
                     0,
                     true,
-                    "Hồi +55 Đói, +45 Nước | Tăng tỉ lệ cá hiếm"
+                    "Hồi +55 Đói, +50 Khát | Tăng cá hiếm"
                 );
             case ID_FARM_HOTPOT:
                 return new CookedFoodItem(
                     ID_FARM_HOTPOT,
                     "Lẩu Nông Trại Đặc Biệt",
-                    220,
+                    260,
                     100, 50,
                     0,
                     true,
-                    "Hồi +100 Đói, +50 Nước | Tăng mạnh cá hiếm"
+                    "Hồi +100 Đói, +50 Khát | Tăng mạnh cá hiếm"
                 );
             default:
                 return null;
@@ -87,6 +87,12 @@ public class CookedFoodItem extends Item {
                 return candidate;
             }
         }
+        // Tương thích ngược với file save cũ
+        String low = name.trim().toLowerCase();
+        if (low.contains("trứng ốp la")) return createById(ID_EGG_FRY);
+        if (low.contains("thịt lợn nướng")) return createById(ID_PORK_GRILL);
+        if (low.contains("sữa nóng") || low.contains("bò bít tết")) return createById(ID_MILK_STEAK);
+        if (low.contains("lẩu nông trại")) return createById(ID_FARM_HOTPOT);
         return null;
     }
 

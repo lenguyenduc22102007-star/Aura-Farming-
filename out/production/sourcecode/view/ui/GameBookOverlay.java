@@ -522,7 +522,7 @@ public class GameBookOverlay extends StackPane {
             "🌱 Cây Trồng (" + seedsList.size() + ")",
             "🐄 Con Vật (" + animalsList.size() + ")",
             "🌾 Thức Ăn Thú (" + feedsList.size() + ")",
-            "🧪 Phân Bón (" + fertsList.size() + ")"
+            "🧪 Vật Tư & Củi (" + fertsList.size() + ")"
         };
 
         for (int ci = 0; ci < catNames.length; ci++) {
@@ -948,7 +948,8 @@ public class GameBookOverlay extends StackPane {
             {"Phím số 1 – 6",              "Chọn nhanh: Hạt giống, Cuốc, Bình tưới, Tay, Phân bón, Túi thức ăn"},
             {"SPACE  hoặc  J",             "Cuốc đất / Gieo hạt / Tưới cây / Thu hoạch / Quăng cần & Kéo cá"},
             {"TAB",                        "Mở / Đóng Cuốn Sổ Quản Lý (bấm 1–5 chuyển nhanh các Tab)"},
-            {"E",                          "Tương tác gần nhất (Ngủ, Nấu ăn, Tắm nắng, Sòng bạc, Bot, Thuyền)"},
+            {"E",                          "Tương tác (Ngủ, Ghép nấu ăn khi đã ngồi, Nhặt củi/nấm, Tắm nắng, Casino, Bot)"},
+            {"C  /  U",                    "Ngồi xuống bếp lửa (C)  •  Đứng dậy khỏi bếp lửa (U)"},
             {"Q  /  R",                    "Ăn nhanh món đã nấu (Q)  •  Uống nước mát tại bờ sông (R)"},
             {"ESC",                        "Mở Menu Tạm Dừng (Tiếp tục, Lưu Game, Cài Đặt, Về Menu Chính)"}
         };
