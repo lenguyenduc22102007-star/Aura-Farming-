@@ -5,7 +5,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.*?>
 
-<BorderPane fx:id="rootPane" styleClass="ingame-root" prefHeight="720.0" prefWidth="1280.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="view.screen_controller.InGameController">
+<BorderPane fx:id="rootPane" styleClass="ingame-root" minHeight="0.0" minWidth="0.0" prefHeight="720.0" prefWidth="1280.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="view.screen_controller.InGameController">
 
    <!-- ====================================================== -->
    <!-- TOP BAR -->
@@ -63,10 +63,10 @@
 
    <right>
 
-      <VBox styleClass="right-panel" alignment="TOP_CENTER" prefWidth="184" spacing="10">
+      <VBox styleClass="right-panel" alignment="TOP_CENTER" prefWidth="192" spacing="8">
 
          <padding>
-            <Insets bottom="12" left="12" right="12" top="12" />
+            <Insets bottom="10" left="12" right="12" top="10" />
          </padding>
 
 
@@ -142,10 +142,10 @@
 
    <bottom>
 
-      <HBox alignment="CENTER_LEFT" styleClass="bottom-bar" prefHeight="108.0" prefWidth="1280.0" spacing="30">
+      <HBox alignment="CENTER_LEFT" styleClass="bottom-bar" prefHeight="104.0" spacing="16">
 
          <padding>
-            <Insets bottom="15" left="15" right="15" top="15" />
+            <Insets bottom="12" left="16" right="16" top="12" />
          </padding>
 
 
@@ -153,7 +153,7 @@
          <!-- STATUS DASHBOARD -->
          <!-- ================================================== -->
 
-         <VBox fx:id="soilStatusPanel" styleClass="status-panel" prefHeight="100.0" prefWidth="320.0" spacing="8" visible="false">
+         <VBox fx:id="soilStatusPanel" styleClass="status-panel" prefHeight="86.0" prefWidth="260.0" spacing="6" visible="false" managed="false">
 
             <HBox spacing="15">
 

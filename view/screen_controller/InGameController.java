@@ -202,6 +202,7 @@ public class InGameController {
     private double campfireEmberTimer = 0.0;
     private Label interactPromptLabel = null;
     private Label survivalWarningLabel = null;
+    private javafx.scene.layout.Pane hudOverlayPane = null;
     private javafx.scene.layout.VBox survivalHudBox = null;
     private Label hungerValueLabel = null;
     private javafx.scene.shape.Rectangle hungerBarFill = null;
@@ -227,7 +228,9 @@ public class InGameController {
     private final javafx.scene.effect.ColorAdjust underBridgePlayerShade = new javafx.scene.effect.ColorAdjust();
     private double lastPlayerBridgeShade = 0.0;
     private long lastFishLaborMs = 0L;
-    private static final double HUNGER_FULL_GRACE_SEC = 135.0 * 4.0 / 16.0; // ~33.75s thực = đúng 4 tiếng trong game mới bắt đầu đói
+    private static final long DAY_DURATION_MS = 405_000L; // 405 giây/ngày (dài gấp 3 lần bản 135 giây trước đây)
+    private static final double DAY_DURATION_SEC = DAY_DURATION_MS / 1000.0;
+    private static final double HUNGER_FULL_GRACE_SEC = DAY_DURATION_SEC * 4.0 / 16.0; // đúng 4 tiếng trong game mới bắt đầu đói
     private double hungerGraceTimerSec = HUNGER_FULL_GRACE_SEC;
     private int recentLaborStreak = 0;
     private double recentLaborDecaySec = 0.0;
@@ -1039,7 +1042,7 @@ public class InGameController {
             updateSurvivalHud(animTimeSec);
             updateQuestTrackerUi();
             lastFrameTime = System.currentTimeMillis();
-            resetFeedingSchedule(elapsedTimeInDay / 135000.0);
+            resetFeedingSchedule((double) elapsedTimeInDay / DAY_DURATION_MS);
             int tc = Integer.parseInt(p.getProperty("trough.count", "0"));
             for (int i = 0; i < tc && i < troughs.size(); i++) {
                 troughs.get(i).add(Integer.parseInt(p.getProperty("trough." + i, "0")));
@@ -1312,14 +1315,14 @@ public class InGameController {
                             weatherTintRect.setFill(currentWeatherTint);
                         }
                         
-                        // Tự động qua ngày sau mỗi 135 giây (135000 ms)
+                        // Tự động qua ngày sau mỗi 405 giây (405000 ms — gấp 3 lần bản 135 giây trước đây)
                         elapsedTimeInDay += delta;
-                        if (elapsedTimeInDay >= 135000) {
+                        if (elapsedTimeInDay >= DAY_DURATION_MS) {
                             onNextDay();
                         } else {
                             // Nội suy mượt màu sáng/trưa/chiều/tối mỗi frame
                             if (timeOverlayRect != null) {
-                                double progress = elapsedTimeInDay / 135000.0;
+                                double progress = (double) elapsedTimeInDay / DAY_DURATION_MS;
                                 Color targetTime = getTimeOverlayColor(progress);
                                 currentTimeTint = currentTimeTint.interpolate(targetTime, Math.min(1.0, dtSec * 5.0));
                                 timeOverlayRect.setFill(currentTimeTint);
@@ -1342,7 +1345,7 @@ public class InGameController {
 
     private void updateTimeDisplay() {
         if (dayField == null || gameManager == null) return;
-        double progress = Math.min(1.0, Math.max(0.0, elapsedTimeInDay / 135000.0));
+        double progress = Math.min(1.0, Math.max(0.0, (double) elapsedTimeInDay / DAY_DURATION_MS));
         // Giả lập từ 06:00 đến 22:00 (16 tiếng một ngày)
         int totalMins = (int) (progress * 16 * 60);
         int hour = 6 + totalMins / 60;
@@ -2913,7 +2916,7 @@ public class InGameController {
                     ? gameManager.getCurrentWeather().getType()
                     : WeatherType.SUNNY,
             this::getCurrentGameHour,
-            () -> clockText(Math.min(1.0, Math.max(0.0, elapsedTimeInDay / 135000.0))),
+            () -> clockText(Math.min(1.0, Math.max(0.0, (double) elapsedTimeInDay / DAY_DURATION_MS))),
             fishCaughtCounts,
             fishMaxCm,
             this::onClaimQuestReward,
@@ -4665,12 +4668,38 @@ public class InGameController {
 
     // ======================== HỆ THỐNG SINH TỒN: ĐÓI & KHÁT ========================
 
+    private javafx.scene.layout.Pane ensureHudOverlayPane() {
+        if (rootPane == null) return null;
+        if (hudOverlayPane == null) {
+            hudOverlayPane = new javafx.scene.layout.Pane();
+            hudOverlayPane.setMouseTransparent(true);
+            hudOverlayPane.setPickOnBounds(false);
+            hudOverlayPane.setManaged(false);
+            hudOverlayPane.setLayoutX(0);
+            hudOverlayPane.setLayoutY(0);
+            double w = rootPane.getWidth() > 0 ? rootPane.getWidth() : 1280.0;
+            double h = rootPane.getHeight() > 0 ? rootPane.getHeight() : 720.0;
+            hudOverlayPane.resize(w, h);
+            rootPane.widthProperty().addListener((obs, ov, nv) -> hudOverlayPane.resize(nv.doubleValue(), rootPane.getHeight()));
+            rootPane.heightProperty().addListener((obs, ov, nv) -> hudOverlayPane.resize(rootPane.getWidth(), nv.doubleValue()));
+        }
+        if (!rootPane.getChildren().contains(hudOverlayPane)) {
+            rootPane.getChildren().add(hudOverlayPane);
+        }
+        hudOverlayPane.toFront();
+        if (dayFadeRect != null && rootPane.getChildren().contains(dayFadeRect)) {
+            dayFadeRect.toFront();
+        }
+        return hudOverlayPane;
+    }
+
     /** Khởi tạo khung HUD gỗ/pixel 2 thanh ĐÓI & NƯỚC có tiêu đề rõ ràng + icon vẽ nét (không dùng emoji lỗi font). */
     private void setupSurvivalHud() {
-        if (rootPane == null) return;
+        javafx.scene.layout.Pane hud = ensureHudOverlayPane();
+        if (hud == null) return;
         if (survivalHudBox != null) {
-            if (!rootPane.getChildren().contains(survivalHudBox)) {
-                rootPane.getChildren().add(survivalHudBox);
+            if (!hud.getChildren().contains(survivalHudBox)) {
+                hud.getChildren().add(survivalHudBox);
             }
             survivalHudBox.toFront();
             return;
@@ -4777,10 +4806,11 @@ public class InGameController {
 
         survivalHudBox = new javafx.scene.layout.VBox(4, survivalHeaderTitle, divider, hungerRow, hungerTrack, thirstRow, thirstTrack);
         survivalHudBox.setPadding(new javafx.geometry.Insets(7, 11, 9, 11));
+        survivalHudBox.setMinWidth(226.0);
         survivalHudBox.setPrefWidth(226.0);
+        survivalHudBox.setMaxWidth(226.0);
         survivalHudBox.setMouseTransparent(true);
-        survivalHudBox.setManaged(false);
-        survivalHudBox.setLayoutX(16.0);
+        survivalHudBox.setLayoutX(14.0);
         survivalHudBox.setLayoutY(12.0);
         survivalHudBox.setStyle(
             "-fx-background-color: linear-gradient(to bottom, rgba(114, 68, 34, 0.93), rgba(74, 42, 20, 0.95));" +
@@ -4790,7 +4820,7 @@ public class InGameController {
             "-fx-border-radius: 10px;" +
             "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.48), 8, 0.2, 0, 2);"
         );
-        rootPane.getChildren().add(survivalHudBox);
+        hud.getChildren().add(survivalHudBox);
         survivalHudBox.toFront();
     }
 
@@ -4998,10 +5028,11 @@ public class InGameController {
             if (foodBuffHudPill != null) foodBuffHudPill.setVisible(false);
             return;
         }
+        javafx.scene.layout.Pane hud = ensureHudOverlayPane();
+        if (hud == null) return;
         if (foodBuffHudPill == null) {
             foodBuffHudPill = new Label();
             foodBuffHudPill.setMouseTransparent(true);
-            foodBuffHudPill.setManaged(false);
             foodBuffHudPill.setStyle(
                 "-fx-font-family: 'Consolas', 'Courier New', monospace;" +
                 "-fx-font-size: 11.5px;" +
@@ -5014,11 +5045,11 @@ public class InGameController {
                 "-fx-background-radius: 9px;" +
                 "-fx-border-radius: 9px;"
             );
-            rootPane.getChildren().add(foodBuffHudPill);
+            hud.getChildren().add(foodBuffHudPill);
         }
         foodBuffHudPill.setText("BUFF: " + summary);
-        foodBuffHudPill.setLayoutX(16.0);
-        foodBuffHudPill.setLayoutY(130.0);
+        foodBuffHudPill.setLayoutX(14.0);
+        foodBuffHudPill.setLayoutY(128.0);
         foodBuffHudPill.setVisible(true);
         foodBuffHudPill.toFront();
     }
@@ -5034,15 +5065,17 @@ public class InGameController {
      */
     private void showFishCatchCard(model.game_item.FishSpecies species, double sizeCm,
                                    boolean isCrown, boolean isNewRecord, int rewardMoney) {
-        if (rootPane == null) return;
+        javafx.scene.layout.Pane hud = ensureHudOverlayPane();
+        if (hud == null) return;
         if (fishCatchCard == null) {
             fishCatchCard = new javafx.scene.layout.VBox(4);
             fishCatchCard.setAlignment(Pos.CENTER);
             fishCatchCard.setMouseTransparent(true);
-            fishCatchCard.setManaged(false);
+            fishCatchCard.setMinWidth(420);
             fishCatchCard.setPrefWidth(420);
+            fishCatchCard.setMaxWidth(420);
             fishCatchCard.setPadding(new javafx.geometry.Insets(10, 18, 10, 18));
-            rootPane.getChildren().add(fishCatchCard);
+            hud.getChildren().add(fishCatchCard);
         }
 
         // Màu sắc chuẩn theo độ hiếm: Trắng (Thường) / Xanh dương (Hiếm) / Tím (Cực hiếm) / Vàng kim (Siêu hiếm)
@@ -5124,7 +5157,7 @@ public class InGameController {
     }
 
     private int getCurrentGameHour() {
-        double progress = Math.min(1.0, Math.max(0.0, elapsedTimeInDay / 135000.0));
+        double progress = Math.min(1.0, Math.max(0.0, (double) elapsedTimeInDay / DAY_DURATION_MS));
         int totalMins = (int) (progress * 16 * 60);
         return (6 + totalMins / 60) % 24;
     }
@@ -5133,7 +5166,8 @@ public class InGameController {
     private void updateBoatHintBanner(boolean show) {
         if (show == boatHintVisible) return;
         boatHintVisible = show;
-        if (rootPane == null) return;
+        javafx.scene.layout.Pane hud = ensureHudOverlayPane();
+        if (hud == null) return;
         if (boatHintBanner == null) {
             boatHintBanner = new Label("[E] Lên/Xuống thuyền  |  [A/D] Chèo  |  [Space] Câu cá  |  [G] Xem Sổ Cá");
             boatHintBanner.setStyle(
@@ -5149,10 +5183,11 @@ public class InGameController {
                 "-fx-border-radius: 8px;"
             );
             boatHintBanner.setMouseTransparent(true);
-            boatHintBanner.setManaged(false);
+            boatHintBanner.setMinWidth(560);
             boatHintBanner.setPrefWidth(560);
+            boatHintBanner.setMaxWidth(560);
             boatHintBanner.setAlignment(Pos.CENTER);
-            rootPane.getChildren().add(boatHintBanner);
+            hud.getChildren().add(boatHintBanner);
         }
         boatHintBanner.setVisible(show);
         if (show) {
@@ -5334,6 +5369,7 @@ public class InGameController {
         if (soilStatusPanel != null && (inFarm != lastSoilPanelVisible || soilStatusPanel.isVisible() != inFarm)) {
             lastSoilPanelVisible = inFarm;
             soilStatusPanel.setVisible(inFarm);
+            soilStatusPanel.setManaged(inFarm);
         }
         if (inFarm) {
             Cell inspectCell = isCellInFarmZone(facingCell) ? facingCell : null;
@@ -5357,6 +5393,7 @@ public class InGameController {
         if (!isPlayerInFarmZone() || !isCellInFarmZone(cell)) {
             if (soilStatusPanel != null && !isPlayerInFarmZone()) {
                 soilStatusPanel.setVisible(false);
+                soilStatusPanel.setManaged(false);
                 lastSoilPanelVisible = false;
             }
             return;
@@ -5364,6 +5401,7 @@ public class InGameController {
         hovered = cell;
         if (soilStatusPanel != null && !soilStatusPanel.isVisible()) {
             soilStatusPanel.setVisible(true);
+            soilStatusPanel.setManaged(true);
             lastSoilPanelVisible = true;
         }
         cellLabel.setText("CELL : " + cell.getY() + "," + cell.getX());
@@ -5892,7 +5930,7 @@ void style() {
 
     private void updateFeedingSchedule() {
         if (troughs.isEmpty()) return;
-        double p = elapsedTimeInDay / 135000.0;
+        double p = (double) elapsedTimeInDay / DAY_DURATION_MS;
         long now = System.currentTimeMillis();
 
         for (int i = 0; i < MEAL_TIMES.length; i++) {
@@ -5940,7 +5978,8 @@ void style() {
 
     private void showToast(String msg) {
         notify(msg);
-        if (rootPane == null) return;
+        javafx.scene.layout.Pane hud = ensureHudOverlayPane();
+        if (hud == null) return;
         if (toastLabel == null) {
             toastLabel = new Label();
             toastLabel.getStyleClass().add("npc-name");
@@ -5949,10 +5988,11 @@ void style() {
             toastLabel.setAlignment(Pos.CENTER);
             toastLabel.setStyle("-fx-font-size: 16px;");
             toastLabel.setMouseTransparent(true);
-            toastLabel.setManaged(false);
+            toastLabel.setMinWidth(620);
             toastLabel.setPrefWidth(620);
+            toastLabel.setMaxWidth(620);
             toastLabel.setLayoutY(80);
-            rootPane.getChildren().add(toastLabel);
+            hud.getChildren().add(toastLabel);
         }
         toastLabel.setText(msg);
         toastLabel.setLayoutX(Math.max(0, (rootPane.getWidth() - 620) / 2));

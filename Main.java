@@ -92,7 +92,31 @@ public class Main extends Application implements GameLauncher {
         pauseController = pauseLoader.getController();
         pauseController.init(router, this);
 
-        Scene scene = new Scene(router.getRoot(), 1280, 720);
+        javafx.geometry.Rectangle2D visual = javafx.stage.Screen.getPrimary().getVisualBounds();
+        double maxWinW = Math.max(800.0, visual.getWidth() - 28.0);
+        double maxWinH = Math.max(500.0, visual.getHeight() - 48.0);
+        double initScale = Math.min(1.0, Math.min(maxWinW / 1280.0, maxWinH / 720.0));
+        double initW = Math.round(1280.0 * initScale);
+        double initH = Math.round(720.0 * initScale);
+
+        javafx.scene.layout.StackPane routerRoot = router.getRoot();
+        javafx.scene.layout.Pane viewportHost = new javafx.scene.layout.Pane(routerRoot) {
+            @Override
+            protected void layoutChildren() {
+                double sw = getWidth();
+                double sh = getHeight();
+                if (sw <= 0 || sh <= 0) return;
+                double s = Math.min(1.0, Math.min(sw / 1280.0, sh / 720.0));
+                double lw = sw / s;
+                double lh = sh / s;
+                routerRoot.setScaleX(s);
+                routerRoot.setScaleY(s);
+                routerRoot.resizeRelocate((sw - lw) * 0.5, (sh - lh) * 0.5, lw, lh);
+            }
+        };
+        viewportHost.setStyle("-fx-background-color: #120D08;");
+
+        Scene scene = new Scene(viewportHost, initW, initH);
         URL css = getClass().getResource(Screens.STYLESHEET);
         if (css != null) {
             scene.getStylesheets().add(css.toExternalForm());
@@ -100,8 +124,11 @@ public class Main extends Application implements GameLauncher {
 
         stage.setScene(scene);
         stage.setTitle("Smart Farm");
-        stage.setResizable(false);
+        stage.setMinWidth(Math.min(800.0, initW));
+        stage.setMinHeight(Math.min(480.0, initH));
+        stage.setResizable(true);
         stage.show();
+        stage.centerOnScreen();
 
         stage.setOnCloseRequest(e -> saveGame());
 

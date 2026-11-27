@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <tileset version="1.10" tiledversion="1.12.2" name="objects" tilewidth="40" tileheight="40" tilecount="92" columns="0">
  <tile id="0"><properties><property name="object_type" value="barn" /></properties><image source="objects/barn.png" width="231" height="219" /></tile>
- <tile id="1"><properties><property name="object_type" value="bridge" /></properties><image source="objects/bridge.png" width="200" height="190" /></tile>
+ <tile id="1"><properties><property name="object_type" value="bridge" /></properties><image source="objects/bridge.png" width="240" height="371" /></tile>
  <tile id="2"><properties><property name="object_type" value="bush1" /></properties><image source="objects/bush1.png" width="65" height="49" /></tile>
  <tile id="3"><properties><property name="object_type" value="bush2" /></properties><image source="objects/bush2.png" width="75" height="56" /></tile>
  <tile id="4"><properties><property name="object_type" value="bush3" /></properties><image source="objects/bush3.png" width="75" height="47" /></tile>
