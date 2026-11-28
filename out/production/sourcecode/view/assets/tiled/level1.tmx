@@ -2302,7 +2302,8 @@
   <object id="239" name="rock_cracked" gid="97" x="868" y="1250" width="68" height="58" />
   <object id="240" name="pebble1" gid="99" x="842" y="1258" width="22" height="16" />
   <object id="241" name="flower_patch" gid="104" x="852" y="1125" width="64" height="48" />
-  <object id="242" name="bridge" gid="26" x="637" y="1508" width="248" height="276">
+  <object id="243" name="river_north_abutment" gid="133" x="600" y="1314" width="320" height="80" />
+  <object id="242" name="bridge" gid="26" x="650" y="1522" width="220" height="346">
    <properties>
     <property name="category" value="building" />
    </properties>

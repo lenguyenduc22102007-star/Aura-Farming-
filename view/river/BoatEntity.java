@@ -128,7 +128,7 @@ public class BoatEntity {
         this.boatSortY = boatY + 108.0;
 
         // Vùng sàn gỗ cầu tàu cho phép đi bộ qua mặt nước ven bờ (mở rộng nhẹ lên bờ cỏ 16px để bước mượt)
-        this.walkableDockBounds = new Rectangle2D(dockX + 4, dockY - 16, DOCK_WIDTH - 8, DOCK_HEIGHT + 12);
+        this.walkableDockBounds = new Rectangle2D(dockX + 4, dockY - 16, DOCK_WIDTH - 8, DOCK_HEIGHT + 22);
 
         // Vùng tương tác ở nửa cuối cầu tàu (sát mạn thuyền)
         this.boardingZoneBounds = new Rectangle2D(dockX - 8, dockY + 26, DOCK_WIDTH + 16, DOCK_HEIGHT - 12);
@@ -461,10 +461,13 @@ public class BoatEntity {
     }
 
     /**
-     * Kiểm tra ô bàn chân nhân vật có nằm trên sàn cầu tàu gỗ hay không (cho phép đi qua tile nước ven bờ).
+     * Kiểm tra ô bàn chân nhân vật có nằm trọn trên sàn cầu tàu gỗ hay không (cho phép đi qua tile nước ven bờ).
      */
     public boolean isOnWalkableDock(Rectangle2D playerFootBox) {
-        return walkableDockBounds.intersects(playerFootBox);
+        return playerFootBox.getMinX() >= walkableDockBounds.getMinX()
+                && playerFootBox.getMaxX() <= walkableDockBounds.getMaxX()
+                && playerFootBox.getMaxY() >= walkableDockBounds.getMinY()
+                && playerFootBox.getMaxY() <= walkableDockBounds.getMaxY();
     }
 
     /**
@@ -541,8 +544,8 @@ public class BoatEntity {
         if (Math.abs(boatCenterX - dockCenterX) < 130.0) {
             return dockY - 12.0;
         }
-        // Bờ cỏ bắc nằm ngay phía trên mặt nước (boatY + 16 = riverTopY; chân nhân vật tại y + 54 -> riverTopY - 12)
-        return boatY - 50.0;
+        // Bờ cỏ bắc nằm ngay phía trên viền cỏ + mô đất nâu (boatY + 16 = riverTopY; đáy dép tại y + 68 -> riverTopY - 8 <= riverTopY - 3.2)
+        return boatY - 60.0;
     }
 
     public double getBobOffsetY() {

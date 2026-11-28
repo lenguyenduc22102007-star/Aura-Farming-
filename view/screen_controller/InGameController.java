@@ -149,7 +149,8 @@ public class InGameController {
     private final java.util.List<TreeObject> choppableTrees = new java.util.ArrayList<>();
     private boolean pendingAxeChopFelled = false;
     private final java.util.List<double[]> factoryDoorPoints = new java.util.ArrayList<>();
-    private final java.util.List<double[]> orchardUnlockPoints = new java.util.ArrayList<>();
+    private javafx.geometry.Rectangle2D orchardGateBounds = null;
+    private javafx.geometry.Rectangle2D orchardInteractBox = null;
     private boolean orchardUnlocked = false;
     private Label orchardWorldSignLabel = null;
     private Label festivalTopBannerLabel = null;
@@ -243,6 +244,20 @@ public class InGameController {
     private javafx.scene.transform.Scale luffyBridgeScale = null;
     private javafx.scene.transform.Scale luffyToolBridgeScale = null;
     private ImageView bridgeCanopyView = null;
+    private double northAbutmentX = -1.0, northAbutmentY = -1.0, northAbutmentW = 0.0, northAbutmentH = 0.0;
+    private final java.util.List<BridgePillarOverlay> bridgePillarOverlays = new java.util.ArrayList<>();
+
+    private static final class BridgePillarOverlay {
+        final ImageView view;
+        final double baseY;
+        boolean lastPlayerBehind;
+
+        BridgePillarOverlay(ImageView view, double baseY) {
+            this.view = view;
+            this.baseY = baseY;
+            this.lastPlayerBehind = false;
+        }
+    }
     private final javafx.scene.effect.ColorAdjust underBridgePlayerShade = new javafx.scene.effect.ColorAdjust();
     private double lastPlayerBridgeShade = 0.0;
     private long lastFishLaborMs = 0L;
@@ -2008,16 +2023,13 @@ public class InGameController {
             if (nextX > mapW - 42) nextX = mapW - 42;
             if (nextY > mapH - 68) nextY = mapH - 68;
 
-            // Kiểm tra địa hình nước theo đúng vị trí bàn chân nhân vật (y + 54)
-            int colX = (int) ((nextX + 22) / Constant.CELL_SIZE);
-            int rowX = (int) ((playerY + 54) / Constant.CELL_SIZE);
-            boolean waterX = farmMap.getCell(rowX, colX) != null && farmMap.getCell(rowX, colX).getTerrain() == TerrainType.WATER;
+            // Foot Hitbox thực tại đế dép dưới cùng của sprite Luffy (x + 12..32, y + 58..68; đáy dép đúng bằng y + 68)
+            javafx.geometry.Rectangle2D oldFootBox = new javafx.geometry.Rectangle2D(playerX + 12.0, playerY + 58.0, 20.0, 10.0);
+            javafx.geometry.Rectangle2D footBoxX   = new javafx.geometry.Rectangle2D(nextX + 12.0,   playerY + 58.0, 20.0, 10.0);
+            javafx.geometry.Rectangle2D footBoxY   = new javafx.geometry.Rectangle2D(playerX + 12.0, nextY + 58.0,   20.0, 10.0);
+            javafx.geometry.Rectangle2D footBoxXY  = new javafx.geometry.Rectangle2D(nextX + 12.0,   nextY + 58.0,   20.0, 10.0);
 
-            int colY = (int) ((playerX + 22) / Constant.CELL_SIZE);
-            int rowY = (int) ((nextY + 54) / Constant.CELL_SIZE);
-            boolean waterY = farmMap.getCell(rowY, colY) != null && farmMap.getCell(rowY, colY).getTerrain() == TerrainType.WATER;
-
-            // TMX Object Collision — vùng chân gọn (16x16 tại bàn chân) để lọt được các khe hẹp tự nhiên nhưng vẫn chặn chắc vật cản
+            // TMX Object Collision — vùng thân dưới (16x16) cho cây cối/công trình chung
             javafx.geometry.Rectangle2D oldBox = new javafx.geometry.Rectangle2D(playerX + 14, playerY + 46, 16, 16);
             javafx.geometry.Rectangle2D playerBoxX = new javafx.geometry.Rectangle2D(nextX + 14, playerY + 46, 16, 16);
             javafx.geometry.Rectangle2D playerBoxY = new javafx.geometry.Rectangle2D(playerX + 14, nextY + 46, 16, 16);
@@ -2027,10 +2039,10 @@ public class InGameController {
             boolean colX_obj = false;
             boolean colY_obj = false;
             boolean colXY_obj = false;
-            boolean onBridgeX = false;
-            boolean onBridgeY = false;
-            boolean onDockX = (boatEntity != null && boatEntity.isOnWalkableDock(playerBoxX));
-            boolean onDockY = (boatEntity != null && boatEntity.isOnWalkableDock(playerBoxY));
+            boolean onDockX  = (boatEntity != null && boatEntity.isOnWalkableDock(footBoxX));
+            boolean onDockY  = (boatEntity != null && boatEntity.isOnWalkableDock(footBoxY));
+            boolean onDockXY = (boatEntity != null && boatEntity.isOnWalkableDock(footBoxXY));
+            javafx.geometry.Rectangle2D bridgeWalkableDeck = null;
 
             if (boatEntity != null) {
                 if (boatEntity.collidesWithHull(playerBoxX) && !boatEntity.collidesWithHull(oldBox)) colX_obj = true;
@@ -2072,35 +2084,40 @@ public class InGameController {
             if (objId != null) {
                 String idLower = objId.toLowerCase();
                 if (idLower.contains("bridge")) {
-                    // Chi tiết hóa Collision THÀNH CẦU khớp chuẩn cầu gỗ vòm bridge.png (200x190, phần cầu gỗ x=16%..84%):
-                    double leftRailX  = ox + ow * 0.155;
-                    double leftRailW  = ow * 0.085;
-                    double rightRailX = ox + ow * 0.760;
-                    double rightRailW = ow * 0.085;
+                    // Chi tiết hóa Collision CHÂN CỘT CẦU & LAN CAN khớp chuẩn bridge.png (240x408):
+                    // Chỉ đặt solid collider ở phần CHÂN CỘT (bệ đá / gốc gỗ dưới cùng) và thành lan can,
+                    // để trống phần thân trên & đỉnh cột cho phép nhân vật đi vòng ra phía sau tự nhiên.
+                    double leftRailX  = ox + ow * 0.172;
+                    double leftRailW  = ow * 0.078;
+                    double rightRailX = ox + ow * 0.750;
+                    double rightRailW = ow * 0.078;
 
                     javafx.geometry.Rectangle2D[] bridgeBlockers = new javafx.geometry.Rectangle2D[] {
-                        // 1. Hai lan can gỗ vòm chạy dọc toàn thân cầu trái & phải
-                        new javafx.geometry.Rectangle2D(leftRailX,  oy + oh * 0.02, leftRailW,  oh * 0.96),
-                        new javafx.geometry.Rectangle2D(rightRailX, oy + oh * 0.02, rightRailW, oh * 0.96),
-                        // 2. Bốn trụ gỗ đầu cầu bắc & đầu cầu nam
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.150, oy,             ow * 0.100, oh * 0.15),
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.150, oy + oh * 0.80, ow * 0.100, oh * 0.20),
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.750, oy,             ow * 0.100, oh * 0.15),
-                        new javafx.geometry.Rectangle2D(ox + ow * 0.750, oy + oh * 0.80, ow * 0.100, oh * 0.20)
+                        // 1. Hai thành lan can gỗ cong chạy dọc hai bên mặt cầu
+                        new javafx.geometry.Rectangle2D(leftRailX,  oy + oh * 0.165, leftRailW,  oh * 0.755),
+                        new javafx.geometry.Rectangle2D(rightRailX, oy + oh * 0.165, rightRailW, oh * 0.755),
+                        // 2. Chân bệ đá của 2 cột lớn đầu cầu Bắc (y = 22.5%..29.9%, đỉnh cột phía trên không chặn)
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.112, oy + oh * 0.225, ow * 0.130, oh * 0.074),
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.748, oy + oh * 0.225, ow * 0.130, oh * 0.074),
+                        // 3. Chân 2 cột giữa thân cầu (y = 63.5%..70.6%)
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.132, oy + oh * 0.635, ow * 0.112, oh * 0.071),
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.756, oy + oh * 0.635, ow * 0.112, oh * 0.071),
+                        // 4. Chân gốc gỗ dưới cùng của cụm 4 cột đầu cầu Nam (y = 91.2%..97.5%, đỉnh cột phía trên không chặn)
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.018, oy + oh * 0.912, ow * 0.224, oh * 0.063),
+                        new javafx.geometry.Rectangle2D(ox + ow * 0.758, oy + oh * 0.912, ow * 0.224, oh * 0.063)
                     };
 
-                    // Sàn ván gỗ đi được (lọt lòng giữa 2 thành cầu, mở rộng 28px hai đầu bắc/nam để bước lên mượt)
-                    double deckLeft = ox + ow * 0.240;
-                    double deckWidth = ow * 0.520;
-                    javafx.geometry.Rectangle2D walkableDeck = new javafx.geometry.Rectangle2D(deckLeft, oy - 28, deckWidth, oh + 56);
-
-                    if (playerBoxX.intersects(walkableDeck)) onBridgeX = true;
-                    if (playerBoxY.intersects(walkableDeck)) onBridgeY = true;
+                    // Sàn ván gỗ đi được (lọt lòng giữa 2 thành cầu)
+                    double deckLeft = ox + ow * 0.250;
+                    double deckWidth = ow * 0.500;
+                    bridgeWalkableDeck = new javafx.geometry.Rectangle2D(
+                        deckLeft, oy + oh * 0.140, deckWidth, oh * 0.855
+                    );
 
                     for (javafx.geometry.Rectangle2D blocker : bridgeBlockers) {
-                        if (isBlockedByObstacle(oldBox, playerBoxX, blocker)) colX_obj = true;
-                        if (isBlockedByObstacle(oldBox, playerBoxY, blocker)) colY_obj = true;
-                        if (movingDiag && isBlockedByObstacle(oldBox, playerBoxXY, blocker)) colXY_obj = true;
+                        if (isBlockedByObstacle(oldFootBox, footBoxX, blocker)) colX_obj = true;
+                        if (isBlockedByObstacle(oldFootBox, footBoxY, blocker)) colY_obj = true;
+                        if (movingDiag && isBlockedByObstacle(oldFootBox, footBoxXY, blocker)) colXY_obj = true;
                     }
                     continue;
                 }
@@ -2160,7 +2177,7 @@ public class InGameController {
                     continue;
                 }
                 // Chỉ bỏ qua va chạm với các decal phẳng sát mặt đất và ghế tắm nắng (KHÔNG bỏ qua tree_bush, bush, flag, wood_sticks, clay_pot, dirt_mound, pool_umbrella)
-                if (idLower.isEmpty() || idLower.equals("farm_bed_frame") || idLower.startsWith("ground_") ||
+                if (idLower.isEmpty() || idLower.equals("river_north_abutment") || idLower.equals("farm_bed_frame") || idLower.startsWith("ground_") ||
                     idLower.startsWith("wildflowers") || idLower.contains("crop") ||
                     idLower.contains("pumpkin") || idLower.startsWith("dirt_spot") || idLower.contains("path") ||
                     idLower.contains("terrain") || idLower.contains("wheat") || idLower.contains("construction") ||
@@ -2315,8 +2332,15 @@ public class InGameController {
             if (movingDiag && isBlockedByObstacle(oldBox, playerBoxXY, objBox)) colXY_obj = true;
         }
         
-            if (waterX && !onBridgeX && !onDockX) nextX = playerX;
-            if (waterY && !onBridgeY && !onDockY) nextY = playerY;
+            boolean waterX = !onDockX
+                    && isFootBoxBlockedByRiverOrCliff(footBoxX, bridgeWalkableDeck)
+                    && !isFootBoxBlockedByRiverOrCliff(oldFootBox, bridgeWalkableDeck);
+            boolean waterY = !onDockY
+                    && isFootBoxBlockedByRiverOrCliff(footBoxY, bridgeWalkableDeck)
+                    && !isFootBoxBlockedByRiverOrCliff(oldFootBox, bridgeWalkableDeck);
+
+            if (waterX) nextX = playerX;
+            if (waterY) nextY = playerY;
             
             if (colX_obj) nextX = playerX;
             if (colY_obj) nextY = playerY;
@@ -2325,14 +2349,12 @@ public class InGameController {
                 if (Math.abs(dx) >= Math.abs(dy)) nextY = playerY;
                 else nextX = playerX;
             }
-            // Chặn đi chéo lọt vào góc ô nước
-            if (nextX != playerX && nextY != playerY && !onBridgeX && !onBridgeY && !onDockX && !onDockY) {
-                int colXY = (int) ((nextX + 22) / Constant.CELL_SIZE);
-                int rowXY = (int) ((nextY + 54) / Constant.CELL_SIZE);
-                boolean waterXY = farmMap.getCell(rowXY, colXY) != null && farmMap.getCell(rowXY, colXY).getTerrain() == TerrainType.WATER;
-                if (waterXY) {
-                    nextX = playerX;
-                    nextY = playerY;
+            // Chặn đi chéo lọt vào vách đất bờ sông hoặc mặt nước
+            if (nextX != playerX && nextY != playerY && !onDockXY) {
+                if (isFootBoxBlockedByRiverOrCliff(footBoxXY, bridgeWalkableDeck)
+                        && !isFootBoxBlockedByRiverOrCliff(oldFootBox, bridgeWalkableDeck)) {
+                    if (Math.abs(dx) >= Math.abs(dy)) nextY = playerY;
+                    else nextX = playerX;
                 }
             }
 
@@ -3138,7 +3160,9 @@ public class InGameController {
                         
                         // Sort by Y for depth
                         String lowerName = objName.toLowerCase();
-                        if (lowerName.contains("bridge")) {
+                        if (lowerName.equals("river_north_abutment")) {
+                            objView.setUserData(-1008.0); // Mố bờ đất & cỏ phía Bắc nằm trên dòng sông (-1020) và ngay dưới chân cầu (-1000)
+                        } else if (lowerName.contains("bridge")) {
                             objView.setUserData(-1000.0); // Always draw bridge behind everything else (like ground)
                         } else if (lowerName.contains("grass_patch")) {
                             objView.setUserData(-700.0); // Tufted dark-olive grass patches sit right on top of ground under everything
@@ -3225,6 +3249,24 @@ public class InGameController {
         bridgeArchHeightRatio = 0.0;
         bridgeArchSlope = 0.0;
         bridgeCanopyView = null;
+        northAbutmentX = -1.0;
+        northAbutmentY = -1.0;
+        northAbutmentW = 0.0;
+        northAbutmentH = 0.0;
+        if (entityPane != null && !bridgePillarOverlays.isEmpty()) {
+            for (BridgePillarOverlay po : bridgePillarOverlays) {
+                entityPane.getChildren().remove(po.view);
+            }
+        }
+        bridgePillarOverlays.clear();
+        for (ImageView objView : sceneryObjects) {
+            if (objView.getId() != null && objView.getId().equalsIgnoreCase("river_north_abutment")) {
+                northAbutmentX = objView.getLayoutX();
+                northAbutmentY = objView.getLayoutY();
+                northAbutmentW = objView.getFitWidth();
+                northAbutmentH = objView.getFitHeight();
+            }
+        }
         for (ImageView objView : sceneryObjects) {
             if (objView.getId() != null && objView.getId().toLowerCase().contains("bridge")) {
                 bridgeLeftX = objView.getLayoutX();
@@ -3240,7 +3282,9 @@ public class InGameController {
         // Gắn đầy đủ 4 module khu vực con sông đúng vị trí mặt nước (hàng WATER thực tế)
         isOnBoat = false;
         lastRiverUpdateMs = System.currentTimeMillis();
-        riverFlow = new view.river.RiverFlow(worldMapW, riverTopY, riverBotY);
+        double abutMinX = (northAbutmentW > 0.0) ? northAbutmentX : 960.0;
+        double abutMaxX = (northAbutmentW > 0.0) ? (northAbutmentX + northAbutmentW) : 1472.0;
+        riverFlow = new view.river.RiverFlow(worldMapW, riverTopY, riverBotY, abutMinX, abutMaxX);
         riverFlow.attachTo(entityPane);
 
         fishShadows = new view.river.FishShadows(worldMapW, riverTopY, riverBotY, boatWorldX);
@@ -3897,7 +3941,12 @@ public class InGameController {
     private void setupHouseAndCampfireInteractions() {
         houseDoorPoints.clear();
         factoryDoorPoints.clear();
-        orchardUnlockPoints.clear();
+        orchardGateBounds = null;
+        orchardInteractBox = null;
+        if (orchardWorldSignLabel != null && entityPane != null) {
+            entityPane.getChildren().remove(orchardWorldSignLabel);
+            orchardWorldSignLabel = null;
+        }
         campfirePoints.clear();
         campfireGlows.clear();
         streetlampLights.clear();
@@ -3916,6 +3965,10 @@ public class InGameController {
         double topLoungerX = 672.0;
         double topLoungerY = 2476.0;
         boolean foundFirstLounger = false;
+        double orchardFenceMinX = Double.POSITIVE_INFINITY;
+        double orchardFenceMinY = Double.POSITIVE_INFINITY;
+        double orchardFenceMaxX = Double.NEGATIVE_INFINITY;
+        double orchardFenceMaxY = Double.NEGATIVE_INFINITY;
 
         for (ImageView objView : sceneryObjects) {
             String id = objView.getId();
@@ -3951,23 +4004,6 @@ public class InGameController {
                     facSign.setUserData(oy + oh + 6.0);
                     entityPane.getChildren().add(facSign);
                 }
-            } else if (idLow.equals("orchard_sign")) {
-                orchardUnlockPoints.add(new double[] { ox + ow * 0.50, oy + oh + 6.0 });
-                if (entityPane != null) {
-                    orchardWorldSignLabel = new Label("🔒 VƯỜN CÂY ĂN QUẢ — Mở khóa: $3.000");
-                    orchardWorldSignLabel.setMouseTransparent(true);
-                    orchardWorldSignLabel.setManaged(false);
-                    orchardWorldSignLabel.setStyle(
-                        "-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;" +
-                        "-fx-text-fill: #FEF08A; -fx-background-color: rgba(58, 28, 12, 0.90);" +
-                        "-fx-border-color: #F59E0B; -fx-border-width: 1.6px;" +
-                        "-fx-padding: 3 9 3 9; -fx-background-radius: 6px; -fx-border-radius: 6px;"
-                    );
-                    orchardWorldSignLabel.setLayoutX(ox - 118.0);
-                    orchardWorldSignLabel.setLayoutY(oy - 26.0);
-                    orchardWorldSignLabel.setUserData(oy + oh + 12.0);
-                    entityPane.getChildren().add(orchardWorldSignLabel);
-                }
             } else if (idLow.equals("mine_sign") && entityPane != null) {
                 Label mineLbl = new Label("⛏ KHU MỎ ĐÁ & ĐÚC VÒI TƯỚI");
                 mineLbl.setMouseTransparent(true);
@@ -3996,6 +4032,12 @@ public class InGameController {
             } else if (idLow.contains("fence") || idLow.startsWith("farm_decor_")) {
                 if (idLow.equals("fence_h") && Assets.FENCE_WOOD != null) {
                     objView.setImage(Assets.FENCE_WOOD);
+                }
+                if (idLow.startsWith("orchard_fence")) {
+                    orchardFenceMinX = Math.min(orchardFenceMinX, ox);
+                    orchardFenceMinY = Math.min(orchardFenceMinY, oy);
+                    orchardFenceMaxX = Math.max(orchardFenceMaxX, ox + ow);
+                    orchardFenceMaxY = Math.max(orchardFenceMaxY, oy + oh);
                 }
                 objView.setSmooth(false);
             } else if (idLow.equals("farm_gate_side") && entityPane != null) {
@@ -4066,12 +4108,16 @@ public class InGameController {
 
                 entityPane.getChildren().addAll(halo, core);
                 streetlampLights.add(new javafx.scene.Node[] { core, halo });
-            } else if ((idLow.equals("farm_gate") || idLow.equals("rustic_farm_gate")) && entityPane != null) {
+            } else if ((idLow.equals("farm_gate") || idLow.equals("rustic_farm_gate") || idLow.equals("orchard_gate")) && entityPane != null) {
                 if (Assets.FARM_GATE != null) {
                     objView.setImage(Assets.FARM_GATE);
                 }
                 objView.setSmooth(false);
                 objView.setUserData(oy + oh - 16.0);
+                // Cổng Vườn Cây Ăn Quả nằm ở khu vực phía dưới bể bơi (oy > worldRiverBotY): lưu toàn bộ khung cổng để tính AABB tương tác
+                if (oy > worldRiverBotY) {
+                    orchardGateBounds = new javafx.geometry.Rectangle2D(ox, oy, ow, oh);
+                }
                 // Vùng đi qua tự nhiên ngay dưới vòm Cổng Chào Nông Trại (không ghi đè cổng chính khu vườn đầu tiên)
                 if (farmGatePortalBox == null) {
                     farmGatePortalBox = new double[] { ox + 28.0, oy + oh - 34.0, ox + ow - 28.0, oy + oh + 10.0 };
@@ -4344,6 +4390,47 @@ public class InGameController {
         }
         if (mainHouseDoor != null) {
             houseDoorPoints.add(0, mainHouseDoor);
+        }
+
+        // Thiết lập vùng tương tác AABB bao trùm toàn bộ chiều rộng & chiều cao Cổng Vườn Cây Ăn Quả (+ đệm 48px trước/sau/trái/phải)
+        if (orchardGateBounds == null && orchardFenceMaxX > orchardFenceMinX) {
+            orchardGateBounds = new javafx.geometry.Rectangle2D(
+                orchardFenceMinX,
+                orchardFenceMinY,
+                orchardFenceMaxX - orchardFenceMinX,
+                orchardFenceMaxY - orchardFenceMinY
+            );
+        }
+        if (orchardGateBounds != null) {
+            final double padX = 48.0;
+            final double padY = 48.0;
+            orchardInteractBox = new javafx.geometry.Rectangle2D(
+                orchardGateBounds.getMinX() - padX,
+                orchardGateBounds.getMinY() - padY,
+                orchardGateBounds.getWidth() + padX * 2.0,
+                orchardGateBounds.getHeight() + padY * 2.0
+            );
+            if (!orchardUnlocked && entityPane != null) {
+                orchardWorldSignLabel = new Label("🔒 VƯỜN CÂY ĂN QUẢ — Mở khóa: $3.000");
+                orchardWorldSignLabel.setMouseTransparent(true);
+                orchardWorldSignLabel.setManaged(false);
+                orchardWorldSignLabel.setStyle(
+                    "-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;" +
+                    "-fx-text-fill: #FEF08A; -fx-background-color: rgba(58, 28, 12, 0.90);" +
+                    "-fx-border-color: #F59E0B; -fx-border-width: 1.6px;" +
+                    "-fx-padding: 3 9 3 9; -fx-background-radius: 6px; -fx-border-radius: 6px;"
+                );
+                entityPane.getChildren().add(orchardWorldSignLabel);
+                orchardWorldSignLabel.applyCss();
+                orchardWorldSignLabel.autosize();
+                double signW = orchardWorldSignLabel.getWidth() > 10
+                        ? orchardWorldSignLabel.getWidth()
+                        : Math.max(248.0, orchardWorldSignLabel.prefWidth(-1));
+                double gateCenterX = orchardGateBounds.getMinX() + orchardGateBounds.getWidth() * 0.5;
+                orchardWorldSignLabel.setLayoutX(gateCenterX - signW * 0.5);
+                orchardWorldSignLabel.setLayoutY(orchardGateBounds.getMinY() - 24.0);
+                orchardWorldSignLabel.setUserData(orchardGateBounds.getMaxY() + 12.0);
+            }
         }
 
         // Khởi tạo NpcManager: Nami & Hancock ở bể bơi + 4 Bot Zoro, Sanji, Chopper, Usopp đi dạo
@@ -4793,17 +4880,17 @@ public class InGameController {
         double oh = bridgeObj.getFitHeight();
         if (ow <= 0 || oh <= 0) return;
 
-        // Tỉ lệ phần gỗ thực của bridge.png cầu vòm mới (đã cắt sạch nền hồng): x = 16.0% .. 84.0%
-        final double leftFrac = 0.160;
-        final double rightFrac = 0.840;
+        // Tỉ lệ phần gỗ thực qua lòng sông của bridge.png (240x408): x = 15.5% .. 84.5%
+        final double leftFrac = 0.155;
+        final double rightFrac = 0.845;
         bridgeWoodLeftX = ox + ow * leftFrac;
         bridgeWoodRightX = ox + ow * rightFrac;
 
-        // Lưu vùng sàn gỗ đi bộ của cầu vòm (đầu ván Bắc y=12.0%, cuối ván Nam y=94.8%) để xử lý độ cong lên/xuống
-        bridgeDeckLeftX = ox + ow * 0.200;
-        bridgeDeckRightX = ox + ow * 0.800;
-        bridgeDeckTopY = oy + oh * 0.120;
-        bridgeDeckBotY = oy + oh * 0.948;
+        // Lưu vùng sàn gỗ đi bộ của cầu vòm (đầu ván Bắc y=16.5%, cuối ván Nam y=92.5%) để xử lý độ cong lên/xuống
+        bridgeDeckLeftX = ox + ow * 0.240;
+        bridgeDeckRightX = ox + ow * 0.760;
+        bridgeDeckTopY = oy + oh * 0.165;
+        bridgeDeckBotY = oy + oh * 0.925;
 
         Image src = bridgeObj.getImage();
         if (src != null && src.getPixelReader() != null) {
@@ -4811,11 +4898,13 @@ public class InGameController {
             int imgH = (int) src.getHeight();
             int sx0 = Math.max(0, (int) Math.round(imgW * leftFrac));
             int sx1 = Math.min(imgW, (int) Math.round(imgW * rightFrac));
+            int sy0 = Math.max(0, (int) Math.floor(((riverTopY - oy) / oh) * imgH));
+            int sy1 = Math.min(imgH, (int) Math.ceil(((riverBotY - oy) / oh) * imgH));
             int cw = Math.max(1, sx1 - sx0);
             javafx.scene.image.WritableImage canopyImg = new javafx.scene.image.WritableImage(cw, imgH);
             javafx.scene.image.PixelReader pr = src.getPixelReader();
             javafx.scene.image.PixelWriter pw = canopyImg.getPixelWriter();
-            for (int y = 0; y < imgH; y++) {
+            for (int y = sy0; y < sy1; y++) {
                 for (int x = 0; x < cw; x++) {
                     Color col = pr.getColor(sx0 + x, y);
                     pw.setColor(x, y, col);
@@ -4832,14 +4921,183 @@ public class InGameController {
             bridgeCanopyView.setVisible(false);
             bridgeCanopyView.setUserData(-999.0);
             entityPane.getChildren().add(bridgeCanopyView);
+
+            // Tách lớp Foreground cho toàn bộ 6 cụm cột cầu (2 cột Bắc, 2 cột giữa, 2 cụm cột đôi Nam) để Y-sort chuẩn với chân nhân vật:
+            // - 2 cột lớn đầu cầu Bắc (cắt gọn phần thân trên + đỉnh cột y=0..67 và bệ đá ngoài tay vịn y=68..123)
+            addBridgeNorthPillarOverlay(src, ox, oy, ow, oh, true);
+            addBridgeNorthPillarOverlay(src, ox, oy, ow, oh, false);
+            // - 2 cột giữa thân cầu (y = 215..288 / 408)
+            addBridgePillarSlice(src, ox, oy, ow, oh, 30.0 / 240.0, 215.0 / 408.0, 58.0 / 240.0, 288.0 / 408.0, 288.0 / 408.0);
+            addBridgePillarSlice(src, ox, oy, ow, oh, 178.0 / 240.0, 215.0 / 408.0, 206.0 / 240.0, 288.0 / 408.0, 288.0 / 408.0);
+            // - Cụm cột đôi trái & phải đầu cầu Nam (y = 315..399 / 408, baseY = 398 / 408)
+            addBridgePillarSlice(src, ox, oy, ow, oh, 0.0 / 240.0, 315.0 / 408.0, 58.0 / 240.0, 399.0 / 408.0, 398.0 / 408.0);
+            addBridgePillarSlice(src, ox, oy, ow, oh, 178.0 / 240.0, 315.0 / 408.0, 240.0 / 240.0, 399.0 / 408.0, 398.0 / 408.0);
         }
+    }
+
+    /** Tách riêng thân trên/đỉnh cột + bệ đá của 2 cột lớn đầu cầu Bắc (không cắt đè lên tay vịn gỗ) để che nhân vật khi đứng sau cột. */
+    private void addBridgeNorthPillarOverlay(Image src, double ox, double oy, double ow, double oh, boolean leftSide) {
+        if (src == null || src.getPixelReader() == null || entityPane == null) return;
+        int imgW = (int) src.getWidth();
+        int imgH = (int) src.getHeight();
+        double x0Frac = leftSide ? (24.0 / 240.0) : (177.0 / 240.0);
+        double x1Frac = leftSide ? (59.0 / 240.0) : (212.0 / 240.0);
+        double y1Frac = 123.0 / 408.0;
+
+        int sx0 = Math.max(0, (int) Math.round(imgW * x0Frac));
+        int sx1 = Math.min(imgW, (int) Math.round(imgW * x1Frac));
+        int sy1 = Math.min(imgH, (int) Math.round(imgH * y1Frac));
+        int cw = Math.max(1, sx1 - sx0);
+        int ch = Math.max(1, sy1);
+
+        javafx.scene.image.WritableImage slice = new javafx.scene.image.WritableImage(cw, ch);
+        javafx.scene.image.PixelReader pr = src.getPixelReader();
+        javafx.scene.image.PixelWriter pw = slice.getPixelWriter();
+        int jointY = (int) Math.round(imgH * (67.0 / 408.0));
+        int innerCutX = leftSide
+                ? (int) Math.round(imgW * (44.0 / 240.0))
+                : (int) Math.round(imgW * (192.0 / 240.0));
+
+        for (int y = 0; y < ch; y++) {
+            for (int x = 0; x < cw; x++) {
+                int srcX = sx0 + x;
+                if (y >= jointY) {
+                    if (leftSide && srcX > innerCutX) continue;
+                    if (!leftSide && srcX < innerCutX) continue;
+                }
+                pw.setColor(x, y, pr.getColor(srcX, y));
+            }
+        }
+
+        ImageView iv = new ImageView(slice);
+        iv.setFitWidth(ow * (x1Frac - x0Frac));
+        iv.setFitHeight(oh * y1Frac);
+        iv.setLayoutX(ox + ow * x0Frac);
+        iv.setLayoutY(oy);
+        iv.setSmooth(false);
+        iv.setManaged(false);
+        iv.setMouseTransparent(true);
+
+        double baseY = oy + oh * (122.0 / 408.0);
+        iv.setUserData(baseY - 20.0);
+        entityPane.getChildren().add(iv);
+        bridgePillarOverlays.add(new BridgePillarOverlay(iv, baseY));
+    }
+
+    /** Tách 1 vùng chữ nhật cột cầu thành lớp foreground Y-sort theo tọa độ chân cột baseY. */
+    private void addBridgePillarSlice(Image src, double ox, double oy, double ow, double oh,
+                                      double x0Frac, double y0Frac, double x1Frac, double y1Frac, double baseYFrac) {
+        if (src == null || src.getPixelReader() == null || entityPane == null) return;
+        int imgW = (int) src.getWidth();
+        int imgH = (int) src.getHeight();
+        int sx0 = Math.max(0, (int) Math.round(imgW * x0Frac));
+        int sx1 = Math.min(imgW, (int) Math.round(imgW * x1Frac));
+        int sy0 = Math.max(0, (int) Math.round(imgH * y0Frac));
+        int sy1 = Math.min(imgH, (int) Math.round(imgH * y1Frac));
+        int cw = Math.max(1, sx1 - sx0);
+        int ch = Math.max(1, sy1 - sy0);
+
+        javafx.scene.image.WritableImage slice = new javafx.scene.image.WritableImage(cw, ch);
+        javafx.scene.image.PixelReader pr = src.getPixelReader();
+        javafx.scene.image.PixelWriter pw = slice.getPixelWriter();
+        for (int y = 0; y < ch; y++) {
+            for (int x = 0; x < cw; x++) {
+                pw.setColor(x, y, pr.getColor(sx0 + x, sy0 + y));
+            }
+        }
+
+        ImageView iv = new ImageView(slice);
+        iv.setFitWidth(ow * (x1Frac - x0Frac));
+        iv.setFitHeight(oh * (y1Frac - y0Frac));
+        iv.setLayoutX(ox + ow * x0Frac);
+        iv.setLayoutY(oy + oh * y0Frac);
+        iv.setSmooth(false);
+        iv.setManaged(false);
+        iv.setMouseTransparent(true);
+
+        double baseY = oy + oh * baseYFrac;
+        iv.setUserData(baseY - 20.0);
+        entityPane.getChildren().add(iv);
+        bridgePillarOverlays.add(new BridgePillarOverlay(iv, baseY));
+    }
+
+    /**
+     * Trả về tọa độ Y thế giới của đường ranh giới giữa MÉP CỎ đi được và MÔ ĐẤT / VÁCH ĐẤT bờ Bắc tại tọa độ X.
+     * Mọi vị trí có đáy chân vượt quá đường này (xuống phần vách đất nâu hoặc mặt nước) đều bị chặn tuyệt đối.
+     */
+    private double getNorthShoreGrassMaxY(double worldX) {
+        // Bờ Bắc xuyên suốt toàn bản đồ có lớp viền cỏ rủ (~3.2px) + vách đất nâu (~13px) đổ xuống mặt nước:
+        // Chặn chân nhân vật ngay tại ranh giới mép cỏ đi được (worldRiverTopY - 3.2), tuyệt đối không bước lên mô đất nâu.
+        double baseGrassMaxY = worldRiverTopY - 3.2;
+        if (northAbutmentW > 0.0 && worldX >= northAbutmentX && worldX <= (northAbutmentX + northAbutmentW)) {
+            double lx = ((worldX - northAbutmentX) / northAbutmentW) * 320.0;
+            double dL = Math.abs(lx - 86.0) / 58.0;
+            double lobeL = (dL < 1.0) ? Math.pow(Math.cos(dL * Math.PI * 0.5), 1.35) : 0.0;
+            double dR = Math.abs(lx - 234.0) / 58.0;
+            double lobeR = (dR < 1.0) ? Math.pow(Math.cos(dR * Math.PI * 0.5), 1.35) : 0.0;
+            double dC = Math.abs(lx - 160.0) / 64.0;
+            double bridgeSpanFill = (dC < 1.0) ? 0.42 * Math.cos(dC * Math.PI * 0.5) : 0.0;
+            double bulge = Math.max(Math.max(lobeL, lobeR), bridgeSpanFill);
+            if (bulge > 0.03) {
+                double localGrassEdgeY = 44.0 + bulge * 21.0;
+                return northAbutmentY + (localGrassEdgeY / 80.0) * northAbutmentH;
+            }
+        }
+        return baseGrassMaxY;
+    }
+
+    /**
+     * Kiểm tra Foot Hitbox (đế dép nhân vật) có đè lên phần mô đất/vách đất bờ sông hoặc mặt nước hay không.
+     * Chỉ cho phép đi qua lòng sông khi TOÀN BỘ bề ngang bàn chân nằm lọt trên mặt ván cầu gỗ.
+     */
+    private boolean isFootBoxBlockedByRiverOrCliff(javafx.geometry.Rectangle2D footBox,
+                                                   javafx.geometry.Rectangle2D bridgeDeck) {
+        boolean fullyOnBridgeDeck = bridgeDeck != null
+                && footBox.getMinX() >= bridgeDeck.getMinX()
+                && footBox.getMaxX() <= bridgeDeck.getMaxX()
+                && footBox.getMinY() >= bridgeDeck.getMinY()
+                && footBox.getMaxY() <= bridgeDeck.getMaxY();
+        if (fullyOnBridgeDeck) {
+            return false;
+        }
+
+        double[] sampleXs = {
+            footBox.getMinX(),
+            (footBox.getMinX() + footBox.getMaxX()) * 0.5,
+            footBox.getMaxX()
+        };
+        double[] sampleYs = {
+            footBox.getMinY(),
+            footBox.getMaxY()
+        };
+
+        for (double fx : sampleXs) {
+            double northGrassLimitY = getNorthShoreGrassMaxY(fx);
+            for (double fy : sampleYs) {
+                // Chặn tuyệt đối ngay từ ranh giới mép cỏ -> vách đất bờ Bắc xuyên suốt toàn bộ lòng sông tới mép cỏ bờ Nam
+                if (fy > northGrassLimitY && fy < worldRiverBotY + 2.0) {
+                    return true;
+                }
+                // Chặn các ô WATER khác ngoài vùng mố cỏ bờ Bắc (nếu có)
+                if (fy <= northGrassLimitY) {
+                    continue;
+                }
+                int col = (int) (fx / Constant.CELL_SIZE);
+                int row = (int) (fy / Constant.CELL_SIZE);
+                Cell c = (farmMap != null) ? farmMap.getCell(row, col) : null;
+                if (c != null && c.getTerrain() == TerrainType.WATER) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** Kiểm tra bàn chân nhân vật có đang đứng trên mặt ván cầu gỗ vòm hay không. */
     private boolean isPlayerOnBridge() {
         if (bridgeDeckBotY <= bridgeDeckTopY) return false;
         double footX = playerX + 22.0;
-        double footY = playerY + 54.0;
+        double footY = playerY + 66.0;
         return footX >= bridgeDeckLeftX && footX <= bridgeDeckRightX
                 && footY >= bridgeDeckTopY && footY <= bridgeDeckBotY;
     }
@@ -4855,6 +5113,18 @@ public class InGameController {
      * và tạo hiệu ứng bóng râm tối dần mượt mà như đang chui thật sự dưới gầm cầu.
      */
     private void updateBoatUnderBridgeEffect(boolean lockedOnBoat) {
+        // Cập nhật Y-sorting động cho 6 cụm cột cầu dựa trên so sánh playerFootY (đáy dép = playerY + 68) với pillarBaseY
+        if (!bridgePillarOverlays.isEmpty()) {
+            double playerFootY = playerY + 68.0;
+            for (BridgePillarOverlay po : bridgePillarOverlays) {
+                boolean behind = !lockedOnBoat && (playerFootY < po.baseY);
+                if (behind != po.lastPlayerBehind) {
+                    po.lastPlayerBehind = behind;
+                    po.view.setUserData(behind ? (po.baseY - 16.0) : (po.baseY - 20.0));
+                }
+            }
+        }
+
         if (boatEntity == null || bridgeCanopyView == null || bridgeWoodLeftX < 0) return;
 
         double boatLeft = boatEntity.getBoatX() + 8.0;
@@ -4988,14 +5258,11 @@ public class InGameController {
                 }
             }
 
-            if (!orchardUnlocked) {
-                double[] nearOrchard = findNearestPoint(orchardUnlockPoints, px, py, 92.0);
-                if (nearOrchard != null) {
-                    double d = Math.hypot(px - nearOrchard[0], py - nearOrchard[1]);
-                    if (d < bestDist) {
-                        bestDist = d;
-                        promptText = "[E] Mua mở khóa ($3.000)";
-                    }
+            if (isPlayerTouchingOrchardGateZone()) {
+                double d = distanceToOrchardGateDoorway(px, py);
+                if (d < bestDist) {
+                    bestDist = d;
+                    promptText = "[E] Mua mở khóa ($3.000)";
                 }
             }
 
@@ -5029,13 +5296,26 @@ public class InGameController {
         if (promptText != null) {
             if (!promptText.equals(interactPromptLabel.getText())) {
                 interactPromptLabel.setText(promptText);
+                interactPromptLabel.applyCss();
                 interactPromptLabel.autosize();
             }
-            double w = interactPromptLabel.getWidth() > 10 ? interactPromptLabel.getWidth() : Math.max(196.0, promptText.length() * 6.8);
-            interactPromptLabel.setLayoutX(playerX + 22.0 - w * 0.5);
-            interactPromptLabel.setLayoutY(playerY - promptOffsetY);
+            double prefW = interactPromptLabel.prefWidth(-1);
+            double w = interactPromptLabel.getWidth() > 10
+                    ? interactPromptLabel.getWidth()
+                    : (prefW > 10 ? prefW : Math.max(196.0, promptText.length() * 6.8));
+            boolean anchorToOrchardGate = !orchardUnlocked
+                    && orchardGateBounds != null
+                    && "[E] Mua mở khóa ($3.000)".equals(promptText);
+            if (anchorToOrchardGate) {
+                double gateCenterX = orchardGateBounds.getMinX() + orchardGateBounds.getWidth() * 0.5;
+                interactPromptLabel.setLayoutX(gateCenterX - w * 0.5);
+                interactPromptLabel.setLayoutY(orchardGateBounds.getMinY() + orchardGateBounds.getHeight() * 0.42);
+            } else {
+                interactPromptLabel.setLayoutX(playerX + 22.0 - w * 0.5);
+                interactPromptLabel.setLayoutY(playerY - promptOffsetY);
+            }
             interactPromptLabel.setVisible(true);
-            promptShown = true;
+            promptShown = !anchorToOrchardGate;
         } else {
             interactPromptLabel.setVisible(false);
         }
@@ -5180,15 +5460,11 @@ public class InGameController {
             }
         }
 
-        if (!orchardUnlocked) {
-            double[] nearOrchard = findNearestPoint(orchardUnlockPoints, px, py, 92.0);
-            if (nearOrchard != null) {
-                double d = Math.hypot(px - nearOrchard[0], py - nearOrchard[1]);
-                if (d < bestDist) {
-                    bestDist = d;
-                    bestAction = 9;
-                    bestPt = nearOrchard;
-                }
+        if (isPlayerTouchingOrchardGateZone()) {
+            double d = distanceToOrchardGateDoorway(px, py);
+            if (d < bestDist) {
+                bestDist = d;
+                bestAction = 9;
             }
         }
 
@@ -6018,16 +6294,26 @@ public class InGameController {
         updateSurvivalHud(animTimeSec);
     }
 
-    /** Kiểm tra nhân vật có đang đứng sát bờ con sông (không ở trên thuyền và không đứng giữa cầu) để uống nước hay không. */
+    /** Kiểm tra nhân vật có đang đứng trên cỏ sát bờ con sông (không ở trên thuyền và không đứng giữa cầu) để bấm [R] uống nước hay không. */
     private boolean isNearRiverBankForDrink() {
         if (farmMap == null || isOnBoat || isPlayerOnBridge()) return false;
         if (boatEntity != null && (boatEntity.isPlayerAboard() || boatEntity.isTransitioning())) return false;
 
         double footX = playerX + 22.0;
-        double footY = playerY + 54.0;
-        int col = (int) (footX / Constant.CELL_SIZE);
-        int row = (int) (footY / Constant.CELL_SIZE);
+        double footTopY = playerY + 58.0;
+        double footBottomY = playerY + 68.0;
 
+        // Mở rộng vùng nhận diện lên trên phần cỏ sát mép bờ Bắc (kể cả đường cong mố cỏ quanh chân cầu) và mép cỏ bờ Nam
+        double northGrassEdgeY = getNorthShoreGrassMaxY(footX);
+        if (footBottomY <= northGrassEdgeY + 4.0 && (northGrassEdgeY - footBottomY) <= 56.0) {
+            return true;
+        }
+        if (footTopY >= worldRiverBotY - 4.0 && (footTopY - worldRiverBotY) <= 56.0) {
+            return true;
+        }
+
+        int col = (int) (footX / Constant.CELL_SIZE);
+        int row = (int) (footBottomY / Constant.CELL_SIZE);
         for (int dr = -1; dr <= 1; dr++) {
             for (int dc = -1; dc <= 1; dc++) {
                 Cell c = farmMap.getCell(row + dr, col + dc);
@@ -6036,7 +6322,7 @@ public class InGameController {
                 }
             }
         }
-        return (Math.abs(footY - worldRiverTopY) <= 58.0 || Math.abs(footY - worldRiverBotY) <= 58.0);
+        return false;
     }
 
     /** Uống nước trực tiếp tại bờ sông ([R] hoặc [E] khi không ở gần thuyền/nhà/lửa). */
@@ -6369,6 +6655,30 @@ public class InGameController {
         if (autosave != null) autosave.run();
     }
 
+    /** Hitbox của nhân vật dùng để kiểm tra giao cắt AABB với vùng tương tác Cổng Vườn Cây Ăn Quả. */
+    private javafx.geometry.Rectangle2D getPlayerInteractHitbox() {
+        return new javafx.geometry.Rectangle2D(playerX + 12.0, playerY + 40.0, 20.0, 24.0);
+    }
+
+    /** Kiểm tra hitbox nhân vật có giao với AABB tương tác của Cổng Vườn Cây Ăn Quả (trái, giữa, phải, trước, sau) hay không. */
+    private boolean isPlayerTouchingOrchardGateZone() {
+        return !orchardUnlocked
+                && orchardInteractBox != null
+                && getPlayerInteractHitbox().intersects(orchardInteractBox);
+    }
+
+    /** Khoảng cách từ chân nhân vật tới thân cửa cổng Vườn Cây Ăn Quả (bằng 0 khi đứng ngay sát cửa, dùng xét độ ưu tiên). */
+    private double distanceToOrchardGateDoorway(double px, double py) {
+        if (orchardGateBounds == null) return Double.MAX_VALUE;
+        double minX = orchardGateBounds.getMinX();
+        double maxX = orchardGateBounds.getMaxX();
+        double minY = orchardGateBounds.getMinY() + orchardGateBounds.getHeight() * 0.50;
+        double maxY = orchardGateBounds.getMaxY();
+        double clampedX = Math.max(minX, Math.min(px, maxX));
+        double clampedY = Math.max(minY, Math.min(py, maxY));
+        return Math.hypot(px - clampedX, py - clampedY);
+    }
+
     private void applyOrchardUnlockedVisuals() {
         if (sceneryObjects != null) {
             java.util.List<ImageView> toRemove = new java.util.ArrayList<>();
@@ -6387,7 +6697,8 @@ public class InGameController {
             entityPane.getChildren().remove(orchardWorldSignLabel);
             orchardWorldSignLabel = null;
         }
-        orchardUnlockPoints.clear();
+        orchardGateBounds = null;
+        orchardInteractBox = null;
     }
 
     /** Lắp Vòi Tưới Tự Động tại ô đất dưới chân người chơi bằng phím [V]. */

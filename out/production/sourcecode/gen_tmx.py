@@ -265,6 +265,8 @@ def generate_resort_and_casino_sprites() -> dict:
         "lantern_post_down": ("objects/lantern_post_down.png", 48, 72),
         "garden_rock": ("objects/garden_rock.png", 48, 48),
         "wildflowers": ("objects/wildflowers.png", 48, 48),
+        "bridge": ("objects/bridge.png", 240, 408),
+        "river_north_abutment": ("objects/river_north_abutment.png", 320, 80),
     }
 
 
@@ -411,7 +413,8 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
         "farm_gate", "farm_gate_side", "lantern_post_road", "garden_rock_decor", "wildflowers_decor",
         "lantern_post_orchard", "lantern_post_orchard_left", "garden_rock_orchard", "wildflowers_orchard",
         "orchard_gate", "fence_orchard_perm_h", "fence_orchard_perm_v",
-        "fence_v_animal_divider", "fence_v_animal_outer", "fence_h_animal_top", "fence_h_animal_bottom"
+        "fence_v_animal_divider", "fence_v_animal_outer", "fence_h_animal_top", "fence_h_animal_bottom",
+        "river_north_abutment"
     }
     for og in root.findall("objectgroup"):
         if og.attrib.get("name") == "Objects":
@@ -427,12 +430,12 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
                 if name == "streetlamp" and 595 <= ox <= 635 and 640 <= oy <= 700:
                     obj.attrib["x"] = "646"
                     continue
-                # Căn chuẩn cây cầu vòm chập giữa 2 đầu đường đá (cols 17..20, tâm x=760; sông y=1280..1480)
+                # Căn chuẩn cây cầu vòm chập giữa 2 đầu đường đá (2 cột Bắc + bệ đá đẩy cao trên mố đất liền)
                 if name == "bridge":
-                    obj.attrib["x"] = "637"
-                    obj.attrib["y"] = "1508"
-                    obj.attrib["width"] = "248"
-                    obj.attrib["height"] = "276"
+                    obj.attrib["x"] = "650"
+                    obj.attrib["y"] = "1522"
+                    obj.attrib["width"] = "220"
+                    obj.attrib["height"] = "346"
                     continue
                 # Dọn wheat_patch cũ trong FarmZone
                 if "wheat" in name and fz_x0 <= ox <= fz_x1 and fz_y0 <= oy <= fz_y1:
@@ -460,6 +463,8 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
 
             # Bổ sung quần thể BỂ BƠI NGHỈ DƯỠNG (Pool Zone: x=115..565, y=1520..1705) & SÒNG BẠC CASINO (x=940..1310, y=1510..1710)
             new_objects = [
+                # --- MỐ ĐẤT BỜ BẮC & BỜ CỎ BO CONG DƯỚI CHÂN 2 CỘT CẦU ---
+                ("river_north_abutment", gid_map["river_north_abutment"], 600, 1314, 320, 80),
                 # --- KHU BỂ BƠI RESORT (POOL ZONE - Phía Tây bên kia cầu) ---
                 ("swimming_pool", gid_map["swimming_pool"], 168, 1766, 168, 238),
                 # 3 chiếc ghế dài tắm nắng (POOL_CHAIR) xếp ngay ngắn cạnh hồ bơi

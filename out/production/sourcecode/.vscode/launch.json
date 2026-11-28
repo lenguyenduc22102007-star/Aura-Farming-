@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "GameOverControllerTest",
+            "request": "launch",
+            "mainClass": "test.GameOverControllerTest",
+            "projectName": "Aura-Farming-_923592ab"
+        },
+        {
+            "type": "java",
             "name": "Run JavaFX Project",
             "request": "launch",
             "mainClass": "Main",
