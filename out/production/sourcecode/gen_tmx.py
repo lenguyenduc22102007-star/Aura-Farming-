@@ -410,7 +410,8 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
         "ground_yellow_flowers", "ground_tuft", "ground_pebbles", "farm_decor_bush", "farm_decor_rock",
         "farm_gate", "farm_gate_side", "lantern_post_road", "garden_rock_decor", "wildflowers_decor",
         "lantern_post_orchard", "lantern_post_orchard_left", "garden_rock_orchard", "wildflowers_orchard",
-        "orchard_gate", "fence_orchard_perm_h", "fence_orchard_perm_v"
+        "orchard_gate", "fence_orchard_perm_h", "fence_orchard_perm_v",
+        "fence_v_animal_divider", "fence_v_animal_outer", "fence_h_animal_top", "fence_h_animal_bottom"
     }
     for og in root.findall("objectgroup"):
         if og.attrib.get("name") == "Objects":
@@ -447,6 +448,13 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
                         og.remove(obj)
                         continue
                 if (120 <= ox <= 690 and 1800 <= oy <= 2095) or (910 <= ox <= 1380 and 1840 <= oy <= 2095):
+                    og.remove(obj)
+                    continue
+                # Quy hoạch lại toàn bộ hàng rào bao quanh & ngăn cách khu chăn nuôi (x=960..1565, y=930..1260) để nối liền mạch không hở khe
+                if name == "fence_h" and 980 <= ox <= 1520 and 930 <= oy <= 960:
+                    og.remove(obj)
+                    continue
+                if name == "fence_v" and (960 <= ox <= 980 or 1535 <= ox <= 1560) and 990 <= oy <= 1260:
                     og.remove(obj)
                     continue
 
@@ -530,6 +538,55 @@ def reorganize_map(tmx_path: str, gid_map: dict) -> None:
                 ("garden_rock_decor", gid_map["garden_rock"], 424, 622, 42, 42),
                 ("garden_rock_decor", gid_map["garden_rock"], 612, 996, 44, 44),
                 ("garden_rock_decor", gid_map["garden_rock"], 112, 622, 40, 40),
+
+                # --- CHIA 3 CHUỒNG CHĂN NUÔI KHÉP KÍN LIỀN MẠCH (GÀ | LỢN | BÒ) BẰNG HÀNG RÀO GỖ GỐC (gid=42 ngang, gid=43 dọc) ---
+                # 1. Hàng rào ngang phía trên (y=945) chừa đúng 1 lối đi rộng 72 TMX (~2 ô) cho mỗi chuồng:
+                #   • Chuồng Gà (x=980..1172): lối vào x=1040..1112
+                ("fence_h_animal_top", 42, 980,  945, 60, 32),
+                ("fence_h_animal_top", 42, 1112, 945, 60, 32),
+                #   • Chuồng Lợn (x=1180..1360): lối vào x=1232..1304
+                ("fence_h_animal_top", 42, 1180, 945, 52, 32),
+                ("fence_h_animal_top", 42, 1304, 945, 56, 32),
+                #   • Chuồng Bò (x=1368..1552): lối vào x=1422..1494
+                ("fence_h_animal_top", 42, 1368, 945, 54, 32),
+                ("fence_h_animal_top", 42, 1494, 945, 58, 32),
+                # 2. Hàng rào ngang khép kín toàn bộ cạnh dưới cùng (y=1252, chồng 2px không hở khe từ x=974 đến x=1554):
+                ("fence_h_animal_bottom", 42, 974,  1252, 60, 32),
+                ("fence_h_animal_bottom", 42, 1032, 1252, 60, 32),
+                ("fence_h_animal_bottom", 42, 1090, 1252, 60, 32),
+                ("fence_h_animal_bottom", 42, 1148, 1252, 60, 32),
+                ("fence_h_animal_bottom", 42, 1206, 1252, 60, 32),
+                ("fence_h_animal_bottom", 42, 1264, 1252, 60, 32),
+                ("fence_h_animal_bottom", 42, 1322, 1252, 60, 32),
+                ("fence_h_animal_bottom", 42, 1380, 1252, 60, 32),
+                ("fence_h_animal_bottom", 42, 1438, 1252, 60, 32),
+                ("fence_h_animal_bottom", 42, 1496, 1252, 60, 32),
+                # 3. Toàn bộ 4 vách rào dọc (trái ngoài x=968, ngăn Gà|Lợn x=1166, ngăn Lợn|Bò x=1354, phải ngoài x=1545)
+                #    xếp khít bước 58px (chồng 12px) từ y=1004 nối liền xuống y=1252 không hở bất kỳ khe nào!
+                ("fence_v_animal_outer",   43, 968,  1004, 20, 70),
+                ("fence_v_animal_outer",   43, 968,  1062, 20, 70),
+                ("fence_v_animal_outer",   43, 968,  1120, 20, 70),
+                ("fence_v_animal_outer",   43, 968,  1178, 20, 70),
+                ("fence_v_animal_outer",   43, 968,  1236, 20, 70),
+                ("fence_v_animal_outer",   43, 968,  1252, 20, 70),
+                ("fence_v_animal_divider", 43, 1166, 1004, 20, 70),
+                ("fence_v_animal_divider", 43, 1166, 1062, 20, 70),
+                ("fence_v_animal_divider", 43, 1166, 1120, 20, 70),
+                ("fence_v_animal_divider", 43, 1166, 1178, 20, 70),
+                ("fence_v_animal_divider", 43, 1166, 1236, 20, 70),
+                ("fence_v_animal_divider", 43, 1166, 1252, 20, 70),
+                ("fence_v_animal_divider", 43, 1354, 1004, 20, 70),
+                ("fence_v_animal_divider", 43, 1354, 1062, 20, 70),
+                ("fence_v_animal_divider", 43, 1354, 1120, 20, 70),
+                ("fence_v_animal_divider", 43, 1354, 1178, 20, 70),
+                ("fence_v_animal_divider", 43, 1354, 1236, 20, 70),
+                ("fence_v_animal_divider", 43, 1354, 1252, 20, 70),
+                ("fence_v_animal_outer",   43, 1545, 1004, 20, 70),
+                ("fence_v_animal_outer",   43, 1545, 1062, 20, 70),
+                ("fence_v_animal_outer",   43, 1545, 1120, 20, 70),
+                ("fence_v_animal_outer",   43, 1545, 1178, 20, 70),
+                ("fence_v_animal_outer",   43, 1545, 1236, 20, 70),
+                ("fence_v_animal_outer",   43, 1545, 1252, 20, 70),
             ]
             # Rải hoa dại & cỏ 3 lá (WILDFLOWERS) tự nhiên trên các khoảng cỏ trống giữa 12 luống đất & chân rào
             wildflower_spots = [

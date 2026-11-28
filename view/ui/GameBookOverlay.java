@@ -85,6 +85,7 @@ public class GameBookOverlay extends StackPane {
     private final Label moneyHeaderLabel = new Label("$0");
     private final Label statusBannerLabel = new Label("Mẹo: Bấm phím [1]–[5] để chuyển trang nhanh, bấm [TAB] hoặc [ESC] để đóng sổ.");
     private int activeTabIndex = TAB_STORAGE;
+    private int activeStorageCategory = 0; // 0=Tất cả, 1=Nông sản & Quả, 2=Đồ ăn & Thành phẩm, 3=Chăn nuôi & Cá, 4=Quặng & Tài nguyên, 5=Hạt giống & Vật tư
     private int activeShopCategory = 0; // 0=Tất cả (chia khu riêng), 1=Cây trồng, 2=Con vật, 3=Thức ăn thú, 4=Phân bón
 
     public GameBookOverlay(Player player,
@@ -302,8 +303,34 @@ public class GameBookOverlay extends StackPane {
     }
 
     // =========================================================================
-    // TAB 1: KHO ĐỒ (STORAGE)
+    // TAB 1: KHO ĐỒ (STORAGE — PHÂN LOẠI RÕ RÀNG 5 NHÓM + BỘ LỌC NHANH)
     // =========================================================================
+
+    private static final class StorageEntry {
+        final Item item;
+        final int qty;
+
+        StorageEntry(Item item, int qty) {
+            this.item = item;
+            this.qty = qty;
+        }
+    }
+
+    private int classifyStorageItem(Item item) {
+        if (item instanceof HarvestedCropItem) {
+            return 1; // Nông sản & Trái cây
+        }
+        if (item instanceof CookedFoodItem || item instanceof FactoryProductItem) {
+            return 2; // Đồ ăn nấu chín & Thành phẩm Nhà Máy
+        }
+        if (item instanceof AnimalProductItem || item instanceof FishItem) {
+            return 3; // Sản phẩm chăn nuôi & Cá sông
+        }
+        if (item instanceof OreItem || item instanceof ForageItem) {
+            return 4; // Quặng mỏ, Củi khô, Nấm & Thảo mộc
+        }
+        return 5; // Hạt giống, Thức ăn thú, Phân bón & Vòi tưới
+    }
 
     private VBox buildStorageTab() {
         String hotTip = (marketManager != null) ? ("  •  " + marketManager.getMorningBannerText()) : "";
@@ -381,31 +408,202 @@ public class GameBookOverlay extends StackPane {
         HBox topRow = new HBox(8, header, topSpacer, craftSprinklerBtn, convertCropsBtn, sellAllBtn);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
-        FlowPane grid = new FlowPane(12, 10);
-        grid.setPrefWrapLength(800);
+        // Phân loại toàn bộ vật phẩm đang có trong kho thành 5 nhóm rõ ràng
+        List<StorageEntry> cropsList = new ArrayList<>();
+        List<StorageEntry> foodsList = new ArrayList<>();
+        List<StorageEntry> animalFishList = new ArrayList<>();
+        List<StorageEntry> oreForageList = new ArrayList<>();
+        List<StorageEntry> suppliesList = new ArrayList<>();
 
-        int countShown = 0;
+        int totalKinds = 0;
         if (player != null) {
             for (Map.Entry<Item, Integer> en : new ArrayList<>(player.getInventory().getItems().entrySet())) {
                 Item item = en.getKey();
                 int qty = en.getValue();
-                if (qty <= 0) continue;
-                countShown++;
-                grid.getChildren().add(createStorageItemCard(item, qty));
+                if (item == null || qty <= 0) continue;
+                totalKinds++;
+                StorageEntry entry = new StorageEntry(item, qty);
+                switch (classifyStorageItem(item)) {
+                    case 1:  cropsList.add(entry);      break;
+                    case 2:  foodsList.add(entry);      break;
+                    case 3:  animalFishList.add(entry); break;
+                    case 4:  oreForageList.add(entry);  break;
+                    default: suppliesList.add(entry);   break;
+                }
             }
         }
 
-        if (countShown == 0) {
-            Label empty = new Label("Kho đồ đang trống. Hãy ra đồng thu hoạch nông sản, câu cá dưới sông hoặc ghé Tab [2. Cửa Hàng] mua hạt giống nhé!");
+        // Thanh lọc nhanh theo từng nhóm vật phẩm
+        HBox catBar = new HBox(7);
+        catBar.setAlignment(Pos.CENTER_LEFT);
+        String[] catLabels = {
+            "📋 Tất cả (" + totalKinds + ")",
+            "🌾 Nông sản (" + cropsList.size() + ")",
+            "🍳 Đồ ăn & Xưởng (" + foodsList.size() + ")",
+            "🥚 Chăn nuôi & Cá (" + animalFishList.size() + ")",
+            "⛏ Quặng & Củi (" + oreForageList.size() + ")",
+            "🌱 Hạt giống & Vật tư (" + suppliesList.size() + ")"
+        };
+        for (int ci = 0; ci < catLabels.length; ci++) {
+            final int catIdx = ci;
+            boolean sel = (activeStorageCategory == catIdx);
+            Button cBtn = new Button(catLabels[ci]);
+            cBtn.setFocusTraversable(false);
+            lockNoEllipsis(cBtn);
+            cBtn.setStyle(
+                "-fx-font-family: " + FONT_MONO + "; -fx-font-size: 11.5px; -fx-font-weight: bold;" +
+                "-fx-padding: 4 10 4 10;" +
+                "-fx-text-fill: " + (sel ? "#FFFDF7;" : "#4A270D;") +
+                "-fx-background-color: " + (sel
+                        ? "linear-gradient(to bottom, #3A8E42, #25642B);"
+                        : "linear-gradient(to bottom, #FFF8E8, #EDD8B4);") +
+                "-fx-border-color: " + (sel ? "#1B4720;" : "#B88E58;") +
+                "-fx-border-width: 1.6px; -fx-background-radius: 15px; -fx-border-radius: 15px; -fx-cursor: hand;"
+            );
+            cBtn.setOnAction(e -> {
+                activeStorageCategory = catIdx;
+                SoundHook.playMenuClick();
+                selectTab(TAB_STORAGE);
+            });
+            catBar.getChildren().add(cBtn);
+        }
+
+        VBox sectionsContainer = new VBox(12);
+        sectionsContainer.setPadding(new Insets(2, 4, 8, 2));
+
+        if ((activeStorageCategory == 0 || activeStorageCategory == 1) && !cropsList.isEmpty()) {
+            sectionsContainer.getChildren().add(buildStorageCategorySection(
+                "🌾 NÔNG SẢN & TRÁI CÂY THU HOẠCH",
+                "Nạp vào Nhà Máy chế biến, nấu ăn hoặc bán lấy lời",
+                "#2E7D32", "#E8F5E9", true, cropsList
+            ));
+        }
+        if ((activeStorageCategory == 0 || activeStorageCategory == 2) && !foodsList.isEmpty()) {
+            sectionsContainer.getChildren().add(buildStorageCategorySection(
+                "🍳 ĐỒ ĂN NẤU CHÍN & THÀNH PHẨM NHÀ MÁY",
+                "Bấm [🍽 Ăn / 🧃 Uống] hoặc phím [Q] hồi Đói/Khát, tặng NPC (+1 Tim) hoặc bán giá cao",
+                "#C65D17", "#FFF3E0", true, foodsList
+            ));
+        }
+        if ((activeStorageCategory == 0 || activeStorageCategory == 3) && !animalFishList.isEmpty()) {
+            sectionsContainer.getChildren().add(buildStorageCategorySection(
+                "🥚 SẢN PHẨM CHĂN NUÔI & CÁ SÔNG",
+                "Trứng, Sữa bò, Nấm cục & các loài cá câu được trên sông (có thể rán Cá Rán)",
+                "#1565C0", "#E3F2FD", true, animalFishList
+            ));
+        }
+        if ((activeStorageCategory == 0 || activeStorageCategory == 4) && !oreForageList.isEmpty()) {
+            sectionsContainer.getChildren().add(buildStorageCategorySection(
+                "⛏ QUẶNG MỎ & TÀI NGUYÊN TỰ NHIÊN",
+                "Quặng Đồng/Sắt/Vàng/Đá Quý (đúc Vòi Tưới), Củi khô, Nấm & Thảo mộc",
+                "#6A1B9A", "#F3E5F5", true, oreForageList
+            ));
+        }
+        if ((activeStorageCategory == 0 || activeStorageCategory == 5) && !suppliesList.isEmpty()) {
+            sectionsContainer.getChildren().add(buildStorageCategorySection(
+                "🌱 HẠT GIỐNG, THỨC ĂN THÚ & VẬT TƯ CANH TÁC",
+                "Hạt giống cây trồng, thức ăn chăn nuôi, phân bón & Vòi Tưới Tự Động",
+                "#6D4C41", "#FBF3E4", false, suppliesList
+            ));
+        }
+
+        if (sectionsContainer.getChildren().isEmpty()) {
+            String emptyMsg = (totalKinds == 0)
+                    ? "Kho đồ đang trống. Hãy ra đồng thu hoạch nông sản, câu cá dưới sông hoặc ghé Tab [2. Cửa Hàng] mua hạt giống nhé!"
+                    : "Chưa có vật phẩm nào thuộc nhóm này trong kho đồ.";
+            Label empty = new Label(emptyMsg);
             empty.setWrapText(true);
             empty.setMaxWidth(780);
             empty.setStyle("-fx-font-family: " + FONT_MONO + "; -fx-font-size: 13.5px; -fx-text-fill: #6B4423; -fx-padding: 24;");
-            grid.getChildren().add(empty);
+            sectionsContainer.getChildren().add(empty);
         }
 
-        ScrollPane scroll = wrapScroll(grid);
+        ScrollPane scroll = wrapScroll(sectionsContainer);
         VBox.setVgrow(scroll, Priority.ALWAYS);
-        return new VBox(10, topRow, scroll);
+        return new VBox(8, topRow, catBar, scroll);
+    }
+
+    private VBox buildStorageCategorySection(String titleText,
+                                             String subtitleText,
+                                             String accentHex,
+                                             String headerBgHex,
+                                             boolean allowSellGroup,
+                                             List<StorageEntry> entries) {
+        int totalQty = 0;
+        int groupValue = 0;
+        for (StorageEntry en : entries) {
+            totalQty += en.qty;
+            int unit = (marketManager != null) ? marketManager.getSellUnitPrice(en.item) : en.item.getPrice();
+            if (unit > 0) groupValue += unit * en.qty;
+        }
+
+        Label secTitle = new Label(titleText + " (" + entries.size() + " loại • " + totalQty + " món)");
+        lockNoEllipsis(secTitle);
+        secTitle.setStyle("-fx-font-family: " + FONT_MONO + "; -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: " + accentHex + ";");
+
+        Label secSub = new Label(subtitleText);
+        lockNoEllipsis(secSub);
+        secSub.setStyle("-fx-font-family: " + FONT_MONO + "; -fx-font-size: 10.5px; -fx-text-fill: #6D4626;");
+
+        VBox titleCol = new VBox(2, secTitle, secSub);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox secHeader = new HBox(10, titleCol, spacer);
+        secHeader.setAlignment(Pos.CENTER_LEFT);
+        secHeader.setPadding(new Insets(6, 10, 6, 10));
+        secHeader.setStyle(
+            "-fx-background-color: " + headerBgHex + ";" +
+            "-fx-border-color: " + accentHex + ";" +
+            "-fx-border-width: 0 0 0 4px;" +
+            "-fx-background-radius: 6px;"
+        );
+
+        if (allowSellGroup && groupValue > 0) {
+            Button sellGroupBtn = createSmallBtn("💰 Bán cả nhóm (+$" + groupValue + ")", "#D98218", "#A35A0A");
+            sellGroupBtn.setOnAction(e -> {
+                if (player == null) return;
+                int earned = 0;
+                int soldCount = 0;
+                for (StorageEntry en : entries) {
+                    int cur = player.getInventory().getItemCount(en.item);
+                    if (cur > 0 && isSellableProduce(en.item)) {
+                        int unit = (marketManager != null) ? marketManager.getSellUnitPrice(en.item) : en.item.getPrice();
+                        if (unit > 0 && player.getInventory().removeItem(en.item, cur)) {
+                            earned += cur * unit;
+                            soldCount += cur;
+                        }
+                    }
+                }
+                if (earned > 0) {
+                    player.addMoney(earned);
+                    SoundHook.playPickup();
+                    setStatus("Đã bán " + soldCount + " món thuộc nhóm [" + titleText + "] thu về +$" + earned + "!");
+                    selectTab(TAB_STORAGE);
+                }
+            });
+            secHeader.getChildren().add(sellGroupBtn);
+        }
+
+        // Lưới 2 cột đều nhau giúp toàn bộ thẻ vật phẩm thẳng hàng gọn gàng
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(8);
+        for (int i = 0; i < entries.size(); i++) {
+            StorageEntry en = entries.get(i);
+            HBox card = createStorageItemCard(en.item, en.qty);
+            grid.add(card, i % 2, i / 2);
+        }
+
+        VBox box = new VBox(8, secHeader, grid);
+        box.setPadding(new Insets(8, 10, 10, 10));
+        box.setStyle(
+            "-fx-background-color: rgba(255, 250, 238, 0.72);" +
+            "-fx-border-color: #D5B486; -fx-border-width: 1.4px;" +
+            "-fx-background-radius: 10px; -fx-border-radius: 10px;"
+        );
+        return box;
     }
 
     private boolean isSellableProduce(Item item) {
@@ -529,12 +727,13 @@ public class GameBookOverlay extends StackPane {
         VBox info = new VBox(4, name, sub, btnRow);
         HBox card = new HBox(12, icon, info);
         card.setAlignment(Pos.CENTER_LEFT);
-        card.setPrefWidth(392);
+        card.setMinWidth(396);
+        card.setPrefWidth(396);
+        card.setMaxWidth(396);
         card.setPadding(new Insets(9, 10, 9, 10));
-        card.setStyle(
-            "-fx-background-color: #FFFDF7;" +
-            "-fx-border-color: #C8A273; -fx-border-width: 1.8px;" +
-            "-fx-background-radius: 10px; -fx-border-radius: 10px;"
+        card.setStyle(isHot
+            ? "-fx-background-color: #FFF7E6; -fx-border-color: #EA580C; -fx-border-width: 2px; -fx-background-radius: 10px; -fx-border-radius: 10px;"
+            : "-fx-background-color: #FFFDF7; -fx-border-color: #C8A273; -fx-border-width: 1.6px; -fx-background-radius: 10px; -fx-border-radius: 10px;"
         );
         return card;
     }

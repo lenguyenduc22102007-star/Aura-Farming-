@@ -98,6 +98,15 @@ public class Assets {
     public static Image POOL_CHAIR;
     public static Image POOL_UMBRELLA;
     public static Image PALM_TREE;
+    public static Image PROP_CHICKEN_COOP;
+    public static Image PROP_STRAW_NEST;
+    public static Image PROP_MUD_PUDDLE;
+    public static Image PROP_WOOD_TROUGH;
+    public static Image PROP_HAY_BALE;
+    public static Image PROP_WATER_TROUGH;
+    public static Image SIGN_CHICKEN;
+    public static Image SIGN_PIG;
+    public static Image SIGN_COW;
 
     // ANIMAL SPRITES
     public static Image PIG_SPRITE;
@@ -155,6 +164,8 @@ public class Assets {
     public static Image[] LUFFY_AXE_FRAMES;
     public static Image[] LUFFY_WATER_FRAMES;
     public static Image[] LUFFY_WATER_RUN_FRAMES;
+    public static Image[] LUFFY_PICK_LOW;
+    public static Image[] LUFFY_PICK_HIGH;
     public static Map<String, Image[]> LUFFY_HOE_RUN_BY_DIR;
     public static Map<String, Image> LUFFY_HOE_IDLE_BY_DIR;
     public static Map<String, Image[]> LUFFY_WATER_RUN_BY_DIR;
@@ -353,6 +364,12 @@ public class Assets {
         for (int i = 0; i < 4; i++) {
             LUFFY_WATER_RUN_FRAMES[i] = safeLoadPixelImage("/view/assets/player_actions/luffy_water_run_" + i + ".png", 144, 144);
         }
+        LUFFY_PICK_LOW = new Image[4];
+        LUFFY_PICK_HIGH = new Image[4];
+        for (int i = 0; i < 4; i++) {
+            LUFFY_PICK_LOW[i]  = safeLoadPixelImage("/view/assets/player/luffy_pick_low_" + i + ".png", 0, 0);
+            LUFFY_PICK_HIGH[i] = safeLoadPixelImage("/view/assets/player/luffy_pick_high_" + i + ".png", 0, 0);
+        }
 
         // ANIMATED MAP PROPS (Cờ bay theo gió 6 frame 48x64 & Lửa trại cháy bập bùng 6 frame 48x48, smooth=false)
         FLAG_FRAMES = new Image[6];
@@ -379,6 +396,15 @@ public class Assets {
         POOL_CHAIR    = safeLoadPixelImage("/view/assets/props/pool_chair.png",    52,  72);
         POOL_UMBRELLA = safeLoadPixelImage("/view/assets/props/pool_umbrella.png", 72,  72);
         PALM_TREE     = safeLoadPixelImage("/view/assets/props/palm_tree.png",     96, 120);
+        PROP_CHICKEN_COOP = safeLoadPixelImage("/view/assets/props/prop_chicken_coop.png", 0, 0);
+        PROP_STRAW_NEST   = safeLoadPixelImage("/view/assets/props/prop_straw_nest.png",   0, 0);
+        PROP_MUD_PUDDLE   = safeLoadPixelImage("/view/assets/props/prop_mud_puddle.png",   0, 0);
+        PROP_WOOD_TROUGH  = safeLoadPixelImage("/view/assets/props/prop_wood_trough.png",  0, 0);
+        PROP_HAY_BALE     = safeLoadPixelImage("/view/assets/props/prop_hay_bale.png",     0, 0);
+        PROP_WATER_TROUGH = safeLoadPixelImage("/view/assets/props/prop_water_trough.png", 0, 0);
+        SIGN_CHICKEN      = safeLoadPixelImage("/view/assets/props/sign_chicken.png",      0, 0);
+        SIGN_PIG          = safeLoadPixelImage("/view/assets/props/sign_pig.png",          0, 0);
+        SIGN_COW          = safeLoadPixelImage("/view/assets/props/sign_cow.png",          0, 0);
 
         // 8-DIRECTION TOOL RUN & IDLE MAPS (side dùng sheet 72x72 gốc; down/up/down_right/up_right dùng sprite 108x108)
         LUFFY_HOE_RUN_BY_DIR = new HashMap<>();

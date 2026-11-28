@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Persists a running game to disk so it can be resumed with "Continue" even
@@ -40,6 +41,7 @@ import java.util.concurrent.Executors;
 public final class SaveManager {
 
     private static final String VERSION = "1";
+    private static final AtomicLong SAVE_SEQ = new AtomicLong(0L);
     private static final ExecutorService SAVE_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "SmartFarm-SaveIO");
         t.setDaemon(true);
@@ -118,7 +120,15 @@ public final class SaveManager {
         }
     }
 
-    public static synchronized void write(Properties p) {
+    public static void write(Properties p) {
+        if (p == null) return;
+        long seq = SAVE_SEQ.incrementAndGet();
+        writeInternal(p, seq);
+    }
+
+    private static synchronized void writeInternal(Properties p, long seq) {
+        // Nếu đã có bản lưu mới hơn được tạo sau snapshot này, bỏ qua bản cũ để không bao giờ ghi đè lùi dữ liệu
+        if (seq < SAVE_SEQ.get()) return;
         Path target = file();
         Path tmp = target.resolveSibling("savegame.tmp");
         try {
@@ -135,7 +145,8 @@ public final class SaveManager {
     /** Ghi file save trên luồng nền riêng để không bao giờ gây khựng khung hình khi đang chơi. */
     public static void writeAsync(Properties p) {
         if (p == null) return;
-        SAVE_EXECUTOR.submit(() -> write(p));
+        long seq = SAVE_SEQ.incrementAndGet();
+        SAVE_EXECUTOR.submit(() -> writeInternal(p, seq));
     }
 
     // ----------------------------------------------------------------- read

@@ -35,9 +35,14 @@ public final class StorageViewController {
 
     private SceneRouter router;
     private Player player;
+    private Runnable autosave;
 
     public void setRouter(SceneRouter router) {
         this.router = router;
+    }
+
+    public void setAutosave(Runnable autosave) {
+        this.autosave = autosave;
     }
 
     public void setPlayer(Player player) {
@@ -243,6 +248,7 @@ public final class StorageViewController {
                     if (statusLabel != null) {
                         statusLabel.setText("Đã ăn 1 " + dish.getName() + " (+" + dish.getHungerRestore() + " Đói)!");
                     }
+                    if (autosave != null) autosave.run();
                     build();
                 }
             });

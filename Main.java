@@ -210,6 +210,7 @@ public class Main extends Application implements GameLauncher {
         StorageViewController storageView = storageLoader.getController();
         storageView.setRouter(router);
         storageView.setPlayer(player);
+        storageView.setAutosave(this::saveGameAsync);
 
         FXMLLoader ingameLoader = ScreensLoader.load(router, Screens.INGAME, Screens.INGAME_FXML);
         InGameController ingame = ingameLoader.getController();
@@ -250,11 +251,13 @@ public class Main extends Application implements GameLauncher {
         }
         try {
             buildSession(save);
-        } catch (RuntimeException ex) {
+        } catch (Throwable ex) {
             ex.printStackTrace();
-            SaveManager.delete();
-            menuController.setContinueEnabled(false);
-            startNewFarm();
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Smart Farm");
+            alert.setHeaderText("Không thể tải Nông trại đã lưu");
+            alert.setContentText("Lỗi: " + ex.getClass().getSimpleName() + ": " + ex.getMessage());
+            alert.showAndWait();
         }
     }
 
@@ -320,6 +323,11 @@ public class Main extends Application implements GameLauncher {
         if (skipSplash) {
             menuController.showDashboardDirectly();
         }
+    }
+
+    @Override
+    public void stop() {
+        saveGame();
     }
 
     @Override

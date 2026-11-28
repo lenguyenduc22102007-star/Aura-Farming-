@@ -692,6 +692,11 @@ public class InGameController {
                 }
             }
         }
+        for (javafx.geometry.Rectangle2D afBox : animalFarmColliders) {
+            if (cellBox.intersects(afBox)) {
+                return true;
+            }
+        }
         return false;
     }
 
@@ -896,10 +901,20 @@ public class InGameController {
         double wx = cell.getX() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
         double wy = cell.getY() * Constant.CELL_SIZE + Constant.CELL_SIZE * 0.5;
 
-        // 1. Thu hoạch cây trồng bằng Tay: spawn hiệu ứng lá/tia sáng & vật phẩm bật nảy tự hút
+        // 1. Thu hoạch cây trồng bằng Tay:
+        //    - Cây ăn quả thân cao (PerennialFruitTree: Táo, Cam, Dừa...) -> PICKING_HIGH + rung tán cây ở frame 2-3
+        //    - Rau/cây trồng thấp dưới đất -> PICKING_LOW
+        //    - Cộng vật phẩm vào Inventory & hiện chữ nổi "+1 ..." đúng frame 2
         if (curTool instanceof Hand && cell.getPest() == null && cell.getCrop() != null && cell.getCrop().isHarvestable()) {
-            model.crop.Crop harvested = cell.harvestCrop();
-            if (harvested != null) {
+            boolean isBigTree = (cell.getCrop() instanceof model.crop.PerennialFruitTree);
+            int row = cell.getY();
+            int col = cell.getX();
+            ImageView treeToShake = (isBigTree && tiles != null && row >= 0 && row < tiles.length && col >= 0 && col < tiles[0].length)
+                    ? tiles[row][col].entityTreeView
+                    : null;
+            boolean started = startPickAnimation(isBigTree, wx, wy, treeToShake, () -> {
+                model.crop.Crop harvested = cell.harvestCrop();
+                if (harvested == null) return;
                 model.game_item.HarvestedCropItem item = new model.game_item.HarvestedCropItem(
                     harvested.getName(), harvested.getCropData().getValue()
                 );
@@ -907,11 +922,8 @@ public class InGameController {
                     particleSystem.spawnHarvestSparkles(wx, wy);
                 }
                 view.fx.SoundHook.playHarvest();
-                if (droppedItemSystem != null) {
-                    droppedItemSystem.spawnDrop(item, Assets.getShopIcon(item), wx, wy, 1);
-                } else {
-                    player.getInventory().addItem(item, 1);
-                }
+                player.getInventory().addItem(item, 1);
+                spawnFloatingText("+1 " + item.getName(), Color.rgb(166, 255, 146));
                 onQuestCropHarvested(harvested.getName());
                 // Nguồn phụ chống thiếu củi: thu hoạch Ngô (Corn) hoặc Lúa nước (WaterRice) tặng kèm +1 Củi khô (rơm/thân khô)
                 if (harvested instanceof model.crop.Corn || harvested instanceof model.crop.WaterRice) {
@@ -919,8 +931,12 @@ public class InGameController {
                     player.getInventory().addItem(strawWood, 1);
                     spawnFloatingText("+1 Củi khô (rơm/thân khô)", Color.rgb(255, 224, 118));
                 }
-                return true;
-            }
+                if (tiles != null && row >= 0 && row < tiles.length && col >= 0 && col < tiles[0].length) {
+                    tiles[row][col].style();
+                }
+                triggerAutosave();
+            });
+            return started;
         }
 
         // 2. Các công cụ khác (Tưới nước, Cuốc, Hạt giống, Phân bón, Bắt sâu)
@@ -952,6 +968,7 @@ public class InGameController {
 
     /** Kích hoạt hoạt ảnh vung công cụ 3 nhịp tương ứng từng loại dụng cụ. */
     private void triggerToolAnimation(String kind, double targetWx, double targetWy) {
+        if (pickAnimTimer >= 0.0) return; // Không cắt ngang hoạt ảnh nhặt/hái đang chạy
         toolActionKind = kind;
         toolActionTimer = 0.0;
         toolImpactFired = (targetWx < 0); // Không bắn hạt nếu không có ô mục tiêu hợp lệ
@@ -963,6 +980,76 @@ public class InGameController {
             toolActionDuration = 0.40;      // 4 bước tưới nước (0.10s/frame): 0 -> 1 -> 2 -> 1 -> 0
         } else {
             toolActionDuration = 0.28;      // Lắc qua lại (-18° <-> +18°) rắc hạt / rải phân
+        }
+    }
+
+    // ======================== HOẠT ẢNH THU HOẠCH (PICKING_LOW / PICKING_HIGH) ========================
+    private static final double PICK_ANIM_DURATION_SEC = 0.48; // 4 frame x 0.12s/frame
+    private static final double PICK_FRAME_SEC = 0.12;
+    private static final double LUFFY_DISPLAY_W = 108.0;
+    private static final double LUFFY_DISPLAY_H = 108.0;
+    private static final double LUFFY_REF_H = 108.0;
+
+    private double pickAnimTimer = -1.0;
+    private boolean pickAnimHigh = false;
+    private boolean pickRewardFired = false;
+    private Runnable pendingPickReward = null;
+    private ImageView pickShakeTreeView = null;
+
+    /**
+     * Khởi chạy hoạt ảnh thu hoạch 4 frame (0.48s = 0.12s/frame), khóa di chuyển, tự lật hướng theo mục tiêu
+     * và thực thi cộng Inventory + chữ nổi "+1 ..." tại frame 2.
+     */
+    private boolean startPickAnimation(boolean isHigh, double targetWx, double targetWy, ImageView treeToShake, Runnable onFrame2Reward) {
+        // Không xung đột với chặt cây (AXE), tưới nước (WATER), cuốc (HOE), nằm tắm nắng, ngồi bếp lửa hay đang chèo thuyền
+        if (pickAnimTimer >= 0.0 || isSitting || isSunbathing || isOnBoat) {
+            return false;
+        }
+        if (toolActionTimer >= 0.0 && ("AXE".equals(toolActionKind) || "WATER".equals(toolActionKind) || "HOE".equals(toolActionKind))) {
+            return false;
+        }
+        Image[] frames = isHigh ? Assets.LUFFY_PICK_HIGH : Assets.LUFFY_PICK_LOW;
+        if (frames == null || frames.length < 4 || frames[0] == null) {
+            // Fallback an toàn nếu thiếu ảnh
+            if (onFrame2Reward != null) onFrame2Reward.run();
+            return true;
+        }
+        if (targetWx >= 0.0) {
+            double pCx = playerX + 22.0;
+            if (targetWx < pCx - 4.0) {
+                facing = "LEFT";
+            } else if (targetWx > pCx + 4.0) {
+                facing = "RIGHT";
+            }
+        }
+        pickAnimTimer = 0.0;
+        pickAnimHigh = isHigh;
+        pickRewardFired = false;
+        pendingPickReward = onFrame2Reward;
+        pickShakeTreeView = isHigh ? treeToShake : null;
+        if (player != null) {
+            player.setActionState(isHigh ? Player.ActionState.PICKING_HIGH : Player.ActionState.PICKING_LOW);
+        }
+        return true;
+    }
+
+    private void finishPickAnimation() {
+        pickAnimTimer = -1.0;
+        pickRewardFired = false;
+        pendingPickReward = null;
+        if (pickShakeTreeView != null) {
+            pickShakeTreeView.setTranslateX(0.0);
+            pickShakeTreeView = null;
+        }
+        if (player != null) {
+            player.setActionState(Player.ActionState.IDLE);
+        }
+        if (luffySpriteView != null) {
+            luffySpriteView.setFitWidth(LUFFY_DISPLAY_W);
+            luffySpriteView.setFitHeight(LUFFY_DISPLAY_H);
+            luffySpriteView.setX(-32.0);
+            luffySpriteView.setY(-38.0);
+            luffySpriteView.setTranslateY(0.0);
         }
     }
 
@@ -1014,9 +1101,17 @@ public class InGameController {
 
     // ======================== SAVE / LOAD (view state) ========================
     private Runnable autosave;
+    private double periodicAutosaveTimerSec = 0.0;
 
     public void setAutosave(Runnable autosave) {
         this.autosave = autosave;
+    }
+
+    private void triggerAutosave() {
+        if (autosave != null && gameManager != null && gameManager.getStatus() == controller.lifecyclemanager.GameStatus.RUNNING) {
+            periodicAutosaveTimerSec = 0.0;
+            autosave.run();
+        }
     }
 
     private String sceneryKey(ImageView v) {
@@ -1038,6 +1133,7 @@ public class InGameController {
         p.setProperty("view.helperDays", Integer.toString(helperDaysLeft));
         p.setProperty("view.foodRareFish", Boolean.toString(foodRareFishBuff));
         p.setProperty("view.poolRelaxSec", Double.toString(poolRelaxSpeedBuffSec));
+        p.setProperty("view.hungerGraceSec", Double.toString(hungerGraceTimerSec));
         if (player != null && player.getQuestManager() != null) {
             p.setProperty("quest.currentQuestIndex", Integer.toString(player.getQuestManager().getCurrentQuestIndex()));
             p.setProperty("quest.currentQuestProgress", Integer.toString(player.getQuestManager().getCurrentQuestProgress()));
@@ -1101,6 +1197,8 @@ public class InGameController {
             helperDaysLeft = Integer.parseInt(p.getProperty("view.helperDays", "0"));
             foodRareFishBuff = Boolean.parseBoolean(p.getProperty("view.foodRareFish", "false"));
             poolRelaxSpeedBuffSec = Double.parseDouble(p.getProperty("view.poolRelaxSec", "0.0"));
+            hungerGraceTimerSec = Math.max(0.0, Math.min(HUNGER_FULL_GRACE_SEC,
+                    Double.parseDouble(p.getProperty("view.hungerGraceSec", Double.toString(HUNGER_FULL_GRACE_SEC)))));
             if (player != null && player.getQuestManager() != null && p.getProperty("quest.currentQuestIndex") != null) {
                 int qIdx = Integer.parseInt(p.getProperty("quest.currentQuestIndex", "1"));
                 int qProg = Integer.parseInt(p.getProperty("quest.currentQuestProgress", "0"));
@@ -1108,6 +1206,8 @@ public class InGameController {
             }
             if (fishShadows != null) fishShadows.setRareFishBuff(foodRareFishBuff);
             updateFoodBuffHud();
+            lastRenderedHungerInt = -1;
+            lastRenderedThirstInt = -1;
             updateSurvivalHud(animTimeSec);
             updateQuestTrackerUi();
             lastFrameTime = System.currentTimeMillis();
@@ -1317,14 +1417,29 @@ public class InGameController {
                 view.fx.SoundHook.playHeart();
                 if (curTool instanceof Hand && !toFeed.producedToday) {
                     toFeed.producedToday = true;
-                    model.game_item.AnimalProductItem prod = model.game_item.AnimalProductItem.forAnimalType(toFeed.type);
-                    if (droppedItemSystem != null) {
-                        droppedItemSystem.spawnDrop(prod, Assets.getShopIcon(prod), toFeed.x + 18, toFeed.y + 12, 1);
+                    final Animal harvestedAnimal = toFeed;
+                    final String harvestedName = aName;
+                    model.game_item.AnimalProductItem prod = model.game_item.AnimalProductItem.forAnimalType(harvestedAnimal.type);
+                    boolean isLowPick = (harvestedAnimal.type == 0 || harvestedAnimal.type == 3); // Nhặt Trứng gà / Nấm Truffle dưới đất
+                    if (isLowPick) {
+                        startPickAnimation(false, harvestedAnimal.x + 18, harvestedAnimal.y + 12, null, () -> {
+                            player.getInventory().addItem(prod, 1);
+                            view.fx.SoundHook.playPickup();
+                            spawnFloatingText("+1 " + prod.getName(), Color.rgb(166, 255, 146));
+                            onQuestAnimalHarvested(prod.getName());
+                            notify("♥ Đã nhặt " + prod.getName() + " từ " + harvestedName + "!");
+                            triggerAutosave();
+                        });
                     } else {
-                        player.getInventory().addItem(prod, 1);
+                        if (droppedItemSystem != null) {
+                            droppedItemSystem.spawnDrop(prod, Assets.getShopIcon(prod), harvestedAnimal.x + 18, harvestedAnimal.y + 12, 1);
+                        } else {
+                            player.getInventory().addItem(prod, 1);
+                        }
+                        onQuestAnimalHarvested(prod.getName());
+                        notify("♥ Đã vuốt ve " + harvestedName + " và thu được " + prod.getName() + "!");
+                        triggerAutosave();
                     }
-                    onQuestAnimalHarvested(prod.getName());
-                    notify("♥ Đã vuốt ve " + aName + " và thu được " + prod.getName() + "!");
                 } else {
                     notify("♥ " + aName + " rất vui! (Ngày " + toFeed.ageDays + "/5 - Còn " + (5 - toFeed.ageDays) + " ngày để bán)");
                 }
@@ -1409,6 +1524,12 @@ public class InGameController {
                         updatePlayerPosition(dtSec, animTimeSec);
                         updateRainEffect(dtSec);
                         updateFestivalEffectsAndCheckReward(dtSec);
+
+                        // Tự động lưu ngầm định kỳ mỗi 15 giây để luôn ghi nhớ Đói/Khát, hành trang và vị trí
+                        periodicAutosaveTimerSec += dtSec;
+                        if (periodicAutosaveTimerSec >= 15.0) {
+                            triggerAutosave();
+                        }
 
                         // Chuyển màu nền thời tiết mượt mà bằng nội suy GPU (không chạm CSS rootPane gây khựng)
                         if (weatherTintRect != null && !currentWeatherTint.equals(targetWeatherTint)) {
@@ -1847,7 +1968,7 @@ public class InGameController {
             }
         }
 
-        if (!lockedOnBoat && !isSunbathing && !isSitting) {
+        if (!lockedOnBoat && !isSunbathing && !isSitting && pickAnimTimer < 0.0) {
             if (dirX != 0 || dirY != 0) {
                 isWalking = true;
                 // Chuẩn hóa tốc độ chạy chéo (8 hướng mượt mà) + Phạt kiệt sức (55%) + Buff Thư giãn bể bơi (+20%)
@@ -1923,6 +2044,16 @@ public class InGameController {
                     if (isBlockedByObstacle(oldBox, playerBoxX, troughBox)) colX_obj = true;
                     if (isBlockedByObstacle(oldBox, playerBoxY, troughBox)) colY_obj = true;
                     if (movingDiag && isBlockedByObstacle(oldBox, playerBoxXY, troughBox)) colXY_obj = true;
+                }
+            }
+
+            // Va chạm chuồng gà, lán lợn, nhà kho bò & hàng rào 3 khu trên nền animal_farm_bg.png
+            // (chừa trống trục đường lát đá ở giữa và 3 cổng CHICKEN, PIG, COW)
+            if (!animalFarmColliders.isEmpty()) {
+                for (javafx.geometry.Rectangle2D afBox : animalFarmColliders) {
+                    if (isBlockedByObstacle(oldBox, playerBoxX, afBox)) colX_obj = true;
+                    if (isBlockedByObstacle(oldBox, playerBoxY, afBox)) colY_obj = true;
+                    if (movingDiag && isBlockedByObstacle(oldBox, playerBoxXY, afBox)) colXY_obj = true;
                 }
             }
 
@@ -2250,9 +2381,21 @@ public class InGameController {
             weaponView.setVisible(false);
         }
 
+        // Cập nhật timer hoạt ảnh thu hoạch (PICKING_LOW / PICKING_HIGH — 4 frame x 0.12s = 0.48s)
+        boolean pickAnimPlaying = false;
+        double pickSpriteTranslateY = 0.0;
+        if (pickAnimTimer >= 0.0) {
+            pickAnimTimer += deltaRiverSec;
+            if (pickAnimTimer >= PICK_ANIM_DURATION_SEC) {
+                finishPickAnimation();
+            } else {
+                pickAnimPlaying = true;
+            }
+        }
+
         // Cập nhật timer hành động công cụ (khóa đổi frame chạy trong suốt thời gian bổ cuốc / chặt rìu / tưới nước)
         boolean nativeActionPlaying = false;
-        if (usingNativeActionTool && toolActionTimer >= 0.0) {
+        if (!pickAnimPlaying && usingNativeActionTool && toolActionTimer >= 0.0) {
             toolActionTimer += deltaRiverSec;
             if (toolActionTimer >= toolActionDuration) {
                 toolActionTimer = -1.0;
@@ -2275,6 +2418,43 @@ public class InGameController {
                 luffySpriteView.setScaleX(1.0);
                 luffySpriteView.setImage(Assets.LUFFY_SUNBATHE);
                 bobbing = Math.sin(timeSec * 2.2) * 0.9;
+            } else if (pickAnimPlaying) {
+                // Hoạt ảnh thu hoạch 4 frame (0.12s/frame: 0 -> 1 -> 2 -> 3), khóa tỷ lệ & dính chân mặt đất
+                int fIdx = Math.min(3, (int) (pickAnimTimer / PICK_FRAME_SEC));
+                if (!pickRewardFired && fIdx >= 2) {
+                    pickRewardFired = true;
+                    if (pendingPickReward != null) {
+                        Runnable reward = pendingPickReward;
+                        pendingPickReward = null;
+                        reward.run();
+                    }
+                }
+                if (pickAnimHigh && pickShakeTreeView != null) {
+                    if (fIdx >= 2) {
+                        pickShakeTreeView.setTranslateX(Math.sin(pickAnimTimer * 52.0) * 4.2);
+                    } else {
+                        pickShakeTreeView.setTranslateX(0.0);
+                    }
+                }
+                Image[] pickFrames = pickAnimHigh ? Assets.LUFFY_PICK_HIGH : Assets.LUFFY_PICK_LOW;
+                Image pickImg = (pickFrames != null && pickFrames.length > fIdx) ? pickFrames[fIdx] : null;
+                if (pickImg != null) {
+                    luffySpriteView.setX(-32.0);
+                    luffySpriteView.setY(-38.0);
+                    if (pickAnimHigh) {
+                        double zoom = LUFFY_DISPLAY_H / LUFFY_REF_H;
+                        double fitH = pickImg.getHeight() * zoom;
+                        luffySpriteView.setFitWidth(LUFFY_DISPLAY_W);
+                        luffySpriteView.setFitHeight(fitH);
+                        pickSpriteTranslateY = -(fitH - LUFFY_DISPLAY_H);
+                    } else {
+                        luffySpriteView.setFitWidth(LUFFY_DISPLAY_W);
+                        luffySpriteView.setFitHeight(LUFFY_DISPLAY_H);
+                        pickSpriteTranslateY = 0.0;
+                    }
+                    luffySpriteView.setImage(pickImg);
+                }
+                if (weaponView != null) weaponView.setVisible(false);
             } else if (usingNativeActionTool) {
                 boolean isSideSheet = nativeActionPlaying
                         || (usingNativeAxe && !isWalking)
@@ -2391,7 +2571,7 @@ public class InGameController {
                 }
             } else if (luffyRunByDir != null && luffyIdleByDir != null) {
                 // Công cụ khác (Hand, SeedBag, FertilizerBag, FeedBag) hoặc khi đang trên thuyền: giữ hoạt ảnh 8 hướng như cũ
-                if (luffySpriteView.getFitWidth() != 108.0) {
+                if (luffySpriteView.getFitWidth() != 108.0 || luffySpriteView.getFitHeight() != 108.0) {
                     luffySpriteView.setFitWidth(108.0);
                     luffySpriteView.setFitHeight(108.0);
                     luffySpriteView.setX(-32.0);
@@ -2612,7 +2792,7 @@ public class InGameController {
             }
         }
 
-        // Bỏ hiệu ứng nghiêng/nhún giả lập khi dùng sprite hành động gốc (hoặc giữ thẳng ảnh nằm tắm nắng mới / tư thế ngồi cạnh bếp lửa)
+        // Bỏ hiệu ứng nghiêng/nhún giả lập khi dùng sprite hành động gốc (hoặc giữ thẳng ảnh nằm tắm nắng mới / tư thế ngồi cạnh bếp lửa / thu hoạch)
         if (luffyBodyRotate != null && luffySpriteView != null) {
             if (isSunbathing) {
                 luffyBodyRotate.setAngle(Assets.LUFFY_SUNBATHE != null ? 0.0 : 72.0);
@@ -2623,6 +2803,11 @@ public class InGameController {
                 luffyBodyRotate.setAngle(0.0);
                 luffySpriteView.setScaleY(0.82);
                 luffySpriteView.setTranslateY(11.0 + Math.sin(timeSec * 2.4) * 0.8);
+                if (luffyToolRig != null) luffyToolRig.setVisible(false);
+            } else if (pickAnimPlaying) {
+                luffyBodyRotate.setAngle(0.0);
+                luffySpriteView.setScaleY(1.0);
+                luffySpriteView.setTranslateY(pickSpriteTranslateY);
                 if (luffyToolRig != null) luffyToolRig.setVisible(false);
             } else {
                 luffyBodyRotate.setAngle(usingNativeActionTool ? 0.0 : bodyLeanAngle);
@@ -2854,6 +3039,7 @@ public class InGameController {
                         double maxZx = Math.min(obj.x + obj.width, 1540) * zs;
                         double maxZy = Math.min(obj.y + obj.height, 1253) * zs;
                         animalZone = new javafx.geometry.Rectangle2D(zx, zy, Math.max(200, maxZx - zx), Math.max(180, maxZy - zy));
+                        initAnimalFarmLayout();
                     } else if (objName.equals("farmzone")) {
                         farmZone = new javafx.geometry.Rectangle2D(obj.x * zs, obj.y * zs, obj.width * zs, obj.height * zs);
                     }
@@ -3004,6 +3190,7 @@ public class InGameController {
         sceneryObjects.sort((o1, o2) -> Double.compare((double)o1.getUserData(), (double)o2.getUserData()));
         if (entityPane != null) {
             entityPane.getChildren().addAll(sceneryObjects);
+            mountAnimalPenProps();
         }
         setupHouseAndCampfireInteractions();
         buildTroughs();
@@ -5119,6 +5306,7 @@ public class InGameController {
             luffySpriteView.setTranslateY(0.0);
         }
         notify("Đã đứng dậy khỏi ghế tắm nắng! (Buff +20% tốc độ chạy còn " + (int) Math.ceil(poolRelaxSpeedBuffSec) + "s)");
+        triggerAutosave();
     }
 
     /** Mở giao diện Sòng Bạc Đánh Bài (Xì Dách 21 & Đoán Bài Cao/Thấp). */
@@ -5502,16 +5690,19 @@ public class InGameController {
     private void collectCampForageSpot(CampForageSpot spot) {
         if (spot == null || player == null || !campForageSpots.contains(spot)) return;
         campForageSpots.remove(spot);
-        if (entityPane != null) {
-            entityPane.getChildren().remove(spot.node);
-        }
-        player.getInventory().addItem(spot.item, 1);
-        view.fx.SoundHook.playPickup();
-        if (particleSystem != null) {
-            particleSystem.spawnPickupPop(spot.x, spot.y - 6.0);
-        }
-        spawnFloatingText("+1 " + spot.item.getName(), Color.rgb(166, 255, 146));
-        notify("🎒 Đã nhặt 1x " + spot.item.getName() + " quanh khu trại!");
+        startPickAnimation(false, spot.x, spot.y, null, () -> {
+            if (entityPane != null) {
+                entityPane.getChildren().remove(spot.node);
+            }
+            player.getInventory().addItem(spot.item, 1);
+            view.fx.SoundHook.playPickup();
+            if (particleSystem != null) {
+                particleSystem.spawnPickupPop(spot.x, spot.y - 6.0);
+            }
+            spawnFloatingText("+1 " + spot.item.getName(), Color.rgb(166, 255, 146));
+            notify("🎒 Đã nhặt 1x " + spot.item.getName() + " quanh khu trại!");
+            triggerAutosave();
+        });
     }
 
     /** Mở màn hình Ghép Đồ Ăn kiểu Minecraft (CookingCraftView) khi đang ngồi tại Đống Lửa Trại. */
@@ -5549,6 +5740,7 @@ public class InGameController {
                 router.closeOverlay();
             }
             activeKeys.clear();
+            triggerAutosave();
             Platform.runLater(rootPane::requestFocus);
         }
     }
@@ -5587,6 +5779,7 @@ public class InGameController {
         spawnFloatingText(restoreTxt, Color.rgb(132, 255, 146));
         String buffPart = getActiveBuffSummary();
         notify("Đã ăn " + dish.getName() + "! (" + restoreTxt + (buffPart.isEmpty() ? "" : (" | " + buffPart)) + ")");
+        triggerAutosave();
     }
 
     // ======================== HỆ THỐNG SINH TỒN: ĐÓI & KHÁT ========================
@@ -5863,6 +6056,7 @@ public class InGameController {
         view.fx.SoundHook.playWaterSplash();
         spawnFloatingText("+50 Khát! Mát quá!", Color.rgb(86, 214, 255));
         notify("💧 +50 Khát! Mát quá! (Khát: " + (int) Math.round(player.getThirst()) + "/100)");
+        triggerAutosave();
     }
 
     /** Ăn / uống 1 món ăn trực tiếp từ nút [Ăn] trong Kho Đồ (đã trừ khỏi Inventory trước khi gọi). */
@@ -5894,6 +6088,7 @@ public class InGameController {
                         : ("+" + prod.getHungerRestore() + " Đói!"));
             spawnFloatingText(txt, drinkOnly ? Color.rgb(125, 211, 252) : Color.rgb(134, 239, 172));
             notify((drinkOnly ? "🧃 Đã dùng " : "🍽 Đã ăn ") + prod.getName() + "! (" + txt + ")");
+            triggerAutosave();
         }
     }
 
@@ -5921,12 +6116,18 @@ public class InGameController {
         }
         if (needWater && chosenFac != null && chosenFac.getThirstRestore() > 0 && (chosen == null || chosen.getThirstRestore() < chosenFac.getThirstRestore())) {
             if (player.getInventory().removeItem(chosenFac, 1)) {
-                player.addHunger(chosenFac.getHungerRestore());
+                if (chosenFac.getHungerRestore() > 0) {
+                    player.addHunger(chosenFac.getHungerRestore());
+                    hungerGraceTimerSec = HUNGER_FULL_GRACE_SEC;
+                }
                 player.addThirst(chosenFac.getThirstRestore());
+                recentLaborStreak = 0;
+                recentLaborDecaySec = 0.0;
                 updateSurvivalHud(animTimeSec);
                 view.fx.SoundHook.playPickup();
                 spawnFloatingText("+" + chosenFac.getThirstRestore() + " Khát (" + chosenFac.getName() + ")!", Color.rgb(125, 211, 252));
                 notify("🧃 Đã dùng " + chosenFac.getName() + "!");
+                triggerAutosave();
                 return;
             }
         }
@@ -5947,6 +6148,7 @@ public class InGameController {
             view.fx.SoundHook.playPickup();
             spawnFloatingText("+" + chosenFac.getHungerRestore() + " Đói (" + chosenFac.getName() + ")!", Color.rgb(134, 239, 172));
             notify("🍽 Đã ăn " + chosenFac.getName() + "!");
+            triggerAutosave();
             return;
         }
         spawnFloatingText("Hết đồ ăn! Hãy nấu tại đống lửa hoặc Nhà Máy!", Color.rgb(255, 206, 102));
@@ -7133,10 +7335,191 @@ void style() {
 
     // ======================== ANIMAL NPCs ========================
     private java.util.List<Animal> animals = new java.util.ArrayList<>();
-    /** Khu vực chăn thả (AnimalZone trong TMX); null nếu map không định nghĩa. */
+    /** Khu vực chăn thả tổng (AnimalZone trong TMX); null nếu map không định nghĩa. */
     private javafx.geometry.Rectangle2D animalZone;
+    /** 3 chuồng chăn nuôi riêng biệt từ trái sang phải: Chuồng Gà | Chuồng Lợn | Chuồng Bò. */
+    private javafx.geometry.Rectangle2D chickenZone;
+    private javafx.geometry.Rectangle2D pigZone;
+    private javafx.geometry.Rectangle2D cowZone;
+    /** Danh sách hitbox va chạm chân đế của các vật thể rắn trong 3 chuồng (KHÔNG chặn vũng bùn). */
+    private final java.util.List<javafx.geometry.Rectangle2D> animalFarmColliders = new java.util.ArrayList<>();
+    private final java.util.List<ImageView> animalPropViews = new java.util.ArrayList<>();
     /** Khu vực canh tác (FarmZone trong TMX); giới hạn phạm vi hoạt động của Cuốc. */
     private javafx.geometry.Rectangle2D farmZone;
+
+    private ImageView createFixedAnimalPropView(javafx.scene.image.Image img, double fitWidth, double x, double y, double sortY, String id) {
+        ImageView iv = new ImageView(img);
+        iv.setSmooth(false);
+        iv.setPreserveRatio(true);
+        iv.setFitWidth(fitWidth);
+        iv.setLayoutX(x);
+        iv.setLayoutY(y);
+        iv.setMouseTransparent(true);
+        iv.setId(id);
+        iv.setUserData(sortY);
+        return iv;
+    }
+
+    private double propScaledHeight(javafx.scene.image.Image img, double fitWidth, double fallbackHeight) {
+        if (img != null && img.getWidth() > 0 && img.getHeight() > 0) {
+            return fitWidth * (img.getHeight() / img.getWidth());
+        }
+        return fallbackHeight;
+    }
+
+    /** Chia bãi cỏ gốc thành 3 chuồng khép kín (Gà | Lợn | Bò) khớp hàng rào dọc/ngang và khởi tạo hitbox chân đế. */
+    private void initAnimalFarmLayout() {
+        animalFarmColliders.clear();
+        if (animalZone == null) {
+            chickenZone = null;
+            pigZone = null;
+            cowZone = null;
+            return;
+        }
+        double minY = animalZone.getMinY(); // ~1516.8
+        double maxY = Math.min(animalZone.getMaxY(), 1966.0); // Dừng phía trên hàng rào ngang cạnh dưới (y=1252*1.6=2003.2)
+        double minX = animalZone.getMinX(); // ~1576.0
+        double maxX = animalZone.getMaxX(); // ~2464.0
+
+        // 2 vách rào dọc TMX (x=1166, w=20 -> World 1865.6..1897.6; x=1354, w=20 -> World 2166.4..2198.4)
+        double div1Left  = 1166.0 * 1.6;
+        double div1Right = 1186.0 * 1.6;
+        double div2Left  = 1354.0 * 1.6;
+        double div2Right = 1374.0 * 1.6;
+
+        // 1. Vùng đi lại riêng biệt cho 3 loài thú (trái -> giữa -> phải, khép kín phía trên rào dưới):
+        //    • Khu 1 — Chuồng Gà (Bên trái)
+        chickenZone = new javafx.geometry.Rectangle2D(minX + 10.0, minY + 132.0, (div1Left - 8.0) - (minX + 10.0), maxY - (minY + 132.0));
+        //    • Khu 2 — Chuồng Lợn (Ở giữa, chứa vũng bùn ở tâm)
+        pigZone     = new javafx.geometry.Rectangle2D(div1Right + 8.0, minY + 70.0, (div2Left - 8.0) - (div1Right + 8.0), maxY - (minY + 70.0));
+        //    • Khu 3 — Chuồng Bò (Bên phải)
+        cowZone     = new javafx.geometry.Rectangle2D(div2Right + 8.0, minY + 70.0, (maxX - 8.0) - (div2Right + 8.0), maxY - (minY + 70.0));
+
+        // 2. Hitbox va chạm chân đế (nửa dưới) của các vật thể rắn trong 3 chuồng (KHÔNG chặn prop_mud_puddle)
+        double coopH  = propScaledHeight(Assets.PROP_CHICKEN_COOP, 110.0, 122.0);
+        double wtrfH  = propScaledHeight(Assets.PROP_WOOD_TROUGH,   72.0,  50.0);
+        double watrH  = propScaledHeight(Assets.PROP_WATER_TROUGH,  84.0,  62.0);
+        double hayH   = propScaledHeight(Assets.PROP_HAY_BALE,      64.0,  56.0);
+
+        // Chuồng gà gỗ (110px) tại góc trên trái Khu 1
+        double coopX = minX + 8.0;
+        double coopY = minY + 6.0;
+        animalFarmColliders.add(new javafx.geometry.Rectangle2D(coopX + 8.0, coopY + coopH * 0.50, 110.0 - 16.0, coopH * 0.46));
+
+        // Máng thức ăn gỗ (72px) sát hàng rào trên bên trái Khu 2 (Chuồng Lợn)
+        double woodX = div1Right + 6.0;
+        double woodY = minY + 8.0;
+        animalFarmColliders.add(new javafx.geometry.Rectangle2D(woodX + 5.0, woodY + wtrfH * 0.48, 72.0 - 10.0, wtrfH * 0.46));
+
+        // Máng nước đá (84px) dịch sang giữa-trên Khu 3 (Chuồng Bò), cách mép phải >220px để né hoàn toàn bảng HUD bên phải
+        double waterX = div2Right + 50.0;
+        double waterY = minY + 106.0;
+        animalFarmColliders.add(new javafx.geometry.Rectangle2D(waterX + 5.0, waterY + watrH * 0.48, 84.0 - 10.0, watrH * 0.46));
+
+        // Đống rơm vàng (64px) đặt gần máng nước đá (~1.5 ô) cho cân đối và né HUD bên phải
+        double hayX = div2Right + 20.0;
+        double hayY = minY + 216.0;
+        animalFarmColliders.add(new javafx.geometry.Rectangle2D(hayX + 5.0, hayY + hayH * 0.48, 64.0 - 10.0, hayH * 0.46));
+    }
+
+    /** Đặt 6 vật thể + 3 biển gỗ (CHICKEN, PIG, COW) + hoa cỏ chân rào vào 3 chuồng với kích thước khóa cứng. */
+    private void mountAnimalPenProps() {
+        if (entityPane == null || animalZone == null) return;
+        for (ImageView old : animalPropViews) {
+            entityPane.getChildren().remove(old);
+        }
+        animalPropViews.clear();
+
+        double minX = animalZone.getMinX();
+        double minY = animalZone.getMinY();
+        double maxY = Math.min(animalZone.getMaxY(), 1966.0);
+        double div1Right = 1186.0 * 1.6;
+        double div2Left  = 1354.0 * 1.6;
+        double div2Right = 1374.0 * 1.6;
+
+        // 3 BIỂN GỖ (fitWidth = 56, smooth = false) cắm thẳng hàng ngay cạnh lối vào phía trên của 3 chuồng
+        double signFootY = minY - 2.0; // Nằm sát chân hàng rào phía trên (y=945*1.6=1512)
+        if (Assets.SIGN_CHICKEN != null) {
+            double sh = propScaledHeight(Assets.SIGN_CHICKEN, 56.0, 90.0);
+            animalPropViews.add(createFixedAnimalPropView(Assets.SIGN_CHICKEN, 56.0, minX + 26.0, signFootY - sh, signFootY + 2.0, "sign_chicken"));
+        }
+        if (Assets.SIGN_PIG != null) {
+            double sh = propScaledHeight(Assets.SIGN_PIG, 56.0, 96.0);
+            animalPropViews.add(createFixedAnimalPropView(Assets.SIGN_PIG, 56.0, div1Right + 10.0, signFootY - sh, signFootY + 2.0, "sign_pig"));
+        }
+        if (Assets.SIGN_COW != null) {
+            double sh = propScaledHeight(Assets.SIGN_COW, 56.0, 96.0);
+            animalPropViews.add(createFixedAnimalPropView(Assets.SIGN_COW, 56.0, div2Right + 12.0, signFootY - sh, signFootY + 2.0, "sign_cow"));
+        }
+
+        // KHU 1 — CHUỒNG GÀ (Bên trái): Chuồng gà (110px) góc trên trái + Ổ rơm có trứng (52px) cạnh bên phải
+        if (Assets.PROP_CHICKEN_COOP != null) {
+            double coopX = minX + 8.0;
+            double coopY = minY + 6.0;
+            double coopH = propScaledHeight(Assets.PROP_CHICKEN_COOP, 110.0, 122.0);
+            animalPropViews.add(createFixedAnimalPropView(Assets.PROP_CHICKEN_COOP, 110.0, coopX, coopY, coopY + coopH, "prop_chicken_coop"));
+        }
+        if (Assets.PROP_STRAW_NEST != null) {
+            double nestX = minX + 124.0;
+            double nestY = minY + 82.0;
+            double nestH = propScaledHeight(Assets.PROP_STRAW_NEST, 52.0, 39.0);
+            animalPropViews.add(createFixedAnimalPropView(Assets.PROP_STRAW_NEST, 52.0, nestX, nestY, nestY + nestH * 0.5, "prop_straw_nest"));
+        }
+
+        // KHU 2 — CHUỒNG LỢN (Ở giữa): Vũng bùn (140px) chính giữa dưới chân thú/người + Máng thức ăn gỗ (72px) sát rào trên trái
+        if (Assets.PROP_MUD_PUDDLE != null) {
+            double mudH = propScaledHeight(Assets.PROP_MUD_PUDDLE, 140.0, 68.0);
+            double mudX = (div1Right + div2Left - 140.0) * 0.5;
+            double mudY = minY + (maxY - minY) * 0.52 - mudH * 0.5;
+            animalPropViews.add(createFixedAnimalPropView(Assets.PROP_MUD_PUDDLE, 140.0, mudX, mudY, -650.0, "prop_mud_puddle"));
+        }
+        if (Assets.PROP_WOOD_TROUGH != null) {
+            double woodX = div1Right + 6.0;
+            double woodY = minY + 8.0;
+            double woodH = propScaledHeight(Assets.PROP_WOOD_TROUGH, 72.0, 50.0);
+            animalPropViews.add(createFixedAnimalPropView(Assets.PROP_WOOD_TROUGH, 72.0, woodX, woodY, woodY + woodH, "prop_wood_trough"));
+        }
+
+        // KHU 3 — CHUỒNG BÒ (Bên phải): Máng nước đá (84px) dịch sang giữa-trên né HUD phải + Đống rơm vàng (64px) ngay gần đó
+        if (Assets.PROP_WATER_TROUGH != null) {
+            double waterX = div2Right + 50.0;
+            double waterY = minY + 106.0;
+            double waterH = propScaledHeight(Assets.PROP_WATER_TROUGH, 84.0, 62.0);
+            animalPropViews.add(createFixedAnimalPropView(Assets.PROP_WATER_TROUGH, 84.0, waterX, waterY, waterY + waterH, "prop_water_trough"));
+        }
+        if (Assets.PROP_HAY_BALE != null) {
+            double hayX = div2Right + 20.0;
+            double hayY = minY + 216.0;
+            double hayH = propScaledHeight(Assets.PROP_HAY_BALE, 64.0, 56.0);
+            animalPropViews.add(createFixedAnimalPropView(Assets.PROP_HAY_BALE, 64.0, hayX, hayY, hayY + hayH, "prop_hay_bale"));
+        }
+
+        // Điểm xuyết vài cụm cỏ hoa nhỏ dưới chân hàng rào cho sinh động (nằm dưới chân, không chặn đi lại)
+        if (Assets.WILDFLOWERS != null) {
+            double[][] flowers = new double[][] {
+                { minX + 16.0,      maxY - 40.0 },
+                { div1Right - 84.0, maxY - 38.0 },
+                { div1Right - 72.0, minY + 166.0 },
+                { div1Right + 14.0, maxY - 40.0 },
+                { div2Right + 16.0, maxY - 40.0 },
+                { div2Right + 136.0, maxY - 42.0 }
+            };
+            for (int i = 0; i < flowers.length; i++) {
+                animalPropViews.add(createFixedAnimalPropView(
+                    Assets.WILDFLOWERS, 34.0, flowers[i][0], flowers[i][1], -620.0, "animal_flower_" + i
+                ));
+            }
+        }
+
+        entityPane.getChildren().addAll(animalPropViews);
+    }
+
+    private javafx.geometry.Rectangle2D getZoneForAnimalType(int type) {
+        if (type == 0 && chickenZone != null) return chickenZone;
+        if (type == 1 && cowZone != null) return cowZone;
+        if (type == 3 && pigZone != null) return pigZone;
+        return animalZone;
+    }
 
     private boolean isCellInFarmZone(Cell cell) {
         if (cell == null) return false;
@@ -7249,29 +7632,43 @@ void style() {
         }
 
         double spotX() {
-            double sx = x + 15;
-            return animalZone != null ? Math.min(sx, animalZone.getMaxX() - 45) : sx;
+            javafx.geometry.Rectangle2D z = getZoneForAnimalType(animalType);
+            double sx = x + 15.0;
+            if (z != null) {
+                return Math.max(z.getMinX() + 6.0, Math.min(sx, z.getMaxX() - 36.0));
+            }
+            return sx;
         }
 
         double spotY() {
-            double sy = y + 30;
-            return animalZone != null ? Math.min(sy, animalZone.getMaxY() - 45) : sy;
+            javafx.geometry.Rectangle2D z = getZoneForAnimalType(animalType);
+            double sy = y + 34.0;
+            if (z != null) {
+                return Math.max(z.getMinY() + 6.0, Math.min(sy, z.getMaxY() - 32.0));
+            }
+            return sy;
         }
 
         javafx.geometry.Rectangle2D bounds() {
-            return new javafx.geometry.Rectangle2D(x - 6, y - 14, 82, 46);
+            return new javafx.geometry.Rectangle2D(x - 14, y - 16, 98, 56);
         }
     }
 
     private void buildTroughs() {
         troughs = new java.util.ArrayList<>();
         if (animalZone == null || entityPane == null) return;
-        // Đặt máng ăn hoàn toàn bên trong khu chăn nuôi (AnimalZone)
-        double ty = animalZone.getMinY() + 14;
-        double w = animalZone.getWidth();
-        troughs.add(new FeedTrough(0, "\uD83D\uDC14", "Gà", animalZone.getMinX() + w * 0.15, ty));
-        troughs.add(new FeedTrough(1, "\uD83D\uDC04", "Bò", animalZone.getMinX() + w * 0.45, ty));
-        troughs.add(new FeedTrough(3, "\uD83D\uDC16", "Lợn", animalZone.getMinX() + w * 0.75, ty));
+        // Giữ nguyên thứ tự chỉ số (0: Gà, 1: Bò, 2: Lợn) để tương thích tuyệt đối với file save cũ (trough.0/1/2)
+        // Cả 3 thanh trạng thái máng ăn nằm thẳng hàng tăm tắp (cùng cao độ ty) ngay cạnh lối vào mỗi chuồng
+        double ty = animalZone.getMinY() + 29.0;
+        double div1Left  = 1166.0 * 1.6;
+        double div2Left  = 1354.0 * 1.6;
+        double div2Right = 1374.0 * 1.6;
+        // 1. Gà (Khu 1 — Bên trái): thẳng hàng ngay bên phải lối vào Chuồng Gà
+        troughs.add(new FeedTrough(0, "\uD83D\uDC14", "Gà",  div1Left - 78.0,  ty));
+        // 2. Bò (Khu 3 — Bên phải): thẳng hàng ngay bên trái lối vào Chuồng Bò (né hoàn toàn bảng HUD bên phải)
+        troughs.add(new FeedTrough(1, "\uD83D\uDC04", "Bò",  div2Right + 8.0,  ty));
+        // 3. Lợn (Khu 2 — Ở giữa): thẳng hàng ngay bên phải lối vào Chuồng Lợn
+        troughs.add(new FeedTrough(3, "\uD83D\uDC16", "Lợn", div2Left - 78.0,  ty));
         for (FeedTrough t : troughs) entityPane.getChildren().add(t.view);
     }
 
@@ -7412,32 +7809,39 @@ void style() {
         return false;
     }
 
-    private double clampToAnimalZoneX(double px) {
-        if (animalZone != null) {
-            double minX = animalZone.getMinX() + 12;
-            double maxX = Math.max(minX, animalZone.getMaxX() - 48);
+    private double clampToAnimalZoneX(double px, int type) {
+        javafx.geometry.Rectangle2D z = getZoneForAnimalType(type);
+        if (z != null) {
+            double padR = (type == 1) ? 46.0 : ((type == 3) ? 40.0 : 30.0);
+            double minX = z.getMinX() + 4.0;
+            double maxX = Math.max(minX, z.getMaxX() - padR);
             return Math.max(minX, Math.min(px, maxX));
         }
         double mapW = farmMap.getWidth() * Constant.CELL_SIZE;
         return Math.max(0, Math.min(px, mapW - 40));
     }
 
-    private double clampToAnimalZoneY(double py) {
-        if (animalZone != null) {
-            double minY = animalZone.getMinY() + 18;
-            double maxY = Math.max(minY, animalZone.getMaxY() - 42);
+    private double clampToAnimalZoneY(double py, int type) {
+        javafx.geometry.Rectangle2D z = getZoneForAnimalType(type);
+        if (z != null) {
+            double padB = (type == 1) ? 34.0 : ((type == 3) ? 28.0 : 30.0);
+            double minY = z.getMinY() + 4.0;
+            double maxY = Math.max(minY, z.getMaxY() - padB);
             return Math.max(minY, Math.min(py, maxY));
         }
         double mapH = farmMap.getHeight() * Constant.CELL_SIZE;
         return Math.max(0, Math.min(py, mapH - 40));
     }
 
-    private boolean isAnimalBlockedAt(double px, double py) {
-        if (animalZone != null) {
-            double minX = animalZone.getMinX() + 10;
-            double maxX = animalZone.getMaxX() - 45;
-            double minY = animalZone.getMinY() + 16;
-            double maxY = animalZone.getMaxY() - 40;
+    private boolean isAnimalBlockedAt(double px, double py, int type) {
+        javafx.geometry.Rectangle2D z = getZoneForAnimalType(type);
+        if (z != null) {
+            double padR = (type == 1) ? 46.0 : ((type == 3) ? 40.0 : 30.0);
+            double padB = (type == 1) ? 34.0 : ((type == 3) ? 28.0 : 30.0);
+            double minX = z.getMinX() + 2.0;
+            double maxX = Math.max(minX, z.getMaxX() - padR);
+            double minY = z.getMinY() + 2.0;
+            double maxY = Math.max(minY, z.getMaxY() - padB);
             if (px < minX || px > maxX || py < minY || py > maxY) {
                 return true;
             }
@@ -7448,6 +7852,11 @@ void style() {
             return true;
         }
         javafx.geometry.Rectangle2D animalBox = new javafx.geometry.Rectangle2D(px + 6, py + 12, 24, 18);
+        for (javafx.geometry.Rectangle2D afBox : animalFarmColliders) {
+            if (animalBox.intersects(afBox)) {
+                return true;
+            }
+        }
         for (ImageView objView : sceneryObjects) {
             double ox = objView.getLayoutX() + objView.getTranslateX();
             double oy = objView.getLayoutY() + objView.getTranslateY();
@@ -7492,8 +7901,15 @@ void style() {
 
         public Animal(double startX, double startY, int type) {
             if (type != 2) {
-                startX = clampToAnimalZoneX(startX);
-                startY = clampToAnimalZoneY(startY);
+                startX = clampToAnimalZoneX(startX, type);
+                startY = clampToAnimalZoneY(startY, type);
+                if (isAnimalBlockedAt(startX, startY, type)) {
+                    javafx.geometry.Rectangle2D z = getZoneForAnimalType(type);
+                    if (z != null) {
+                        startX = clampToAnimalZoneX(z.getMinX() + z.getWidth() * 0.60, type);
+                        startY = clampToAnimalZoneY(z.getMinY() + z.getHeight() * 0.65, type);
+                    }
+                }
             }
             this.x = startX; this.y = startY;
             this.targetX = startX; this.targetY = startY;
@@ -8007,9 +8423,9 @@ void style() {
                 }
             }
 
-            // Luôn đảm bảo vật nuôi nằm trong vùng AnimalZone
-            x = clampToAnimalZoneX(x);
-            y = clampToAnimalZoneY(y);
+            // Luôn đảm bảo vật nuôi nằm trong đúng phân khu của loài (CHICKEN / PIG / COW)
+            x = clampToAnimalZoneX(x, type);
+            y = clampToAnimalZoneY(y, type);
 
             if (now >= pauseUntil) {
                 double dx = targetX - x;
@@ -8017,10 +8433,10 @@ void style() {
                 double dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist < 5) {
-                    targetX = clampToAnimalZoneX(x + (Math.random() - 0.5) * 180);
-                    targetY = clampToAnimalZoneY(y + (Math.random() - 0.5) * 180);
+                    targetX = clampToAnimalZoneX(x + (Math.random() - 0.5) * 180, type);
+                    targetY = clampToAnimalZoneY(y + (Math.random() - 0.5) * 180, type);
 
-                    if (isAnimalBlockedAt(targetX, targetY)) {
+                    if (isAnimalBlockedAt(targetX, targetY, type)) {
                         targetX = x;
                         targetY = y;
                     } else {
@@ -8030,12 +8446,12 @@ void style() {
                         updateFacing(targetX < x);
                     }
                 } else {
-                    double nextX = clampToAnimalZoneX(x + (dx / dist) * speed);
-                    double nextY = clampToAnimalZoneY(y + (dy / dist) * speed);
-                    if (isAnimalBlockedAt(nextX, nextY)) {
-                        // Đổi hướng ngẫu nhiên mới bên trong AnimalZone nếu gặp vật cản/rào
-                        targetX = clampToAnimalZoneX(x + (Math.random() - 0.5) * 160);
-                        targetY = clampToAnimalZoneY(y + (Math.random() - 0.5) * 160);
+                    double nextX = clampToAnimalZoneX(x + (dx / dist) * speed, type);
+                    double nextY = clampToAnimalZoneY(y + (dy / dist) * speed, type);
+                    if (isAnimalBlockedAt(nextX, nextY, type)) {
+                        // Đổi hướng ngẫu nhiên mới bên trong phân khu loài nếu gặp vật cản/rào
+                        targetX = clampToAnimalZoneX(x + (Math.random() - 0.5) * 160, type);
+                        targetY = clampToAnimalZoneY(y + (Math.random() - 0.5) * 160, type);
                     } else {
                         x = nextX;
                         y = nextY;

@@ -5,11 +5,30 @@ import javafx.beans.property.SimpleIntegerProperty;
 import utils.Constant;
 
 public class Player {
+    public enum ActionState {
+        IDLE,
+        PICKING_LOW,
+        PICKING_HIGH
+    }
+
     private final IntegerProperty money = new SimpleIntegerProperty(Constant.START_MONEY);
     private final Inventory inventory = new Inventory();
     private final model.quest.QuestManager questManager = new model.quest.QuestManager();
     private double hunger = 100.0; // 0..100 (100 = no đầy)
     private double thirst = 100.0; // 0..100 (100 = đủ nước)
+    private ActionState actionState = ActionState.IDLE;
+
+    public ActionState getActionState() {
+        return actionState;
+    }
+
+    public void setActionState(ActionState actionState) {
+        this.actionState = (actionState != null) ? actionState : ActionState.IDLE;
+    }
+
+    public boolean isPicking() {
+        return actionState == ActionState.PICKING_LOW || actionState == ActionState.PICKING_HIGH;
+    }
 
     public model.quest.QuestManager getQuestManager() {
         return questManager;
